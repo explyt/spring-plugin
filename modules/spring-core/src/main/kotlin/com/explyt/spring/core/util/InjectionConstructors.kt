@@ -27,8 +27,8 @@ object InjectionConstructors {
         if (declarations.size != 2) return emptySet()
         val (primary, secondary) = declarations.partition { it.first().isKotlinPrimaryConstructor() }
         val primaryConstructors = primary.singleOrNull() ?: return emptySet()
-        val noArgSecondary = secondary.singleOrNull()?.any { !it.hasParameters() } == true
-        return if (noArgSecondary) primaryConstructors.toSet() else emptySet()
+        val noArgSecondary = secondary.singleOrNull()?.singleOrNull()?.hasParameters() == false
+        return if (primaryConstructors.size == 1 && noArgSecondary) primaryConstructors.toSet() else emptySet()
     }
 
     private fun PsiMethod.isKotlinPrimaryConstructor(): Boolean =
