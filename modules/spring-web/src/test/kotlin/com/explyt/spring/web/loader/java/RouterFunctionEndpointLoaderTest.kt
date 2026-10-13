@@ -615,6 +615,56 @@ class RouterFunctionEndpointLoaderTest : ExplytJavaLightTestCase() {
         )
     }
 
+    fun testServletPathPrefixIsJoinedWithASlashlessInnerPath() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_MVC,
+            """route().path("/a", b -> b.GET("b", h::list)).build()""",
+            listOf("/a/b" to "GET")
+        )
+    }
+
+    fun testReactivePathPrefixIsJoinedWithASlashlessInnerPath() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_WEBFLUX,
+            """route().path("/a", b -> b.GET("b", h::list)).build()""",
+            listOf("/a/b" to "GET")
+        )
+    }
+
+    fun testServletPathPrefixWithATrailingSlashIsJoinedWithASlashedInnerPath() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_MVC,
+            """route().path("/a/", b -> b.GET("/b", h::list)).build()""",
+            listOf("/a/b" to "GET")
+        )
+    }
+
+    fun testReactivePathPrefixWithATrailingSlashIsJoinedWithASlashedInnerPath() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_WEBFLUX,
+            """route().path("/a/", b -> b.GET("/b", h::list)).build()""",
+            listOf("/a/b" to "GET")
+        )
+    }
+
+    fun testServletPathPredicateNestIsJoinedWithASlashlessInnerPath() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_MVC,
+            """route().nest(RequestPredicates.path("/a"), b -> b.GET("b", h::list)).build()""",
+            listOf("/a/b" to "GET"),
+            predicateFactories = setOf("path")
+        )
+    }
+
+    fun testReactivePathPredicateNestIsJoinedWithASlashlessInnerPath() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_WEBFLUX,
+            """route().nest(RequestPredicates.path("/a"), b -> b.GET("b", h::list)).build()""",
+            listOf("/a/b" to "GET"),
+            predicateFactories = setOf("path")
+        )
+    }
+
     private fun assertBuilderRoutes(
         type: EndpointType,
         route: String,
