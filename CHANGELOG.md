@@ -164,6 +164,7 @@
 - fix: Resolve `MockMvc` and `WebTestClient` autowired in tests as beans provided by test auto-configuration
 - fix: Inject the regular expression of a `@RequestMapping` path built by concatenation into the literal that actually contains it
 - fix: Keep an Actuator endpoint's write operation next to a web extension's write operation that differs only by whether it reads a request body, as Boot routes them by the consumed media types (#655)
+- fix: Read the endpoint a project Actuator web extension extends the way Boot discovers it: through a composed annotation, with an `@AliasFor` value or default taking precedence over the value fixed on the meta-annotation, and from an annotation declared on a superclass of the extension; a same-named attribute without `@AliasFor` counts only up to Spring Framework 6. An extension whose bean condition does not match no longer replaces the endpoint's operations, and one whose condition cannot be decided is applied while the endpoint's bean condition reads undecided, naming the extension (#655)
 
 ### Spring MCP
 
