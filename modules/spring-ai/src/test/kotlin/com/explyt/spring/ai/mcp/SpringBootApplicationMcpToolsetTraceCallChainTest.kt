@@ -363,6 +363,20 @@ class SpringBootApplicationMcpToolsetTraceCallChainTest : JavaCodeInsightFixture
         assertTrue(nodes.all { it["filePath"].asText().endsWith("Ids.kt") })
     }
 
+    fun testCompanionInsideClassNamedCompanionUsesTheClassSourceName() = runBlockingReleasingWriteIntent {
+        val chain = traceCompanion("classNamedCompanionParse")
+        val call = companionCall(chain, "parse")
+        assertTrue("The companion call must be expanded", call["node"].isIntegralNumber)
+        val lightClass = JavaPsiFacade.getInstance(project)
+            .findClass("explyt.trace.Companion.Companion", GlobalSearchScope.projectScope(project))!!
+        val parse = lightClass.findMethodsByName("parse", false).filterIsInstance<KtLightMethod>().single { it.kotlinOrigin != null }
+        assertEquals("Companion", lightClass.name)
+        assertTrue("The callee must be the companion of a class named Companion", lightClass.qualifiedName!!.endsWith(".Companion.Companion"))
+        assertEquals("explyt.trace.Companion", SourceNames.qualifiedNameOf(parse)!!.substringBeforeLast("."))
+        val node = chain.single { it["id"].asInt() == call["node"].asInt() }
+        assertEquals("explyt.trace.Companion", node["className"].asText())
+    }
+
     fun testNestedCompanionCallNamesItsImmediateOuterClass() = runBlockingReleasingWriteIntent {
         val chain = traceCompanion("nestedCompanionParse")
         val call = companionCall(chain, "parse")
@@ -449,6 +463,11 @@ class SpringBootApplicationMcpToolsetTraceCallChainTest : JavaCodeInsightFixture
                     fun parse(raw: String): String = raw
                 }
             }
+            class Companion {
+                companion object {
+                    fun parse(raw: String): String = raw
+                }
+            }
             class StaticVmId {
                 companion object {
                     @JvmStatic
@@ -487,6 +506,7 @@ class SpringBootApplicationMcpToolsetTraceCallChainTest : JavaCodeInsightFixture
                 fun objectParse(raw: String): String = IdFormat.parse(raw)
                 fun nestedParse(raw: String): String = Outer.Inner().parse(raw)
                 fun nestedCompanionParse(raw: String): String = Outer.InnerId.parse(raw)
+                fun classNamedCompanionParse(raw: String): String = Companion.parse(raw)
                 fun twoParsers(raw: String): String = VmId.parse(raw) + OtherVmId.parse(raw)
             }
         """.trimIndent()
