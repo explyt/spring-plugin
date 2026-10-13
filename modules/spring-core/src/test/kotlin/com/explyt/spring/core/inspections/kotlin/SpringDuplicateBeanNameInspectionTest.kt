@@ -519,6 +519,12 @@ class SpringDuplicateBeanNameBeforeSpring6InspectionTest : SpringDuplicateBeanNa
         assertEmpty(highlights(ALIAS_COLLISION))
     }
 
+    fun testAliasCollisionWithUnresolvableOverridingPropertyWarnsThatTheOutcomeDependsOnRegistrationOrder() {
+        allowBeanDefinitionOverriding("${'$'}{OVERRIDING}")
+
+        assertRegistrationOrderWarning(highlights(ALIAS_COLLISION), anchor = "y", firstMethod = "x")
+    }
+
     fun testCollisionOfTwoAliasesFailsAtStartup() {
         assertStartupFailure(highlights(TWO_ALIASES_COLLISION), anchor = "y", firstMethod = "x")
     }
@@ -628,6 +634,12 @@ class SpringDuplicateBeanNameUnknownSpringVersionInspectionTest : SpringDuplicat
 
     fun testDisallowedOverridingWarnsThatTheVersionIsUnknown() {
         allowBeanDefinitionOverriding("false")
+
+        assertUnknownVersionWarning(highlights(FULL_CONFIGURATION))
+    }
+
+    fun testUnresolvableOverridingPropertyWarnsThatTheVersionIsUnknown() {
+        allowBeanDefinitionOverriding("${'$'}{OVERRIDING}")
 
         assertUnknownVersionWarning(highlights(FULL_CONFIGURATION))
     }
