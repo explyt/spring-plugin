@@ -368,7 +368,7 @@ class NativeSearchService(private val project: Project) {
         beanNameFromQualifier: String?
     ): List<PsiBean> {
         val membersPsiBeans = allPsiBeans.filter { it.isMember() }
-        val methodsPsiBeans = membersPsiBeans.mapNotNull { it.psiMember as? PsiMethod }
+        val methodsPsiBeans = membersPsiBeans.mapNotNull { it.factoryMethod }
         val registrarPsiBeans = membersPsiBeans.filter { it.psiMember.isRegistrar() }
         val byExactMatch = methodsPsiBeans.filterByExactMatch(sourcePsiType).toSet()
         val byExactMatchRegistrar = registrarPsiBeans.filterByExactMatchRegistrar(sourcePsiType).toSet()
@@ -395,7 +395,9 @@ class NativeSearchService(private val project: Project) {
         psiMembersSet += byTypeBeanMethods
         psiMembersSet += byTypeComponents
 
-        val foundPsiBeans = allPsiBeans.filter { it.psiMember in psiMembersSet }
+        val foundPsiBeans = allPsiBeans.filter { bean ->
+            bean.psiMember in psiMembersSet || bean.factoryOverride?.let { it in psiMembersSet } == true
+        }
 
         val aResultByTypeAndQualifier: List<PsiBean> = foundPsiBeans
             .filter { it.filterByQualifier(qualifier, beanNameFromQualifier) }
