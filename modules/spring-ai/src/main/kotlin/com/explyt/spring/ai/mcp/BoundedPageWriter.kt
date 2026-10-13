@@ -5,6 +5,7 @@
 
 package com.explyt.spring.ai.mcp
 
+import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 
@@ -96,13 +97,16 @@ class BoundedPageWriter {
         revision: String,
         page: PageRequest,
         firstItem: ObjectNode? = null,
+        maxSampleChars: Int = Int.MAX_VALUE,
     ): ObjectNode {
         val fitted = envelope.deepCopy()
         val served = fitted.putArray(sampleField)
         fitted.put(sampleTruncatedField, true)
         for (item in sample) {
             served.add(item)
-            if (firstPageLength(fitted, itemsField, firstItem, totalCount, revision, page.offset) > page.maxChars) {
+            if (encodedLength(served) > maxSampleChars ||
+                firstPageLength(fitted, itemsField, firstItem, totalCount, revision, page.offset) > page.maxChars
+            ) {
                 served.remove(served.size() - 1)
                 break
             }
@@ -253,7 +257,7 @@ class BoundedPageWriter {
     private fun terminalLength(root: ObjectNode, totalCount: Int, offset: Int): Int =
         root.deepCopy().apply { setContinuation(this, totalCount, offset) }.let(::encodedLength)
 
-    private fun encodedLength(node: ObjectNode): Int = mapper.writeValueAsString(node).length
+    private fun encodedLength(node: JsonNode): Int = mapper.writeValueAsString(node).length
 
     private val mapper = ObjectMapper()
 

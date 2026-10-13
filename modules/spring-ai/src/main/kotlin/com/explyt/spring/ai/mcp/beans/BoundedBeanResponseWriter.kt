@@ -78,7 +78,7 @@ class BoundedBeanResponseWriter {
         val sample = List(minOf(content.inactiveCount, MAX_INACTIVE_SAMPLE), content.inactiveAt)
         val fitted = writer.fitSample(
             this, FIELD_CANDIDATES, FIELD_INACTIVE_CANDIDATES, sample, FIELD_INACTIVE_TRUNCATED,
-            content.totalCount, revision, page, firstCandidate
+            content.totalCount, revision, page, firstCandidate, maxSampleChars = page.maxChars / 2
         )
         val served = fitted[FIELD_INACTIVE_CANDIDATES].size()
         if (served == 0) fitted.remove(FIELD_INACTIVE_CANDIDATES)
