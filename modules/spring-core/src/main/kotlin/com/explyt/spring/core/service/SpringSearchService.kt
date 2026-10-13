@@ -271,6 +271,12 @@ class SpringSearchService(private val project: Project) {
         }
     }
 
+    fun getInjectionPointOwnerBeans(module: Module): Set<PsiBean> =
+        getActiveBeansClasses(module) + getDependentBeanPsiClassesAnnotatedByComponent(module)
+
+    fun getInjectionPointComponentBeans(module: Module): Set<PsiBean> =
+        getBeanPsiClassesAnnotatedByComponent(module) + getDependentBeanPsiClassesAnnotatedByComponent(module)
+
     @Deprecated("Don use directly. Use SpringSearchServiceFacade")
     fun getDependentBeanPsiClassesAnnotatedByComponent(module: Module): Set<PsiBean> {
         try {
