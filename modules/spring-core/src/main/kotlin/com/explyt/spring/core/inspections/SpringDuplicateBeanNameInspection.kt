@@ -8,13 +8,13 @@ package com.explyt.spring.core.inspections
 import com.explyt.inspection.SpringBaseUastLocalInspectionTool
 import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.service.conditional.ConditionPropertyValue
 import com.explyt.spring.core.service.conditional.PropertyConditionValues
 import com.explyt.spring.core.util.BeanFactoryMethods
 import com.explyt.spring.core.util.SpringBootUtil
 import com.explyt.spring.core.util.SpringCoreUtil.resolveBeanName
 import com.explyt.util.ExplytPsiUtil.getMetaAnnotation
-import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
@@ -36,7 +36,7 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
     ): Array<ProblemDescriptor>? {
         val psiClass = aClass.javaPsi
         val collisions = collisionsIn(psiClass).ifEmpty { return null }
-        val overriding = overridingOf(psiClass).takeUnless { it == Overriding.ALLOWED } ?: return null
+        val overriding = overridingOf(aClass).takeUnless { it == Overriding.ALLOWED } ?: return null
         return collisions.mapNotNull { it.toProblem(manager, isOnTheFly, overriding) }.toTypedArray()
     }
 
@@ -55,11 +55,13 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
 
     private fun PsiMethod.isConditional(): Boolean = getMetaAnnotation(SpringCoreClasses.CONDITIONAL) != null
 
-    private fun overridingOf(psiClass: PsiClass): Overriding {
-        val module = ModuleUtilCore.findModuleForPsiElement(psiClass) ?: return Overriding.DISALLOWED
+    private fun overridingOf(aClass: UClass): Overriding {
+        val module = ModuleUtilCore.findModuleForPsiElement(aClass.javaPsi) ?: return Overriding.DISALLOWED
+        val ignoredOverriding = if (aClass.enforcesUniqueMethods(module)) ignoredOverridingOf(module) else null
+        if (ignoredOverriding == Overriding.IGNORED_ON_SPRING_7) return ignoredOverriding
         return when (val value = PropertyConditionValues(module).valueOf(ALLOW_OVERRIDING_KEY)) {
             is ConditionPropertyValue.Known ->
-                if (value.text.trim().equals("true", ignoreCase = true)) allowedOverridingOf(psiClass, module)
+                if (value.text.trim().equals("true", ignoreCase = true)) ignoredOverriding ?: Overriding.ALLOWED
                 else Overriding.DISALLOWED
 
             ConditionPropertyValue.Missing -> Overriding.DISALLOWED
@@ -67,15 +69,19 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
         }
     }
 
-    private fun allowedOverridingOf(psiClass: PsiClass, module: Module): Overriding {
-        if (!psiClass.enforcesUniqueMethods()) return Overriding.ALLOWED
+    private fun ignoredOverridingOf(module: Module): Overriding? {
         val springMajor = SpringBootUtil.getSpringCoreMajorVersion(module) ?: return Overriding.IGNORED_ON_UNKNOWN_SPRING
-        return if (springMajor < SPRING_7) Overriding.ALLOWED else Overriding.IGNORED_ON_SPRING_7
+        return Overriding.IGNORED_ON_SPRING_7.takeIf { springMajor >= SPRING_7 }
     }
 
-    private fun PsiClass.enforcesUniqueMethods(): Boolean {
-        val configuration = getMetaAnnotation(SpringCoreClasses.CONFIGURATION) ?: return false
-        return AnnotationUtil.getBooleanAttributeValue(configuration, ENFORCE_UNIQUE_METHODS) != false
+    private fun UClass.enforcesUniqueMethods(module: Module): Boolean {
+        val configurations = SpringSearchService.getInstance(module.project)
+            .getMetaAnnotations(module, SpringCoreClasses.CONFIGURATION)
+        val configuration = uAnnotations.firstOrNull { it.qualifiedName == SpringCoreClasses.CONFIGURATION }
+            ?: uAnnotations.firstOrNull { configurations.contains(it) }
+            ?: return false
+        val values = configurations.getAnnotationMemberValues(configuration, setOf(ENFORCE_UNIQUE_METHODS))
+        return values.firstOrNull()?.evaluate() != false
     }
 
     private fun Collision.toProblem(
