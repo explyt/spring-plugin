@@ -563,6 +563,97 @@ class ActuatorEndpointOperationsTest : ExplytKotlinLightTestCase() {
         )
     }
 
+    /**
+     * Boot sets `consumes` for a POST operation with a body, so a body write and a body-less write are two request
+     * predicates: a JSON body reaches the endpoint's `write(value)`, an empty POST the extension's `write()`.
+     */
+    fun testWebExtensionBodylessWriteKeepsTheEndpointBodyWrite() {
+        addExtendedEndpoint(
+            endpointBody = "$WRITE_OPERATION fun write(value: String) {}",
+            extensionBody = "$WRITE_OPERATION fun write() {}",
+        )
+
+        assertEquals(
+            listOf(
+                WriteOperation("/actuator/x", "XEndpoint", listOf("value")),
+                WriteOperation("/actuator/x", "XWebExtension", emptyList()),
+            ),
+            writeOperationsOfX()
+        )
+    }
+
+    fun testWebExtensionBodyWriteKeepsTheEndpointBodylessWrite() {
+        addExtendedEndpoint(
+            endpointBody = "$WRITE_OPERATION fun write() {}",
+            extensionBody = "$WRITE_OPERATION fun write(value: String) {}",
+        )
+
+        assertEquals(
+            listOf(
+                WriteOperation("/actuator/x", "XEndpoint", emptyList()),
+                WriteOperation("/actuator/x", "XWebExtension", listOf("value")),
+            ),
+            writeOperationsOfX()
+        )
+    }
+
+    fun testWebExtensionBodyWriteReplacesTheEndpointBodyWrite() {
+        addExtendedEndpoint(
+            endpointBody = "$WRITE_OPERATION fun write(value: String) {}",
+            extensionBody = "$WRITE_OPERATION fun write(value: String) {}",
+        )
+
+        assertEquals(
+            listOf(WriteOperation("/actuator/x", "XWebExtension", listOf("value"))),
+            writeOperationsOfX()
+        )
+    }
+
+    /** A `@Selector` parameter is a path variable, not a body, so neither write consumes anything. */
+    fun testWebExtensionSelectorOnlyWriteReplacesTheEndpointSelectorOnlyWrite() {
+        addExtendedEndpoint(
+            endpointBody = "$WRITE_OPERATION fun write(@Selector name: String) {}",
+            extensionBody = "$WRITE_OPERATION fun write(@Selector id: String) {}",
+        )
+
+        assertEquals(
+            listOf(WriteOperation("/actuator/x/{id}", "XWebExtension", listOf("id"))),
+            writeOperationsOfX()
+        )
+    }
+
+    fun testWebExtensionSelectorWriteWithABodyKeepsTheEndpointSelectorOnlyWrite() {
+        addExtendedEndpoint(
+            endpointBody = "$WRITE_OPERATION fun write(@Selector name: String) {}",
+            extensionBody = "$WRITE_OPERATION fun write(@Selector id: String, value: String) {}",
+        )
+
+        assertEquals(
+            listOf(
+                WriteOperation("/actuator/x/{id}", "XWebExtension", listOf("id", "value")),
+                WriteOperation("/actuator/x/{name}", "XEndpoint", listOf("name")),
+            ),
+            writeOperationsOfX()
+        )
+    }
+
+    private data class WriteOperation(val path: String, val declaringClass: String?, val parameters: List<String>)
+
+    private fun writeOperationsOfX(): List<WriteOperation> {
+        assertAnnotationResolves(WRITE_OPERATION.removePrefix("@"))
+        return allActuatorEndpoints()
+            .filter { (it.path == "/actuator/x" || it.path.startsWith("/actuator/x/")) && it.requestMethods == listOf("POST") }
+            .map {
+                val method = it.psiElement as? PsiMethod
+                WriteOperation(
+                    it.path,
+                    method?.containingClass?.name,
+                    method?.parameterList?.parameters?.map { parameter -> parameter.name }.orEmpty()
+                )
+            }
+            .sortedWith(compareBy({ it.path }, { it.declaringClass }))
+    }
+
     private fun selectorOperationsOfX(): List<Triple<String, List<String>, String?>> =
         allActuatorEndpoints().filter { it.path.startsWith("/actuator/x/") || it.path == "/actuator/x" }
             .map { Triple(it.path, it.requestMethods, (it.psiElement as? PsiMethod)?.containingClass?.name) }
@@ -822,6 +913,7 @@ class ActuatorEndpointOperationsTest : ExplytKotlinLightTestCase() {
         const val SERVLET_ENDPOINT = "org.springframework.boot.actuate.endpoint.web.annotation.ServletEndpoint"
         const val ENDPOINT_WEB_EXTENSION = "org.springframework.boot.actuate.endpoint.web.annotation.EndpointWebExtension"
         const val INFO_ENDPOINT = "org.springframework.boot.actuate.info.InfoEndpoint"
+        const val WRITE_OPERATION = "@org.springframework.boot.actuate.endpoint.annotation.WriteOperation"
         const val TEST_SOURCES = "src/test/kotlin"
 
         val X_ENDPOINT = """
