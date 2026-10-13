@@ -5,6 +5,7 @@
 
 package com.explyt.spring.web.loader
 
+import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.route.RoutePredicates
 import com.explyt.spring.web.route.RoutePrefix
@@ -12,17 +13,48 @@ import com.explyt.spring.web.util.RoutePathResolver
 import com.explyt.spring.web.util.SpringWebUtil
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.*
+import com.intellij.psi.util.CachedValueProvider
+import com.intellij.psi.util.CachedValuesManager
+import com.intellij.psi.util.PsiModificationTracker
 import com.intellij.psi.util.PsiUtil
 import org.jetbrains.uast.UExpression
 import org.jetbrains.uast.toUElementOfType
 
-data class BuilderRoute(val path: String, val verb: String)
+data class BuilderRoute(val path: String, val verb: String, val call: PsiMethodCallExpression)
 
 object RouterBuilderRouteWalker {
 
     private const val MAX_NESTING = 8
 
-    fun routesOf(builderExpression: PsiExpression): List<BuilderRoute> = walkChain(builderExpression, "", 0)
+    fun routesOf(beanMethod: PsiMethod): List<BuilderRoute> = walkOf(beanMethod).routes
+
+    class BeanMethodWalk(val modelled: Boolean, val routes: List<BuilderRoute>)
+
+    fun walkOf(beanMethod: PsiMethod): BeanMethodWalk =
+        CachedValuesManager.getCachedValue(beanMethod) {
+            val router = returnedRouterOf(beanMethod)
+            CachedValueProvider.Result(
+                BeanMethodWalk(
+                    router != null && callChainOf(router).any { it.isRouteRegistration() },
+                    router?.let { walkChain(it, "", 0) }.orEmpty()
+                ),
+                ModificationTrackerManager.getInstance(beanMethod.project).getUastModelAndLibraryTracker(),
+                PsiModificationTracker.MODIFICATION_COUNT
+            )
+        }
+
+    private fun PsiMethodCallExpression.isRouteRegistration(): Boolean {
+        ProgressManager.checkCanceled()
+        val name = methodExpression.referenceName
+        if (name !in SpringWebClasses.ROUTE_FUNCTION_BUILDER_VERBS
+            && name != SpringWebClasses.ROUTE_PATH
+            && name != SpringWebClasses.ROUTE_NEST
+        ) return false
+        return resolveMethod()?.containingClass?.qualifiedName in SpringWebClasses.ROUTE_FUNCTION_BUILDERS
+    }
+
+    private fun returnedRouterOf(beanMethod: PsiMethod): PsiExpression? =
+        beanMethod.body?.statements?.firstNotNullOfOrNull { (it as? PsiReturnStatement)?.returnValue }
 
     private fun walkChain(expression: PsiExpression, prefix: String, nesting: Int): List<BuilderRoute> {
         if (nesting > MAX_NESTING) return emptyList()
@@ -42,7 +74,7 @@ object RouterBuilderRouteWalker {
         val arguments = call.argumentList.expressions
         return when {
             method.name in SpringWebClasses.ROUTE_FUNCTION_BUILDER_VERBS ->
-                verbRoutes(method, arguments.firstOrNull(), prefix)
+                verbRoutes(call, method, arguments.firstOrNull(), prefix)
 
             arguments.size != 2 -> emptyList()
 
@@ -56,14 +88,19 @@ object RouterBuilderRouteWalker {
         }
     }
 
-    private fun verbRoutes(method: PsiMethod, uriArgument: PsiExpression?, prefix: String): List<BuilderRoute> {
+    private fun verbRoutes(
+        call: PsiMethodCallExpression,
+        method: PsiMethod,
+        uriArgument: PsiExpression?,
+        prefix: String
+    ): List<BuilderRoute> {
         if (!method.takesUriFirst()) return emptyList()
         return uriValues(uriArgument).mapNotNull { uri ->
             when {
                 prefix.isNotEmpty() -> SpringWebUtil.simplifyUrl(join(prefix, uri))
                 uri.isNotEmpty() -> uri
                 else -> null
-            }?.let { BuilderRoute(it, method.name) }
+            }?.let { BuilderRoute(it, method.name, call) }
         }
     }
 
