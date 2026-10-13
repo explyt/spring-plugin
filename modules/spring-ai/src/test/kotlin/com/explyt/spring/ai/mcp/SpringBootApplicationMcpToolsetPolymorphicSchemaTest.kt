@@ -7,11 +7,11 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.search.GlobalSearchScope
-import kotlinx.coroutines.runBlocking
 
 class SpringBootApplicationMcpToolsetPolymorphicSchemaTest : ExplytJavaLightTestCase() {
 
@@ -32,7 +32,7 @@ class SpringBootApplicationMcpToolsetPolymorphicSchemaTest : ExplytJavaLightTest
         )
     }
 
-    fun testKotlinSealedInterfaceWithTypeInfoListsVariantsUnderTheirDefaultIds() = runBlocking<Unit> {
+    fun testKotlinSealedInterfaceWithTypeInfoListsVariantsUnderTheirDefaultIds() = runBlockingReleasingWriteIntent<Unit> {
         addKotlinController(
             "Payment", "Payment", "Card(\"4242\")", """
             import com.fasterxml.jackson.annotation.JsonTypeInfo
@@ -61,7 +61,7 @@ class SpringBootApplicationMcpToolsetPolymorphicSchemaTest : ExplytJavaLightTest
         )
     }
 
-    fun testJavaAbstractClassWithSubTypesUsesTheDeclaredNamesAndProperty() = runBlocking<Unit> {
+    fun testJavaAbstractClassWithSubTypesUsesTheDeclaredNamesAndProperty() = runBlockingReleasingWriteIntent<Unit> {
         addJavaType("Card", "public class Card extends Payment { public String number; }")
         addJavaType("Cash", "public class Cash extends Payment { public long amount; }")
         addJavaController(
@@ -94,7 +94,7 @@ class SpringBootApplicationMcpToolsetPolymorphicSchemaTest : ExplytJavaLightTest
         )
     }
 
-    fun testKotlinAbstractClassWithSubTypesUsesTheDeclaredNamesAndProperty() = runBlocking<Unit> {
+    fun testKotlinAbstractClassWithSubTypesUsesTheDeclaredNamesAndProperty() = runBlockingReleasingWriteIntent<Unit> {
         addKotlinController(
             "Payment", "Payment", "Card(\"4242\")", """
             import com.fasterxml.jackson.annotation.JsonSubTypes
@@ -127,7 +127,7 @@ class SpringBootApplicationMcpToolsetPolymorphicSchemaTest : ExplytJavaLightTest
         )
     }
 
-    fun testJavaAbstractClassWithoutSubTypesIsPolymorphicWithoutVariants() = runBlocking<Unit> {
+    fun testJavaAbstractClassWithoutSubTypesIsPolymorphicWithoutVariants() = runBlockingReleasingWriteIntent<Unit> {
         addJavaType("Card", "public class Card extends Payment { public String number; }")
         addJavaController("Payment", "new Card()", "public abstract class Payment {}")
         assertNotNull("Precondition: the subclass exists in the project", findProjectClass("$PACKAGE.Card"))
@@ -140,7 +140,7 @@ class SpringBootApplicationMcpToolsetPolymorphicSchemaTest : ExplytJavaLightTest
         assertNull("No @JsonTypeInfo, so no discriminator, got $schema", schema["discriminator"])
     }
 
-    fun testKotlinInterfaceWithoutSubTypesIsPolymorphicWithoutVariants() = runBlocking<Unit> {
+    fun testKotlinInterfaceWithoutSubTypesIsPolymorphicWithoutVariants() = runBlockingReleasingWriteIntent<Unit> {
         addKotlinController(
             "Payment", "Payment", "Card(\"4242\")", """
             interface Payment
@@ -157,7 +157,7 @@ class SpringBootApplicationMcpToolsetPolymorphicSchemaTest : ExplytJavaLightTest
         assertNull("No @JsonTypeInfo, so no discriminator, got $schema", schema["discriminator"])
     }
 
-    fun testKotlinSealedWithoutTypeInfoListsVariantsWithoutIds() = runBlocking<Unit> {
+    fun testKotlinSealedWithoutTypeInfoListsVariantsWithoutIds() = runBlockingReleasingWriteIntent<Unit> {
         addKotlinController(
             "Payment", "Payment", "Card(\"4242\")", """
             sealed interface Payment
@@ -184,7 +184,7 @@ class SpringBootApplicationMcpToolsetPolymorphicSchemaTest : ExplytJavaLightTest
         }
     }
 
-    fun testListElementCarriesThePolymorphicDescription() = runBlocking<Unit> {
+    fun testListElementCarriesThePolymorphicDescription() = runBlockingReleasingWriteIntent<Unit> {
         addKotlinController(
             "Payment", "List<Payment>", "listOf(Card(\"4242\"))", """
             import com.fasterxml.jackson.annotation.JsonTypeInfo
@@ -206,7 +206,7 @@ class SpringBootApplicationMcpToolsetPolymorphicSchemaTest : ExplytJavaLightTest
         assertEquals(setOf("$PACKAGE.Card", "$PACKAGE.Cash"), variantsOf(schema).keys)
     }
 
-    fun testVariantReferencingTheRootStopsAtTheDepthBudget() = runBlocking<Unit> {
+    fun testVariantReferencingTheRootStopsAtTheDepthBudget() = runBlockingReleasingWriteIntent<Unit> {
         addKotlinController(
             "Expr", "Expr", "Neg(Lit(1))", """
             import com.fasterxml.jackson.annotation.JsonTypeInfo
@@ -233,7 +233,7 @@ class SpringBootApplicationMcpToolsetPolymorphicSchemaTest : ExplytJavaLightTest
         assertDepthLimitedVariants(operand, mapOf("$PACKAGE.Lit" to "Lit", "$PACKAGE.Neg" to "Neg"))
     }
 
-    fun testPlainDtoIsUnchanged() = runBlocking<Unit> {
+    fun testPlainDtoIsUnchanged() = runBlockingReleasingWriteIntent<Unit> {
         addJavaController("Item", "new Item()", "public class Item { public long id; }")
 
         assertEquals(
@@ -242,7 +242,7 @@ class SpringBootApplicationMcpToolsetPolymorphicSchemaTest : ExplytJavaLightTest
         )
     }
 
-    fun testAbstractLibraryTypeIsStillMarkedOmitted() = runBlocking<Unit> {
+    fun testAbstractLibraryTypeIsStillMarkedOmitted() = runBlockingReleasingWriteIntent<Unit> {
         addJavaType(
             "LibraryController", """
             import org.springframework.web.bind.annotation.GetMapping;
@@ -263,7 +263,7 @@ class SpringBootApplicationMcpToolsetPolymorphicSchemaTest : ExplytJavaLightTest
         )
     }
 
-    fun testSimpleNameUsesTheNestedClassSimpleName() = runBlocking<Unit> {
+    fun testSimpleNameUsesTheNestedClassSimpleName() = runBlockingReleasingWriteIntent<Unit> {
         addKotlinController(
             "NestedPayment", "NestedPayment", "Outer.Card()", """
             import com.fasterxml.jackson.annotation.JsonSubTypes
@@ -288,7 +288,7 @@ class SpringBootApplicationMcpToolsetPolymorphicSchemaTest : ExplytJavaLightTest
         assertEquals("Card", variantsOf(schema).values.single().typeId)
     }
 
-    fun testClassUsesTheBinaryFqnAndDefaultClassProperty() = runBlocking<Unit> {
+    fun testClassUsesTheBinaryFqnAndDefaultClassProperty() = runBlockingReleasingWriteIntent<Unit> {
         addKotlinController(
             "ClassPayment", "ClassPayment", "Outer.Card()", """
             import com.fasterxml.jackson.annotation.JsonTypeInfo
@@ -308,7 +308,7 @@ class SpringBootApplicationMcpToolsetPolymorphicSchemaTest : ExplytJavaLightTest
         assertEquals("$PACKAGE.Outer\$Card", schema["variants"].single()["typeId"].asText())
     }
 
-    fun testMinimalClassUsesALeadingDotRelativeToTheBasePackage() = runBlocking<Unit> {
+    fun testMinimalClassUsesALeadingDotRelativeToTheBasePackage() = runBlockingReleasingWriteIntent<Unit> {
         addKotlinController(
             "MinimalPayment", "MinimalPayment", "Card()", """
             import com.fasterxml.jackson.annotation.JsonTypeInfo
@@ -325,7 +325,7 @@ class SpringBootApplicationMcpToolsetPolymorphicSchemaTest : ExplytJavaLightTest
         assertEquals(".Card", variantsOf(schema).values.single().typeId)
     }
 
-    fun testDeductionHasNoPropertyOrVariantTypeIds() = runBlocking<Unit> {
+    fun testDeductionHasNoPropertyOrVariantTypeIds() = runBlockingReleasingWriteIntent<Unit> {
         addKotlinController(
             "DeductionPayment", "DeductionPayment", "Card()", """
             import com.fasterxml.jackson.annotation.JsonTypeInfo
@@ -343,7 +343,7 @@ class SpringBootApplicationMcpToolsetPolymorphicSchemaTest : ExplytJavaLightTest
         assertNull(variantsOf(schema).values.single().typeId)
     }
 
-    fun testJsonTypeNameIsUsedWhenSubtypeNameIsAbsentAndExplicitNameWins() = runBlocking<Unit> {
+    fun testJsonTypeNameIsUsedWhenSubtypeNameIsAbsentAndExplicitNameWins() = runBlockingReleasingWriteIntent<Unit> {
         addJavaController("NamedPayment", "new Visa()", """
             import com.fasterxml.jackson.annotation.JsonSubTypes;
             import com.fasterxml.jackson.annotation.JsonTypeInfo;
@@ -368,7 +368,7 @@ class SpringBootApplicationMcpToolsetPolymorphicSchemaTest : ExplytJavaLightTest
         assertEquals("cash", variants.getValue("$PACKAGE.Cash").typeId)
     }
 
-    fun testTypeInfoDeclaredOnAnImplementedInterfaceIsInherited() = runBlocking<Unit> {
+    fun testTypeInfoDeclaredOnAnImplementedInterfaceIsInherited() = runBlockingReleasingWriteIntent<Unit> {
         addKotlinController(
             "InheritedPayment", "InheritedPayment", "Card()", """
             import com.fasterxml.jackson.annotation.JsonTypeInfo
@@ -387,7 +387,7 @@ class SpringBootApplicationMcpToolsetPolymorphicSchemaTest : ExplytJavaLightTest
         assertNull("A non-sealed abstract type without registered subtypes is not enumerated", schema["variants"])
     }
 
-    fun testExistingPropertyIsReported() = runBlocking<Unit> {
+    fun testExistingPropertyIsReported() = runBlockingReleasingWriteIntent<Unit> {
         addKotlinController(
             "ExistingPayment", "ExistingPayment", "Card()", """
             import com.fasterxml.jackson.annotation.JsonTypeInfo
@@ -403,7 +403,7 @@ class SpringBootApplicationMcpToolsetPolymorphicSchemaTest : ExplytJavaLightTest
         assertEquals("kind", existing["discriminator"]["property"].asText())
     }
 
-    fun testKotlinSealedObjectIsAKnownVariant() = runBlocking<Unit> {
+    fun testKotlinSealedObjectIsAKnownVariant() = runBlockingReleasingWriteIntent<Unit> {
         addKotlinController(
             "ObjectPayment", "ObjectPayment", "Cash", """
             import com.fasterxml.jackson.annotation.JsonTypeInfo
@@ -419,7 +419,7 @@ class SpringBootApplicationMcpToolsetPolymorphicSchemaTest : ExplytJavaLightTest
         assertEquals("Cash", variantsOf(schema).values.single().typeId)
     }
 
-    fun testWrapperObjectHasNoDiscriminatorProperty() = runBlocking<Unit> {
+    fun testWrapperObjectHasNoDiscriminatorProperty() = runBlockingReleasingWriteIntent<Unit> {
         addKotlinController(
             "WrapperPayment", "WrapperPayment", "Card()", """
             import com.fasterxml.jackson.annotation.JsonTypeInfo
@@ -437,7 +437,7 @@ class SpringBootApplicationMcpToolsetPolymorphicSchemaTest : ExplytJavaLightTest
         assertNull(wrapper["discriminator"]["property"])
     }
 
-    fun testJavaSingleSubtypeAnnotationWithoutBraces() = runBlocking<Unit> {
+    fun testJavaSingleSubtypeAnnotationWithoutBraces() = runBlockingReleasingWriteIntent<Unit> {
         addJavaType("Card", "public class Card extends SinglePayment { public long amount; }")
         addJavaController("SinglePayment", "new Card()", """
             import com.fasterxml.jackson.annotation.JsonTypeInfo;
@@ -451,7 +451,7 @@ class SpringBootApplicationMcpToolsetPolymorphicSchemaTest : ExplytJavaLightTest
         assertEquals(mapOf("$PACKAGE.Card" to VariantView("card", listOf("amount"))), variantsOf(responseSchema("/api/singlepayment")))
     }
 
-    fun testWrapperArrayHasNoDiscriminatorProperty() = runBlocking<Unit> {
+    fun testWrapperArrayHasNoDiscriminatorProperty() = runBlockingReleasingWriteIntent<Unit> {
         addKotlinController(
             "ArrayPayment", "ArrayPayment", "Card()", """
             import com.fasterxml.jackson.annotation.JsonTypeInfo
@@ -469,7 +469,7 @@ class SpringBootApplicationMcpToolsetPolymorphicSchemaTest : ExplytJavaLightTest
         assertNull("A wrapper array has no type-id property", schema["discriminator"]["property"])
     }
 
-    fun testPaymentAtTheDepthBudgetRetainsVariantStubs() = runBlocking<Unit> {
+    fun testPaymentAtTheDepthBudgetRetainsVariantStubs() = runBlockingReleasingWriteIntent<Unit> {
         addKotlinController(
             "Order", "Order", "Order(Shipping(Card(\"4242\")))", """
             import com.fasterxml.jackson.annotation.JsonTypeInfo
@@ -495,7 +495,7 @@ class SpringBootApplicationMcpToolsetPolymorphicSchemaTest : ExplytJavaLightTest
         assertDepthLimitedVariants(payment, mapOf("$PACKAGE.Card" to "Card", "$PACKAGE.Cash" to "Cash"))
     }
 
-    fun testNoneHasNoDiscriminatorOrVariantIds() = runBlocking<Unit> {
+    fun testNoneHasNoDiscriminatorOrVariantIds() = runBlockingReleasingWriteIntent<Unit> {
         addKotlinController(
             "NonePayment", "NonePayment", "Card()", """
             import com.fasterxml.jackson.annotation.JsonTypeInfo
@@ -516,7 +516,7 @@ class SpringBootApplicationMcpToolsetPolymorphicSchemaTest : ExplytJavaLightTest
         assertNull("NONE disables type metadata", schema["discriminator"])
     }
 
-    fun testSubtypeNoneCancelsInheritedNameTypeInfo() = runBlocking<Unit> {
+    fun testSubtypeNoneCancelsInheritedNameTypeInfo() = runBlockingReleasingWriteIntent<Unit> {
         addKotlinController(
             "ChildPayment", "ChildPayment", "Card()", """
             import com.fasterxml.jackson.annotation.JsonTypeInfo
@@ -539,7 +539,7 @@ class SpringBootApplicationMcpToolsetPolymorphicSchemaTest : ExplytJavaLightTest
         assertNull("Subtype NONE overrides inherited NAME", schema["discriminator"])
     }
 
-    fun testJavaInterfaceTypeInfoPrecedesSuperclassTypeInfo() = runBlocking<Unit> {
+    fun testJavaInterfaceTypeInfoPrecedesSuperclassTypeInfo() = runBlockingReleasingWriteIntent<Unit> {
         addJavaType("BasePayment", """
             import com.fasterxml.jackson.annotation.JsonTypeInfo;
             @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "base")

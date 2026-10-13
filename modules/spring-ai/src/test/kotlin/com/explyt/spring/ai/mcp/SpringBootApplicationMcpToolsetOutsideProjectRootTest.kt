@@ -8,6 +8,7 @@ package com.explyt.spring.ai.mcp
 import com.explyt.spring.ai.mcp.beans.SpringBeanMcpToolset
 import com.explyt.spring.test.TestLibrary
 import com.explyt.spring.test.addFromMaven
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.openapi.application.WriteAction
@@ -25,7 +26,6 @@ import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.builders.JavaModuleFixtureBuilder
 import com.intellij.testFramework.fixtures.JavaCodeInsightFixtureTestCase
-import kotlinx.coroutines.runBlocking
 import java.io.File
 
 /**
@@ -73,7 +73,7 @@ class SpringBootApplicationMcpToolsetOutsideProjectRootTest : JavaCodeInsightFix
         IndexingTestUtil.waitUntilIndexesAreReady(project)
     }
 
-    fun testEndpointOutsideTheProjectDirectoryHasARelativePathThatRoundTrips() = runBlocking<Unit> {
+    fun testEndpointOutsideTheProjectDirectoryHasARelativePathThatRoundTrips() = runBlockingReleasingWriteIntent<Unit> {
         val endpoint = mapper.readTree(
             toolset.getHttpEndpoints(projectPath = project.basePath!!, controllerFilter = "OutsideController")
         )["endpoints"].single()
@@ -99,7 +99,7 @@ class SpringBootApplicationMcpToolsetOutsideProjectRootTest : JavaCodeInsightFix
     }
 
     /** The bean tool reads the path the other tools report, and still the path relative to a content root. */
-    fun testBeanInjectionPointOutsideTheProjectDirectoryIsResolvedByEitherRelativePath() = runBlocking<Unit> {
+    fun testBeanInjectionPointOutsideTheProjectDirectoryIsResolvedByEitherRelativePath() = runBlockingReleasingWriteIntent<Unit> {
         val relativePath = relativePathOf(CONSUMER_PATH)
         assertTrue("precondition: the path climbs out of the project directory, got $relativePath", relativePath.startsWith("../"))
         val (line, column) = positionOf(CONSUMER_SOURCE, "ClockConsumer(Clock clock)", "ClockConsumer(Clock ".length)

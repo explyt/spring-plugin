@@ -7,10 +7,10 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.explyt.spring.web.SpringWebClasses
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
-import kotlinx.coroutines.runBlocking
 
 class SpringBootApplicationMcpToolsetInterfaceMappingTest : ExplytJavaLightTestCase() {
 
@@ -70,7 +70,7 @@ class SpringBootApplicationMcpToolsetInterfaceMappingTest : ExplytJavaLightTestC
         )
     }
 
-    fun testParametersDeclaredOnTheInterfaceKeepTheirSources() = runBlocking<Unit> {
+    fun testParametersDeclaredOnTheInterfaceKeepTheirSources() = runBlockingReleasingWriteIntent<Unit> {
         addUnannotatedController()
 
         val contract = contractOf("/apps/{appId}", "GET")
@@ -82,7 +82,7 @@ class SpringBootApplicationMcpToolsetInterfaceMappingTest : ExplytJavaLightTestC
         assertFalse("view is optional on the interface", parameter(contract, "view")["required"].asBoolean(true))
     }
 
-    fun testRequestBodyDeclaredOnTheInterfaceIsTheBody() = runBlocking<Unit> {
+    fun testRequestBodyDeclaredOnTheInterfaceIsTheBody() = runBlockingReleasingWriteIntent<Unit> {
         addUnannotatedController()
 
         val contract = contractOf("/apps", "POST")
@@ -91,7 +91,7 @@ class SpringBootApplicationMcpToolsetInterfaceMappingTest : ExplytJavaLightTestC
         assertEquals("com.example.app.AppDto", parameter(contract, "body")["type"].asText())
     }
 
-    fun testMediaTypesDeclaredOnTheInterfaceMappingAreReported() = runBlocking<Unit> {
+    fun testMediaTypesDeclaredOnTheInterfaceMappingAreReported() = runBlockingReleasingWriteIntent<Unit> {
         addUnannotatedController()
 
         val contract = contractOf("/apps", "POST")
@@ -100,7 +100,7 @@ class SpringBootApplicationMcpToolsetInterfaceMappingTest : ExplytJavaLightTestC
         assertEquals(listOf("application/json"), contract["produces"].map { it.asText() })
     }
 
-    fun testReturnTypeAndServiceCallsAreTheOverrides() = runBlocking<Unit> {
+    fun testReturnTypeAndServiceCallsAreTheOverrides() = runBlockingReleasingWriteIntent<Unit> {
         addUnannotatedController()
 
         val contract = contractOf("/apps/{appId}", "GET")
@@ -109,7 +109,7 @@ class SpringBootApplicationMcpToolsetInterfaceMappingTest : ExplytJavaLightTestC
         assertEquals(listOf("com.example.app.AppService.find"), contract["serviceCalls"].map { it["target"].asText() })
     }
 
-    fun testAnnotationsOnTheOverrideWinOverTheInterface() = runBlocking<Unit> {
+    fun testAnnotationsOnTheOverrideWinOverTheInterface() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject(
             "com/example/app/AppController.java", """
             package com.example.app;
@@ -143,7 +143,7 @@ class SpringBootApplicationMcpToolsetInterfaceMappingTest : ExplytJavaLightTestC
         )
     }
 
-    fun testOrdinaryAnnotatedControllerIsUnchanged() = runBlocking<Unit> {
+    fun testOrdinaryAnnotatedControllerIsUnchanged() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject(
             "com/example/app/PlainController.java", """
             package com.example.app;
@@ -176,7 +176,7 @@ class SpringBootApplicationMcpToolsetInterfaceMappingTest : ExplytJavaLightTestC
         assertEquals(listOf("application/json"), contract["produces"].map { it.asText() })
     }
 
-    fun testRequestPartDeclaredOnTheInterfaceIsAPart() = runBlocking<Unit> {
+    fun testRequestPartDeclaredOnTheInterfaceIsAPart() = runBlockingReleasingWriteIntent<Unit> {
         addUploadApiAndController()
         assertOnlyTheInterfaceAnnotates("attach", SpringWebClasses.REQUEST_PART)
 
@@ -185,7 +185,7 @@ class SpringBootApplicationMcpToolsetInterfaceMappingTest : ExplytJavaLightTestC
         assertEquals(mapOf("file" to "PART"), sourcesOf(contract["parameters"]))
     }
 
-    fun testMultipartRequestParamDeclaredOnTheInterfaceIsAPart() = runBlocking<Unit> {
+    fun testMultipartRequestParamDeclaredOnTheInterfaceIsAPart() = runBlockingReleasingWriteIntent<Unit> {
         addUploadApiAndController()
         assertOnlyTheInterfaceAnnotates("upload", SpringWebClasses.REQUEST_PARAM)
 
@@ -194,7 +194,7 @@ class SpringBootApplicationMcpToolsetInterfaceMappingTest : ExplytJavaLightTestC
         assertEquals(mapOf("upload" to "PART"), sourcesOf(contract["parameters"]))
     }
 
-    fun testCookieValueDeclaredOnTheInterfaceIsACookieUnderItsWireName() = runBlocking<Unit> {
+    fun testCookieValueDeclaredOnTheInterfaceIsACookieUnderItsWireName() = runBlockingReleasingWriteIntent<Unit> {
         addUploadApiAndController()
         assertOnlyTheInterfaceAnnotates("session", SpringWebClasses.COOKIE_VALUE)
 
@@ -203,7 +203,7 @@ class SpringBootApplicationMcpToolsetInterfaceMappingTest : ExplytJavaLightTestC
         assertEquals(mapOf("sid" to "COOKIE"), sourcesOf(contract["parameters"]))
     }
 
-    fun testCustomResolverAnnotationDeclaredOnlyOnTheInterfaceRemainsUnknown() = runBlocking<Unit> {
+    fun testCustomResolverAnnotationDeclaredOnlyOnTheInterfaceRemainsUnknown() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject("com/example/app/CurrentUser.java", """
             package com.example.app;
             import java.lang.annotation.*;

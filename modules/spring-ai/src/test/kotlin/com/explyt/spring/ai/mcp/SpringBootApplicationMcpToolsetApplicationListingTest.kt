@@ -7,12 +7,12 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PsiTestUtil
-import kotlinx.coroutines.runBlocking
 
 class SpringBootApplicationMcpToolsetApplicationListingTest : ExplytJavaLightTestCase() {
 
@@ -36,7 +36,7 @@ class SpringBootApplicationMcpToolsetApplicationListingTest : ExplytJavaLightTes
         }
     }
 
-    fun testListsProductionAndTestSpringBootApplicationsWithTestSourceMarker() = runBlocking<Unit> {
+    fun testListsProductionAndTestSpringBootApplicationsWithTestSourceMarker() = runBlockingReleasingWriteIntent<Unit> {
         addJava("com/example/ProdApp.java", """
             package com.example;
 
@@ -61,7 +61,7 @@ class SpringBootApplicationMcpToolsetApplicationListingTest : ExplytJavaLightTes
         assertTrue("test application must be marked, got ${rows[1]}", rows[1]["testSource"].asBoolean())
     }
 
-    fun testListsTestSourceEnableAutoConfigurationApplicationAfterProduction() = runBlocking<Unit> {
+    fun testListsTestSourceEnableAutoConfigurationApplicationAfterProduction() = runBlockingReleasingWriteIntent<Unit> {
         addJava("com/example/ProdApp.java", """
             package com.example;
 
@@ -87,7 +87,7 @@ class SpringBootApplicationMcpToolsetApplicationListingTest : ExplytJavaLightTes
         assertTrue("test EAC application must be marked, got ${rows[1]}", rows[1]["testSource"].asBoolean())
     }
 
-    fun testDoesNotListMetaAnnotationTypeAsApplication() = runBlocking<Unit> {
+    fun testDoesNotListMetaAnnotationTypeAsApplication() = runBlockingReleasingWriteIntent<Unit> {
         addJava("com/example/MyApp.java", """
             package com.example;
 
@@ -111,7 +111,7 @@ class SpringBootApplicationMcpToolsetApplicationListingTest : ExplytJavaLightTes
         assertEquals(listOf("com.example.App"), rows.map { it["fullyQualifiedClassName"].asText() })
     }
 
-    fun testOrdersProductionApplicationsByQualifiedNameBeforeTestApplications() = runBlocking<Unit> {
+    fun testOrdersProductionApplicationsByQualifiedNameBeforeTestApplications() = runBlockingReleasingWriteIntent<Unit> {
         addJava("com/zeta/ProdApp.java", """
             package com.zeta;
 
@@ -143,7 +143,7 @@ class SpringBootApplicationMcpToolsetApplicationListingTest : ExplytJavaLightTes
         )
     }
 
-    fun testListsProductionEnableAutoConfigurationApplication() = runBlocking<Unit> {
+    fun testListsProductionEnableAutoConfigurationApplication() = runBlockingReleasingWriteIntent<Unit> {
         addJava("com/example/ConfigApp.java", """
             package com.example;
 

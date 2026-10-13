@@ -12,12 +12,12 @@ import com.explyt.spring.core.service.conditional.ConditionVerdict
 import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.test.ExplytKotlinLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.explyt.spring.web.loader.EndpointType
 import com.explyt.spring.web.loader.SpringWebEndpointsLoader
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.testFramework.IndexingTestUtil
-import kotlinx.coroutines.runBlocking
 
 class SpringBootApplicationMcpToolsetActuatorBeanConditionTest : ExplytKotlinLightTestCase() {
 
@@ -44,7 +44,7 @@ class SpringBootApplicationMcpToolsetActuatorBeanConditionTest : ExplytKotlinLig
         )
     }
 
-    fun testPropertyGatedEndpointWithoutPropertyIsInactive() = runBlocking<Unit> {
+    fun testPropertyGatedEndpointWithoutPropertyIsInactive() = runBlockingReleasingWriteIntent<Unit> {
         addProperties(EXPOSE_ALL)
         addPsEtlEndpoint()
         assertEndpointModelSays<ConditionVerdict.Inactive>(PS_ETL)
@@ -61,7 +61,7 @@ class SpringBootApplicationMcpToolsetActuatorBeanConditionTest : ExplytKotlinLig
         assertFalse("reasons belong to UNDECIDED only, got $condition", condition.has("reasons"))
     }
 
-    fun testPropertyGatedEndpointWithMatchingPropertyHasNoBeanCondition() = runBlocking<Unit> {
+    fun testPropertyGatedEndpointWithMatchingPropertyHasNoBeanCondition() = runBlockingReleasingWriteIntent<Unit> {
         addProperties(EXPOSE_ALL, "$GATING_KEY=true")
         addPsEtlEndpoint()
         assertEndpointModelSays<ConditionVerdict.Active>(PS_ETL)
@@ -72,7 +72,7 @@ class SpringBootApplicationMcpToolsetActuatorBeanConditionTest : ExplytKotlinLig
         assertFalse("an active endpoint carries no beanCondition, got $psEtl", psEtl.has("beanCondition"))
     }
 
-    fun testUnresolvablePlaceholderMakesTheEndpointUndecided() = runBlocking<Unit> {
+    fun testUnresolvablePlaceholderMakesTheEndpointUndecided() = runBlockingReleasingWriteIntent<Unit> {
         addProperties(EXPOSE_ALL, "$GATING_KEY=\${CH_ENABLED}")
         addPsEtlEndpoint()
         assertEndpointModelSays<ConditionVerdict.Undecided>(PS_ETL)
@@ -88,7 +88,7 @@ class SpringBootApplicationMcpToolsetActuatorBeanConditionTest : ExplytKotlinLig
         )
     }
 
-    fun testEndpointRegisteredByGatedConfigurationNamesTheConfiguration() = runBlocking<Unit> {
+    fun testEndpointRegisteredByGatedConfigurationNamesTheConfiguration() = runBlockingReleasingWriteIntent<Unit> {
         addProperties(EXPOSE_ALL)
         addEndpointRegisteredByGatedConfiguration()
         assertEndpointModelSays<ConditionVerdict.Inactive>(CH_ETL)
@@ -100,7 +100,7 @@ class SpringBootApplicationMcpToolsetActuatorBeanConditionTest : ExplytKotlinLig
         assertEquals(CLICKHOUSE_CONFIG, condition["carrier"]?.asText())
     }
 
-    fun testBuiltInHealthHasNoBeanCondition() = runBlocking<Unit> {
+    fun testBuiltInHealthHasNoBeanCondition() = runBlockingReleasingWriteIntent<Unit> {
         addProperties(EXPOSE_ALL)
         addPsEtlEndpoint()
         assertEquals(listOf(null), endpointModelOf(HEALTH_ENDPOINT).map { it.beanCondition }.distinct())
@@ -111,7 +111,7 @@ class SpringBootApplicationMcpToolsetActuatorBeanConditionTest : ExplytKotlinLig
         assertFalse("a built-in endpoint carries no beanCondition, got $health", health.has("beanCondition"))
     }
 
-    fun testListingKeepsTheInactiveEndpointWithItsBeanCondition() = runBlocking<Unit> {
+    fun testListingKeepsTheInactiveEndpointWithItsBeanCondition() = runBlockingReleasingWriteIntent<Unit> {
         addProperties(EXPOSE_ALL)
         addPsEtlEndpoint()
         assertEndpointModelSays<ConditionVerdict.Inactive>(PS_ETL)
@@ -128,7 +128,7 @@ class SpringBootApplicationMcpToolsetActuatorBeanConditionTest : ExplytKotlinLig
         }
     }
 
-    fun testContractCarriesTheBeanCondition() = runBlocking<Unit> {
+    fun testContractCarriesTheBeanCondition() = runBlockingReleasingWriteIntent<Unit> {
         addProperties(EXPOSE_ALL)
         addPsEtlEndpoint()
         assertEndpointModelSays<ConditionVerdict.Inactive>(PS_ETL)
@@ -143,7 +143,7 @@ class SpringBootApplicationMcpToolsetActuatorBeanConditionTest : ExplytKotlinLig
         assertTrue("detail names the gating key, got $condition", condition["detail"]?.asText().orEmpty().contains(GATING_KEY))
     }
 
-    fun testFindAnswerWithOneInactiveEndpointFitsTheClientRootBudget() = runBlocking<Unit> {
+    fun testFindAnswerWithOneInactiveEndpointFitsTheClientRootBudget() = runBlockingReleasingWriteIntent<Unit> {
         addProperties(EXPOSE_ALL)
         addPsEtlEndpoint()
         assertEndpointModelSays<ConditionVerdict.Inactive>(PS_ETL)
@@ -154,7 +154,7 @@ class SpringBootApplicationMcpToolsetActuatorBeanConditionTest : ExplytKotlinLig
         assertTrue("answer of ${answer.length} chars exceeds $CLIENT_ROOT_BUDGET: $answer", answer.length <= CLIENT_ROOT_BUDGET)
     }
 
-    fun testDisabledConditionEvaluationLeavesNoBeanCondition() = runBlocking<Unit> {
+    fun testDisabledConditionEvaluationLeavesNoBeanCondition() = runBlockingReleasingWriteIntent<Unit> {
         val settings = SpringToolRunConfigurationsSettingsState.getInstance()
         val wasEnabled = settings.isBeanFilterEnabled
         settings.isBeanFilterEnabled = false
@@ -178,7 +178,7 @@ class SpringBootApplicationMcpToolsetActuatorBeanConditionTest : ExplytKotlinLig
         }
     }
 
-    fun testNearestRouteOfAMissCarriesTheBeanCondition() = runBlocking<Unit> {
+    fun testNearestRouteOfAMissCarriesTheBeanCondition() = runBlockingReleasingWriteIntent<Unit> {
         addProperties(EXPOSE_ALL)
         addPsEtlEndpoint()
         assertEndpointModelSays<ConditionVerdict.Inactive>(PS_ETL)
@@ -192,7 +192,7 @@ class SpringBootApplicationMcpToolsetActuatorBeanConditionTest : ExplytKotlinLig
         assertEquals(PS_ETL, beanConditionOf(psEtl)["carrier"]?.asText())
     }
 
-    fun testEndpointWithAnActiveAndAnInactiveBeanHasNoBeanCondition() = runBlocking<Unit> {
+    fun testEndpointWithAnActiveAndAnInactiveBeanHasNoBeanCondition() = runBlockingReleasingWriteIntent<Unit> {
         addProperties(EXPOSE_ALL)
         addTwiceRegisteredEndpoint()
         ModificationTrackerManager.getInstance(project).invalidateAll()

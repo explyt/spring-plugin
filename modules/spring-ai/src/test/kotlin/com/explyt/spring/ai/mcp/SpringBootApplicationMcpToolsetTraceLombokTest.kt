@@ -7,6 +7,7 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.test.TestLibrary
 import com.explyt.spring.test.addFromMaven
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.openapi.application.WriteAction
@@ -23,7 +24,6 @@ import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.builders.JavaModuleFixtureBuilder
 import com.intellij.testFramework.fixtures.JavaCodeInsightFixtureTestCase
-import kotlinx.coroutines.runBlocking
 import java.io.File
 
 /**
@@ -65,27 +65,27 @@ class SpringBootApplicationMcpToolsetTraceLombokTest : JavaCodeInsightFixtureTes
 
 
 
-    fun testInheritedLombokSetterCalledOnASubclassIsAnAccessor() = runBlocking {
+    fun testInheritedLombokSetterCalledOnASubclassIsAnAccessor() = runBlockingReleasingWriteIntent {
         val trace = trace()
 
         trace.assertAccessor(trace.call("Dto.setTopicExists", receiverLine("local.setTopicExists")))
         trace.assertAccessor(trace.call("PerEnv.setTopicExists", receiverLine("perEnv.setTopicExists")))
     }
 
-    fun testLombokGetterIsAnAccessor() = runBlocking {
+    fun testLombokGetterIsAnAccessor() = runBlockingReleasingWriteIntent {
         val trace = trace()
 
         trace.assertAccessor(trace.call("Dto.getName", receiverLine("sub.getName")))
     }
 
-    fun testLazyLombokGetterIsTracedAtItsFieldLine() = runBlocking {
+    fun testLazyLombokGetterIsTracedAtItsFieldLine() = runBlockingReleasingWriteIntent {
         val trace = trace()
 
         val node = trace.assertTraced(trace.call("LazyDto.getCached", receiverLine("lazy.getCached")))
         assertEquals(lineOf(LAZY_DTO_SOURCE, "cached ="), node["line"].asInt())
     }
 
-    fun testRepositoryCallIsTracedWithinTheLimit() = runBlocking {
+    fun testRepositoryCallIsTracedWithinTheLimit() = runBlockingReleasingWriteIntent {
         val trace = trace()
 
         assertFalse(trace.root["chainLimitReached"].asBoolean())

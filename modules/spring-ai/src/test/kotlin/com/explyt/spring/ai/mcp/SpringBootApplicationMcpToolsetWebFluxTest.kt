@@ -7,12 +7,12 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.explyt.spring.web.util.WebApplicationStack
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiClassType
-import kotlinx.coroutines.runBlocking
 
 class SpringBootApplicationMcpToolsetWebFluxTest : ExplytJavaLightTestCase() {
 
@@ -30,7 +30,7 @@ class SpringBootApplicationMcpToolsetWebFluxTest : ExplytJavaLightTestCase() {
 
     private fun projectPath(): String = project.basePath ?: ""
 
-    fun testArgumentsSuppliedByTheReactiveFrameworkAreNotModelAttributes() = runBlocking<Unit> {
+    fun testArgumentsSuppliedByTheReactiveFrameworkAreNotModelAttributes() = runBlockingReleasingWriteIntent<Unit> {
         assertReactiveStackResolving(
             SERVER_WEB_EXCHANGE, SERVER_WEB_EXCHANGE_DECORATOR, REACTIVE_SERVER_HTTP_REQUEST,
             REACTIVE_SERVER_HTTP_RESPONSE, WEB_SESSION, URI_BUILDER, URI_COMPONENTS_BUILDER,
@@ -91,7 +91,7 @@ class SpringBootApplicationMcpToolsetWebFluxTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testReactiveWrappersOfSessionPrincipalAndErrorsAreFrameworkSupplied() = runBlocking<Unit> {
+    fun testReactiveWrappersOfSessionPrincipalAndErrorsAreFrameworkSupplied() = runBlockingReleasingWriteIntent<Unit> {
         assertReactiveStackResolving(WEB_SESSION, MONO, FLUX, COMPLETABLE_FUTURE, "org.reactivestreams.Publisher")
         myFixture.addFileToProject("com/example/app/web/Filter.java", """
             package com.example.app.web;
@@ -140,7 +140,7 @@ class SpringBootApplicationMcpToolsetWebFluxTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testLocaleAndHttpMethodStayFrameworkSuppliedUnlessBoundToTheQuery() = runBlocking<Unit> {
+    fun testLocaleAndHttpMethodStayFrameworkSuppliedUnlessBoundToTheQuery() = runBlockingReleasingWriteIntent<Unit> {
         assertReactiveStackResolving("org.springframework.http.HttpMethod")
         myFixture.addFileToProject("com/example/app/web/LocaleController.java", """
             package com.example.app.web;
@@ -166,7 +166,7 @@ class SpringBootApplicationMcpToolsetWebFluxTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testServletOnlyTypesAreModelAttributesBecauseWebFluxHasNoServletResolver() = runBlocking<Unit> {
+    fun testServletOnlyTypesAreModelAttributesBecauseWebFluxHasNoServletResolver() = runBlockingReleasingWriteIntent<Unit> {
         assertReactiveStackResolving(
             "jakarta.servlet.http.HttpServletRequest", "jakarta.servlet.ServletRequest", "jakarta.servlet.http.HttpSession",
             "org.springframework.web.context.request.WebRequest", SERVER_WEB_EXCHANGE,
@@ -213,7 +213,7 @@ class SpringBootApplicationMcpToolsetWebFluxTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testPlainModelMapIsNotSuppliedByWebFluxWhileAModelImplementationIs() = runBlocking<Unit> {
+    fun testPlainModelMapIsNotSuppliedByWebFluxWhileAModelImplementationIs() = runBlockingReleasingWriteIntent<Unit> {
         assertReactiveStackResolving(MODEL_MAP, "org.springframework.ui.ExtendedModelMap", "org.springframework.ui.Model")
         myFixture.addFileToProject("com/example/app/web/ModelMapController.java", """
             package com.example.app.web;
@@ -239,7 +239,7 @@ class SpringBootApplicationMcpToolsetWebFluxTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testUnannotatedMapSubtypeIsTheModelOnWebFlux() = runBlocking<Unit> {
+    fun testUnannotatedMapSubtypeIsTheModelOnWebFlux() = runBlockingReleasingWriteIntent<Unit> {
         assertReactiveStackResolving("java.util.HashMap", "java.util.Map")
         myFixture.addFileToProject("com/example/app/web/MapController.java", """
             package com.example.app.web;
@@ -264,7 +264,7 @@ class SpringBootApplicationMcpToolsetWebFluxTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testZoneSubclassesMissTheExactExchangePredicateAndBindAsSimpleQueryValues() = runBlocking<Unit> {
+    fun testZoneSubclassesMissTheExactExchangePredicateAndBindAsSimpleQueryValues() = runBlockingReleasingWriteIntent<Unit> {
         assertReactiveStackResolving("java.util.SimpleTimeZone", "java.time.ZoneOffset")
         myFixture.addFileToProject("com/example/app/web/ZoneController.java", """
             package com.example.app.web;
@@ -291,7 +291,7 @@ class SpringBootApplicationMcpToolsetWebFluxTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testProjectSubtypesOfExactOnlyBuilderAndSessionStatusAreModelAttributesOnWebFlux() = runBlocking<Unit> {
+    fun testProjectSubtypesOfExactOnlyBuilderAndSessionStatusAreModelAttributesOnWebFlux() = runBlockingReleasingWriteIntent<Unit> {
         assertReactiveStackResolving(URI_COMPONENTS_BUILDER, SESSION_STATUS)
         myFixture.addFileToProject("com/example/app/web/ProjectUriComponentsBuilder.java", """
             package com.example.app.web;
@@ -341,7 +341,7 @@ class SpringBootApplicationMcpToolsetWebFluxTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testAnnotatedMapsAreNotFrameworkSuppliedOnWebFlux() = runBlocking<Unit> {
+    fun testAnnotatedMapsAreNotFrameworkSuppliedOnWebFlux() = runBlockingReleasingWriteIntent<Unit> {
         assertReactiveStackResolving("java.util.Map", "org.springframework.web.bind.annotation.MatrixVariable", "org.springframework.web.bind.annotation.RequestAttribute")
         myFixture.addFileToProject("com/example/app/web/CurrentUser.java", """
             package com.example.app.web;
@@ -392,7 +392,7 @@ class SpringBootApplicationMcpToolsetWebFluxTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testTypeUseAndClassRetentionMapAnnotationsAreFrameworkSuppliedOnWebFlux() = runBlocking<Unit> {
+    fun testTypeUseAndClassRetentionMapAnnotationsAreFrameworkSuppliedOnWebFlux() = runBlockingReleasingWriteIntent<Unit> {
         assertReactiveStackResolving("java.util.Map", "org.jspecify.annotations.Nullable", "lombok.NonNull")
         myFixture.addFileToProject("com/example/app/web/RetainedMapController.java", """
             package com.example.app.web;
@@ -448,7 +448,7 @@ class SpringBootApplicationMcpToolsetWebFluxTest : ExplytJavaLightTestCase() {
     private fun sourcesOf(parameters: JsonNode): Map<String, String> =
         parameters.associate { it["name"].asText() to it["source"].asText() }
 
-    fun testRequestParamMultipartFileRemainsQueryOnWebFlux() = runBlocking<Unit> {
+    fun testRequestParamMultipartFileRemainsQueryOnWebFlux() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject("com/example/app/web/ReactiveController.java", """
             package com.example.app.web;
 
@@ -481,7 +481,7 @@ class SpringBootApplicationMcpToolsetWebFluxTest : ExplytJavaLightTestCase() {
     }
 
     /** A reactive publisher is a container: the client receives its payload, as from `ResponseEntity`. */
-    fun testPublishersAreDescribedByTheirPayload() = runBlocking<Unit> {
+    fun testPublishersAreDescribedByTheirPayload() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject("com/example/app/web/Shipment.java", """
             package com.example.app.web;
 

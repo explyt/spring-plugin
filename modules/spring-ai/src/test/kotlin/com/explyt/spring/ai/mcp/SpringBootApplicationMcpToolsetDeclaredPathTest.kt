@@ -7,11 +7,11 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.explyt.spring.web.util.ApplicationBasePath
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.psi.JavaPsiFacade
-import kotlinx.coroutines.runBlocking
 
 /**
  * What the endpoint tools state about the paths a module's configuration declares: a base path in front of every
@@ -40,7 +40,7 @@ class SpringBootApplicationMcpToolsetDeclaredPathTest : ExplytJavaLightTestCase(
 
     private fun paths(nodes: JsonNode): List<String> = nodes.map { it["fullPath"].asText() }
 
-    fun testDeclaredBasePathEndpointPrecedesARootCatchAll() = runBlocking<Unit> {
+    fun testDeclaredBasePathEndpointPrecedesARootCatchAll() = runBlockingReleasingWriteIntent<Unit> {
         declareConfiguration("server:\n  servlet:\n    context-path: /shop\n", expectedBasePath = "/shop")
         myFixture.addFileToProject(
             "com/example/app/web/ShopController.java", """
@@ -79,7 +79,7 @@ class SpringBootApplicationMcpToolsetDeclaredPathTest : ExplytJavaLightTestCase(
         assertEquals("The configuration must declare the base path", expectedBasePath, ApplicationBasePath.of(module))
     }
 
-    fun testDeclaredContextPathIsReportedAsBasePath() = runBlocking<Unit> {
+    fun testDeclaredContextPathIsReportedAsBasePath() = runBlockingReleasingWriteIntent<Unit> {
         declareConfiguration("server:\n  servlet:\n    context-path: /t\n", expectedBasePath = "/t")
 
         val root = find("https://example.com/t/api/demo/items/42?window=24h")
@@ -93,7 +93,7 @@ class SpringBootApplicationMcpToolsetDeclaredPathTest : ExplytJavaLightTestCase(
      * Spring MVC serves under the context path and then under the dispatcher servlet path, so a request carries
      * both. Reporting only the context path - or guessing the rest - would misstate what the application declares.
      */
-    fun testContextPathAndServletPathAreStrippedTogether() = runBlocking<Unit> {
+    fun testContextPathAndServletPathAreStrippedTogether() = runBlockingReleasingWriteIntent<Unit> {
         declareConfiguration(
             "server:\n  servlet:\n    context-path: /t\nspring:\n  mvc:\n    servlet:\n      path: /web\n",
             expectedBasePath = "/t/web",
@@ -107,7 +107,7 @@ class SpringBootApplicationMcpToolsetDeclaredPathTest : ExplytJavaLightTestCase(
     }
 
     /** The contract tool looks a URL up the same way, so it reports the same base path. */
-    fun testContractReportsTheDeclaredBasePath() = runBlocking<Unit> {
+    fun testContractReportsTheDeclaredBasePath() = runBlockingReleasingWriteIntent<Unit> {
         declareConfiguration("server:\n  servlet:\n    context-path: /t\n", expectedBasePath = "/t")
 
         val root = mapper.readTree(
@@ -123,7 +123,7 @@ class SpringBootApplicationMcpToolsetDeclaredPathTest : ExplytJavaLightTestCase(
      * A URL a route answers as written is answered so, even when a base path is declared: the caller may have
      * written the mapping path, not the deployed URL, and stripping nothing is the literal reading.
      */
-    fun testUrlMatchingAsWrittenWinsOverTheBasePath() = runBlocking<Unit> {
+    fun testUrlMatchingAsWrittenWinsOverTheBasePath() = runBlockingReleasingWriteIntent<Unit> {
         declareConfiguration("server:\n  servlet:\n    context-path: /api\n", expectedBasePath = "/api")
 
         val root = find("/api/demo/items/42")
@@ -137,7 +137,7 @@ class SpringBootApplicationMcpToolsetDeclaredPathTest : ExplytJavaLightTestCase(
      * A declared base path is stripped only at a segment boundary: `/tapi` is not `/t` followed by `api`, and reading
      * it so would report a base path the URL does not carry and a route it does not address.
      */
-    fun testBasePathIsStrippedOnlyAtASegmentBoundary() = runBlocking<Unit> {
+    fun testBasePathIsStrippedOnlyAtASegmentBoundary() = runBlockingReleasingWriteIntent<Unit> {
         declareConfiguration("server:\n  servlet:\n    context-path: /t\n", expectedBasePath = "/t")
 
         val root = find("/tapi/demo/items/42")
@@ -150,7 +150,7 @@ class SpringBootApplicationMcpToolsetDeclaredPathTest : ExplytJavaLightTestCase(
      * A miss under a declared base path is answered with the neighbourhood read under it: the caller is looking for
      * where to add a route to this application, and the routes it serves under the base path are that place.
      */
-    fun testMissUnderTheBasePathListsTheNearestRoutes() = runBlocking<Unit> {
+    fun testMissUnderTheBasePathListsTheNearestRoutes() = runBlockingReleasingWriteIntent<Unit> {
         declareConfiguration("server:\n  servlet:\n    context-path: /t\n", expectedBasePath = "/t")
 
         val root = find("/t/api/routes/export/preview")
@@ -165,7 +165,7 @@ class SpringBootApplicationMcpToolsetDeclaredPathTest : ExplytJavaLightTestCase(
      * The endpoint is matched and listed by the path the application serves, and the declaration a caller edits is
      * reported beside it - in every endpoint tool, since each one names the endpoint.
      */
-    fun testResolvedPlaceholderKeepsItsDeclarationInEveryTool() = runBlocking<Unit> {
+    fun testResolvedPlaceholderKeepsItsDeclarationInEveryTool() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
         addPlaceholderController()
         myFixture.addFileToProject("application.yml", "app:\n  shortener-path: /l\n")
@@ -195,7 +195,7 @@ class SpringBootApplicationMcpToolsetDeclaredPathTest : ExplytJavaLightTestCase(
      * An endpoint declared without a placeholder keeps its shape: `pathTemplate` would only repeat `fullPath`, and
      * its presence is what tells a caller that the declaration differs from the served path.
      */
-    fun testEndpointWithoutPlaceholderHasNoPathTemplate() = runBlocking<Unit> {
+    fun testEndpointWithoutPlaceholderHasNoPathTemplate() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val found = find("/api/demo/items/42")["endpoints"].single()

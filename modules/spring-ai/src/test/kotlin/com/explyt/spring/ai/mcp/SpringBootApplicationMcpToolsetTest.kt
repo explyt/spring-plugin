@@ -7,6 +7,7 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.openapi.util.TextRange
@@ -17,7 +18,6 @@ import com.intellij.psi.impl.FakePsiElement
 import com.intellij.psi.impl.light.LightMethod
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.PsiTreeUtil
-import kotlinx.coroutines.runBlocking
 import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.toUElement
@@ -127,7 +127,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         """.trimIndent())
     }
 
-    fun testGetAllSpringBootApplications() = runBlocking<Unit> {
+    fun testGetAllSpringBootApplications() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val result = toolset.getAllSpringBootApplications(projectPath())
@@ -137,7 +137,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         assertEquals("com.example.app.DemoApplication", applications[0]["fullyQualifiedClassName"].asText())
     }
 
-    fun testApplicationBeansComponent() = runBlocking<Unit> {
+    fun testApplicationBeansComponent() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val result = fullListing("com.example.app.DemoApplication", "COMPONENT")
@@ -148,7 +148,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testApplicationBeansController() = runBlocking<Unit> {
+    fun testApplicationBeansController() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val result = fullListing("com.example.app.DemoApplication", "CONTROLLER")
@@ -159,7 +159,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testApplicationBeansRepository() = runBlocking<Unit> {
+    fun testApplicationBeansRepository() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val result = fullListing("com.example.app.DemoApplication", "REPOSITORY")
@@ -170,7 +170,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testApplicationBeansInvalidBeanTypeFails() = runBlocking<Unit> {
+    fun testApplicationBeansInvalidBeanTypeFails() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         try {
@@ -191,7 +191,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
      * The listing used to take the declaring module from the bean's *type*, so `java.time.Clock` resolved to no
      * project module and the bean was dropped - invisible to a caller asking what the application declares.
      */
-    fun testApplicationBeansKeepsALibraryTypedFactoryBean() = runBlocking<Unit> {
+    fun testApplicationBeansKeepsALibraryTypedFactoryBean() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("beanQuery", "")
 
         val result = fullListing("com.explyt.demo.App", "COMPONENT")
@@ -212,7 +212,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         assertEquals("A static answer says it is the module estimate through its source", "STATIC", clock["source"].asText())
     }
 
-    fun testFindEndpoint() = runBlocking<Unit> {
+    fun testFindEndpoint() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val result = toolset.findEndpoint(
@@ -231,7 +231,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         assertTrue("Expected GET in $httpMethods", httpMethods.contains("GET"))
     }
 
-    fun testFindEndpointNoMatch() = runBlocking<Unit> {
+    fun testFindEndpointNoMatch() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val result = toolset.findEndpoint(
@@ -253,7 +253,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
      * The routes sharing the longest leading path with the pattern name the controller the new route belongs
      * to and the conventions it has to follow.
      */
-    fun testFindEndpointMissListsTheNearestRoutes() = runBlocking<Unit> {
+    fun testFindEndpointMissListsTheNearestRoutes() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val root = mapper.readTree(
@@ -273,7 +273,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
     }
 
     /** The neighbourhood is context, not an answer, so the HTTP method filter must not thin it out. */
-    fun testNearestRoutesIgnoreTheHttpMethodFilter() = runBlocking<Unit> {
+    fun testNearestRoutesIgnoreTheHttpMethodFilter() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val root = mapper.readTree(
@@ -292,7 +292,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
      * A caller asking "which handler serves this URL" reads the answer off the first element, so the order is
      * part of the contract, not presentation.
      */
-    fun testFindEndpointOrdersTheDispatchingRouteFirst() = runBlocking<Unit> {
+    fun testFindEndpointOrdersTheDispatchingRouteFirst() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val root = mapper.readTree(
@@ -307,7 +307,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         assertEquals("Nothing nearest is reported when something matched", 0, root["nearestByPrefix"].size())
     }
 
-    fun testGetHttpEndpoints() = runBlocking<Unit> {
+    fun testGetHttpEndpoints() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val result = toolset.getHttpEndpoints(
@@ -330,7 +330,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
     }
 
     /** Spring registers the inherited handler of each controller bean, so each controller is its own endpoint. */
-    fun testGetHttpEndpointsListsEveryControllerInheritingTheSameMapping() = runBlocking<Unit> {
+    fun testGetHttpEndpointsListsEveryControllerInheritingTheSameMapping() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
         myFixture.addFileToProject("com/example/app/web/inherited/InheritedControllers.kt", """
             package com.example.app.web.inherited
@@ -365,7 +365,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         assertEquals("one endpoint per controller, got $endpoints", 2, endpoints.size)
     }
 
-    fun testGetEndpointContract() = runBlocking<Unit> {
+    fun testGetEndpointContract() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val result = toolset.getEndpointContract(
@@ -388,7 +388,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         assertEquals("id", pathParam!!["name"].asText())
     }
 
-    fun testEndpointContractFindsServiceInsideResponseEntity() = runBlocking<Unit> {
+    fun testEndpointContractFindsServiceInsideResponseEntity() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val contract = endpointsOf(toolset.getEndpointContract(
@@ -403,7 +403,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         assertEquals(33, serviceCall["line"].asInt())
     }
 
-    fun testEndpointContractFindsServiceInKotlinExpressionBody() = runBlocking<Unit> {
+    fun testEndpointContractFindsServiceInKotlinExpressionBody() = runBlockingReleasingWriteIntent<Unit> {
         addKotlinController()
 
         val contract = endpointsOf(toolset.getEndpointContract(
@@ -414,7 +414,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         assertEquals("com.example.app.service.DemoService.findById", contract["serviceCall"]["target"].asText())
     }
 
-    fun testEndpointContractSkipsTrimBeforeServiceCall() = runBlocking<Unit> {
+    fun testEndpointContractSkipsTrimBeforeServiceCall() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val contract = endpointsOf(toolset.getEndpointContract(
@@ -425,7 +425,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         assertEquals("com.example.app.service.DemoService.findById", contract["serviceCall"]["target"].asText())
     }
 
-    fun testEndpointContractSkipsKotlinTrimBeforeServiceCall() = runBlocking<Unit> {
+    fun testEndpointContractSkipsKotlinTrimBeforeServiceCall() = runBlockingReleasingWriteIntent<Unit> {
         addKotlinController()
         val controller = JavaPsiFacade.getInstance(project)
             .findClass("com.example.app.web.KotlinController", GlobalSearchScope.allScope(project))!!
@@ -450,7 +450,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         assertEquals("com.example.app.service.DemoService.findById", contract["serviceCall"]["target"].asText())
     }
 
-    fun testEndpointContractHasNoServiceCallForFrameworkOnlyHandler() = runBlocking<Unit> {
+    fun testEndpointContractHasNoServiceCallForFrameworkOnlyHandler() = runBlockingReleasingWriteIntent<Unit> {
         addKotlinController()
 
         val contract = endpointsOf(toolset.getEndpointContract(
@@ -461,7 +461,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         assertTrue(contract["serviceCall"].isNull)
     }
 
-    fun testEndpointContractFindsServiceThroughInjectedInterface() = runBlocking<Unit> {
+    fun testEndpointContractFindsServiceThroughInjectedInterface() = runBlockingReleasingWriteIntent<Unit> {
         addKotlinController()
 
         val contract = endpointsOf(toolset.getEndpointContract(
@@ -475,7 +475,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         assertEquals(11, serviceCall["line"].asInt())
     }
 
-    fun testEndpointContractRejectsManuallyCreatedServiceField() = runBlocking<Unit> {
+    fun testEndpointContractRejectsManuallyCreatedServiceField() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val contract = endpointsOf(toolset.getEndpointContract(
@@ -486,7 +486,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         assertTrue(contract["serviceCall"].isNull)
     }
 
-    fun testEndpointContractRejectsServiceFieldBuiltInsideConstructor() = runBlocking<Unit> {
+    fun testEndpointContractRejectsServiceFieldBuiltInsideConstructor() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
         myFixture.addFileToProject("com/example/app/web/LocallyCreatedController.java", """
             package com.example.app.web;
@@ -519,7 +519,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         assertTrue(contract["serviceCall"].isNull)
     }
 
-    fun testEndpointContractPreservesNestedKotlinGenericNullability() = runBlocking<Unit> {
+    fun testEndpointContractPreservesNestedKotlinGenericNullability() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
         myFixture.addFileToProject("com/example/app/web/SchemaController.kt", """
             package com.example.app.web
@@ -596,7 +596,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         """.trimIndent())
     }
 
-    fun testEndpointContractReportsKotlinMultipartFile() = runBlocking<Unit> {
+    fun testEndpointContractReportsKotlinMultipartFile() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
         myFixture.addFileToProject("com/example/app/web/KotlinMultipartController.kt", """
             package com.example.app.web
@@ -625,7 +625,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         assertEquals("org.springframework.web.multipart.MultipartFile", parameters[0]["type"].asText())
     }
 
-    fun testEndpointContractReportsMultipartParts() = runBlocking<Unit> {
+    fun testEndpointContractReportsMultipartParts() = runBlockingReleasingWriteIntent<Unit> {
         addMultipartController()
 
         val contract = endpointsOf(toolset.getEndpointContract(
@@ -648,7 +648,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         assertEquals("com.example.app.dto.DemoDto", byName.getValue("metadata")["type"].asText())
     }
 
-    fun testNamedMapOfMultipartFilesIsNotAFilePart() = runBlocking<Unit> {
+    fun testNamedMapOfMultipartFilesIsNotAFilePart() = runBlockingReleasingWriteIntent<Unit> {
         addMultipartController()
 
         val contract = endpointsOf(toolset.getEndpointContract(
@@ -661,7 +661,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         assertEquals("QUERY", parameter["source"].asText())
     }
 
-    fun testEndpointContractReportsServletMultipartPart() = runBlocking<Unit> {
+    fun testEndpointContractReportsServletMultipartPart() = runBlockingReleasingWriteIntent<Unit> {
         addMultipartController()
 
         val contract = endpointsOf(toolset.getEndpointContract(
@@ -676,7 +676,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         assertTrue(parameter["required"].asBoolean())
     }
 
-    fun testHttpEndpointListingKeepsMultipartAndQuerySources() = runBlocking<Unit> {
+    fun testHttpEndpointListingKeepsMultipartAndQuerySources() = runBlockingReleasingWriteIntent<Unit> {
         addMultipartController()
 
         val endpoints = endpointsOf(toolset.getHttpEndpoints(
@@ -703,7 +703,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
      * looks exactly like one that does not. Without a resolver in sight, `currentUser` gets Spring's default:
      * a non-simple type is a model attribute.
      */
-    fun testEndpointContractReportsEveryParameterSource() = runBlocking<Unit> {
+    fun testEndpointContractReportsEveryParameterSource() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val result = toolset.getEndpointContract(
@@ -730,7 +730,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
     }
 
     /** The same completeness must hold for the endpoint listing, which shares the parameter enumeration. */
-    fun testHttpEndpointsReportTheResolverBoundParameter() = runBlocking<Unit> {
+    fun testHttpEndpointsReportTheResolverBoundParameter() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val result = toolset.getHttpEndpoints(
@@ -752,7 +752,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
      * declare it; a resolver's contract is private to the resolver, so `required` stays null rather than
      * defaulting to a plausible-looking boolean.
      */
-    fun testUnclassifiedParameterDoesNotAssertRequiredness() = runBlocking<Unit> {
+    fun testUnclassifiedParameterDoesNotAssertRequiredness() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val result = toolset.getEndpointContract(
@@ -775,7 +775,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
      * 122 722 characters of single-line JSON, most of it `parameters` arrays, which a line-based reader cannot
      * chunk. `compact` drops the two per-endpoint arrays so an inventory fits in a context window.
      */
-    fun testCompactListingOmitsParametersAndReturnType() = runBlocking<Unit> {
+    fun testCompactListingOmitsParametersAndReturnType() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val endpoint = endpointsOf(
@@ -796,7 +796,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
     }
 
     /** The default stays whole: `compact` is opt-in, so an existing caller sees no change. */
-    fun testDefaultListingKeepsParametersAndReturnType() = runBlocking<Unit> {
+    fun testDefaultListingKeepsParametersAndReturnType() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val endpoint = endpointsOf(
@@ -812,7 +812,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
     }
 
     /** Paging metadata describes the page, not the projection, so it must survive `compact`. */
-    fun testCompactListingKeepsPagingMetadata() = runBlocking<Unit> {
+    fun testCompactListingKeepsPagingMetadata() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val root = mapper.readTree(
@@ -835,7 +835,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
      * is not cosmetic: a first parse written against `httpMethod` / `path` / `lineNumber` yields silent nulls
      * rather than an error, costing a whole call to notice. This pins the names the description promises.
      */
-    fun testListingFieldNamesMatchTheDocumentedContract() = runBlocking<Unit> {
+    fun testListingFieldNamesMatchTheDocumentedContract() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val endpoints = endpointsOf(
@@ -871,7 +871,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testTraceCallChainFileNotFoundFails() = runBlocking<Unit> {
+    fun testTraceCallChainFileNotFoundFails() = runBlockingReleasingWriteIntent<Unit> {
         // `traceCallChain` resolves files via `LocalFileSystem` using `project.basePath + filePath`.
         // In a light test fixture, testdata lives in an in-memory temp VFS, so any real path
         // lookup must fail. This covers the explicit file-not-found error branch.
@@ -958,7 +958,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testGetSpringDataEntities() = runBlocking<Unit> {
+    fun testGetSpringDataEntities() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val result = toolset.getSpringDataEntities(
@@ -987,7 +987,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
 
     // ---- additional coverage for uncovered branches ----
 
-    fun testApplicationBeansMissingApplicationClassFails() = runBlocking<Unit> {
+    fun testApplicationBeansMissingApplicationClassFails() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         try {
@@ -1002,7 +1002,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         }
     }
 
-    fun testFindEndpointBlankUrlPatternFails() = runBlocking<Unit> {
+    fun testFindEndpointBlankUrlPatternFails() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         try {
@@ -1017,7 +1017,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         }
     }
 
-    fun testFindEndpointPartialUrlMatch() = runBlocking<Unit> {
+    fun testFindEndpointPartialUrlMatch() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val result = toolset.findEndpoint(
@@ -1032,7 +1032,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testFindEndpointHttpMethodFilterExcludes() = runBlocking<Unit> {
+    fun testFindEndpointHttpMethodFilterExcludes() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val result = toolset.findEndpoint(
@@ -1047,7 +1047,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testGetHttpEndpointsEndpointTypeFilter() = runBlocking<Unit> {
+    fun testGetHttpEndpointsEndpointTypeFilter() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val mvcResult = toolset.getHttpEndpoints(
@@ -1073,7 +1073,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testGetHttpEndpointsControllerFilterNoMatch() = runBlocking<Unit> {
+    fun testGetHttpEndpointsControllerFilterNoMatch() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val result = toolset.getHttpEndpoints(
@@ -1088,7 +1088,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testGetEndpointContractBlankUrlPatternFails() = runBlocking<Unit> {
+    fun testGetEndpointContractBlankUrlPatternFails() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         try {
@@ -1103,7 +1103,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         }
     }
 
-    fun testGetEndpointContractPostWithRequestBody() = runBlocking<Unit> {
+    fun testGetEndpointContractPostWithRequestBody() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val result = toolset.getEndpointContract(
@@ -1151,7 +1151,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         }
     }
 
-    fun testGetSpringDataEntitiesPackageFilterNoMatch() = runBlocking<Unit> {
+    fun testGetSpringDataEntitiesPackageFilterNoMatch() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val result = toolset.getSpringDataEntities(

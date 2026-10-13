@@ -7,12 +7,12 @@ package com.explyt.spring.ai.mcp.beans
 
 import com.explyt.spring.test.ExplytKotlinLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.mcpserver.McpToolset
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiFile
-import kotlinx.coroutines.runBlocking
 
 /**
  * The question the tool exists for, asked the way a client asks it.
@@ -31,7 +31,7 @@ class SpringBeanMcpToolsetKotlinTest : ExplytKotlinLightTestCase() {
     private val mapper = ObjectMapper()
 
     /** One bean exists, so Spring injects it and the default is never evaluated. */
-    fun testDefaultedKotlinParameterWithOneBeanResolves() = runBlocking {
+    fun testDefaultedKotlinParameterWithOneBeanResolves() = runBlockingReleasingWriteIntent {
         val root = injectionAnswer()
 
         assertEquals("RESOLVED", root["outcome"].asText())
@@ -44,7 +44,7 @@ class SpringBeanMcpToolsetKotlinTest : ExplytKotlinLightTestCase() {
      * A defaulted parameter is not required, and reporting it as required would turn a working constructor into
      * a reported failure.
      */
-    fun testTheDefaultIsReportedBesideTheCandidate() = runBlocking {
+    fun testTheDefaultIsReportedBesideTheCandidate() = runBlockingReleasingWriteIntent {
         val injection = injectionAnswer()["injection"]
 
         assertEquals("clock", injection["name"].asText())
@@ -55,7 +55,7 @@ class SpringBeanMcpToolsetKotlinTest : ExplytKotlinLightTestCase() {
     }
 
     /** The whole answer still has to fit what a client will accept. */
-    fun testTheKotlinAnswerFitsTheClientBudget() = runBlocking {
+    fun testTheKotlinAnswerFitsTheClientBudget() = runBlockingReleasingWriteIntent {
         val json = call()
 
         assertEquals("OK", mapper.readTree(json)["status"].asText())
