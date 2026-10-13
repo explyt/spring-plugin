@@ -19,6 +19,7 @@ import com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.kotlin.psi.KtBinaryExpression
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtPrefixExpression
+import org.jetbrains.kotlin.psi.KtStringTemplateExpression
 import org.jetbrains.uast.UBinaryExpression
 import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UPrefixExpression
@@ -668,6 +669,145 @@ class CoRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
         )
         assertPathPredicateCall("ReactiveRouterConfig.kt", "RouterFunctionDsl", isNestReceiver = true)
         assertEquals(listOf("/a/b/c" to "GET"), webFluxEndpoints())
+    }
+
+    fun testStringRouteIsListedForAnyMethod() {
+        addRouterConfig(
+            """
+            "/items" { handler.handle(it) }
+            GET("/y", handler::handle)
+            """
+        )
+        assertStringRoutesResolveToDslInvoke(CO_ROUTER_DSL)
+        assertEquals(emptyList<String>(), RouterDslRoutes.requestMethodsOf(stringRouteCalls().single()))
+        assertEquals(listOf("/items" to "", "/y" to "GET"), webFluxEndpoints())
+    }
+
+    fun testStringRouteUnderStringNestComposesThePrefix() {
+        addRouterConfig(
+            """"/api".nest { "/health" { ServerResponse.ok().buildAndAwait() } }""",
+            imports = "import org.springframework.web.reactive.function.server.buildAndAwait"
+        )
+        assertStringRoutesResolveToDslInvoke(CO_ROUTER_DSL)
+        assertEquals(listOf("/api/health" to ""), webFluxEndpoints())
+    }
+
+    fun testStringRouteIsOneAllRowKeptByAVerbFilter() {
+        addRouterConfig(""""/items" { handler.handle(it) }""")
+        assertStringRoutesResolveToDslInvoke(CO_ROUTER_DSL)
+        val endpoint = webFluxEndpointElements().single()
+        assertEquals("/items", endpoint.path)
+        assertEquals(emptyList<String>(), endpoint.requestMethods)
+
+        assertEquals(listOf("ALL"), EndpointsTreeData.rowVerbsOf(endpoint))
+        val kept = EndpointsViewFilter.apply(
+            EndpointsTreeData.rowsOf(endpoint), "", setOf("GET"), emptySet(), EndpointsViewFilter.declaredBasePaths()
+        )
+        assertEquals(listOf("ALL"), kept.map { it.method })
+    }
+
+    fun testReactiveRouterStringRouteIsListedForAnyMethod() {
+        myFixture.addFileToProject(
+            "ReactiveRouterConfig.kt",
+            """
+            import org.springframework.context.annotation.Bean
+            import org.springframework.context.annotation.Configuration
+            import org.springframework.web.reactive.function.server.RouterFunction
+            import org.springframework.web.reactive.function.server.ServerResponse
+            import org.springframework.web.reactive.function.server.router
+
+            @Configuration
+            class ReactiveRouterConfig {
+                @Bean
+                fun routes(): RouterFunction<ServerResponse> = router {
+                    "/items" { ServerResponse.ok().build() }
+                    GET("/y") { ServerResponse.ok().build() }
+                }
+            }
+            """.trimIndent()
+        )
+        assertStringRoutesResolveToDslInvoke(REACTIVE_ROUTER_DSL, "ReactiveRouterConfig.kt")
+        assertEquals(listOf("/items" to "", "/y" to "GET"), webFluxEndpoints())
+    }
+
+    fun testStringNestIsNotAnAnyMethodRoute() {
+        addRouterConfig(""""/api".nest { GET("/x", handler::handle) }""")
+        assertTrue(stringRouteCalls().isEmpty())
+        assertNull(RouterDslRoutes.requestMethodsOf(nestCall(0)))
+        assertEquals(listOf("/api/x" to "GET"), webFluxEndpoints())
+    }
+
+    fun testUserDefinedStringInvokeIsNotARoute() {
+        addRouterConfig(
+            """
+            "/x"(1)
+            GET("/y", handler::handle)
+            """,
+            imports = "operator fun String.invoke(times: Int) {}"
+        )
+        val call = stringRouteCalls().single()
+        val method = call.resolve()!!
+        assertEquals("invoke", method.name)
+        assertFalse(method.containingClass?.qualifiedName in SpringWebClasses.ROUTER_DSL_CLASSES)
+        assertNull(RouterDslRoutes.requestMethodsOf(call))
+        assertEquals(listOf("/y" to "GET"), webFluxEndpoints())
+    }
+
+    fun testConstantReceiverRouteIsListedForAnyMethod() {
+        addRouterConfig(
+            """
+            ITEMS { handler.handle(it) }
+            GET("/y", handler::handle)
+            """,
+            imports = """const val ITEMS = "/items""""
+        )
+        assertNonLiteralReceiverRoutesResolveToDslInvoke(CO_ROUTER_DSL)
+        assertEquals(listOf("/items" to "", "/y" to "GET"), webFluxEndpoints())
+    }
+
+    fun testConstantReceiverRouteUnderStringNestComposesThePrefix() {
+        addRouterConfig(
+            """"/api".nest { ITEMS { handler.handle(it) } }""",
+            imports = """const val ITEMS = "/items""""
+        )
+        assertNonLiteralReceiverRoutesResolveToDslInvoke(CO_ROUTER_DSL)
+        assertEquals(listOf("/api/items" to ""), webFluxEndpoints())
+    }
+
+    private fun assertNonLiteralReceiverRoutesResolveToDslInvoke(owner: String) {
+        val calls = callsInFixture().filter { it.methodName == "invoke" }
+        assertTrue("Fixture must contain a route on a non-literal String receiver", calls.isNotEmpty())
+        calls.forEach { call ->
+            assertFalse((call.sourcePsi as KtCallExpression).calleeExpression is KtStringTemplateExpression)
+            assertEquals("java.lang.String", call.receiverType?.canonicalText)
+            val method = call.resolve()
+            assertNotNull("${call.sourcePsi?.text} must resolve", method)
+            assertEquals(owner, method!!.containingClass?.qualifiedName)
+            assertEquals("invoke", method.name)
+            assertEquals("void", method.returnType?.canonicalText)
+        }
+    }
+
+    private fun stringRouteCalls(fileName: String = "GatewayProxyRouterConfig.kt"): List<UCallExpression> {
+        val file = myFixture.psiManager.findFile(myFixture.findFileInTempDir(fileName))!!
+        return PsiTreeUtil.findChildrenOfType(file, KtCallExpression::class.java)
+            .filter { it.calleeExpression is KtStringTemplateExpression }
+            .mapNotNull { it.toUElementOfType<UCallExpression>() }
+    }
+
+    private fun assertStringRoutesResolveToDslInvoke(owner: String, fileName: String = "GatewayProxyRouterConfig.kt") {
+        val calls = stringRouteCalls(fileName)
+        assertTrue("Fixture must contain a \"/path\" { } route", calls.isNotEmpty())
+        calls.forEach { call ->
+            assertEquals("invoke", call.methodName)
+            assertEquals("java.lang.String", call.receiverType?.canonicalText)
+            assertEquals(1, call.valueArgumentCount)
+            val method = call.resolve()
+            assertNotNull("${call.sourcePsi?.text} must resolve", method)
+            assertEquals(call.sourcePsi?.text, owner, method!!.containingClass?.qualifiedName)
+            assertEquals("invoke", method.name)
+            assertEquals("void", method.returnType?.canonicalText)
+        }
     }
 
     private fun assertValueArgumentNestHasNoUastMethodName(fileName: String = "GatewayProxyRouterConfig.kt") {
