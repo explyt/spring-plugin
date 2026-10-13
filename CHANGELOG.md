@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Spring Core
+- feat: Report two `@Bean` methods with different names that declare the same bean name in one configuration class, which fails Spring Boot startup unless bean definition overriding is allowed; methods annotated with `@Profile` or another `@Conditional` are not reported, since Spring skips them before it registers the name (#597)
 - feat: Report a stereotype annotation such as `@Component` on an abstract class without a `@Lookup` method, which Spring does not register, with a quick fix that removes it (#601)
 - fix: Evaluate `@ConditionalOnClass` and `@ConditionalOnMissingClass` on Kotlin beans like on Java ones: their values, class literals and class names alike, are read from the Kotlin source, so an unresolved class literal such as `@ConditionalOnClass(Missing::class)` now turns the bean off instead of being ignored (#496)
 - fix: Find project Actuator endpoints declared in a library module whose Actuator dependency is not exported, as when the application depends on Actuator `runtimeOnly`: `@Endpoint` was resolved only on the application's compile classpath, so such an endpoint was missing from the Endpoints tool window and the Spring MCP endpoint tools, and its `management.endpoint.<id>.*` keys were reported as unresolved (#538)
