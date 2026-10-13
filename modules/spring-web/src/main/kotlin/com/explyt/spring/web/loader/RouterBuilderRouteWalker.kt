@@ -97,7 +97,7 @@ object RouterBuilderRouteWalker {
         if (!method.takesUriFirst()) return emptyList()
         return uriValues(uriArgument).mapNotNull { uri ->
             when {
-                prefix.isNotEmpty() -> SpringWebUtil.simplifyUrl(join(prefix, uri))
+                prefix.isNotEmpty() -> SpringWebUtil.simplifyUrl(RoutePathResolver.joinPaths(prefix, uri))
                 uri.isNotEmpty() -> uri
                 else -> null
             }?.let { BuilderRoute(it, method.name, call) }
@@ -109,7 +109,9 @@ object RouterBuilderRouteWalker {
         callback: PsiExpression,
         prefix: String,
         nesting: Int
-    ): List<BuilderRoute> = segments.flatMap { callbackRoutes(callback, join(prefix, it), nesting + 1) }
+    ): List<BuilderRoute> = segments.flatMap {
+        callbackRoutes(callback, RoutePathResolver.joinPaths(prefix, it), nesting + 1)
+    }
 
     private fun callbackRoutes(callback: PsiExpression, prefix: String, nesting: Int): List<BuilderRoute> {
         val lambda = unwrap(callback) as? PsiLambdaExpression ?: return emptyList()
@@ -152,11 +154,6 @@ object RouterBuilderRouteWalker {
     private fun uriValues(expression: PsiExpression?): List<String> =
         expression?.toUElementOfType<UExpression>()?.let(RoutePathResolver::resolveUriValues).orEmpty()
 
-    private fun join(prefix: String, segment: String): String = when {
-        prefix.isEmpty() -> segment
-        segment.isEmpty() -> prefix
-        else -> "$prefix/$segment"
-    }
 
     private fun unwrap(expression: PsiExpression?): PsiExpression? = PsiUtil.skipParenthesizedExprDown(expression)
 }

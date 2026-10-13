@@ -112,6 +112,7 @@
 
 ### Spring Web
 - fix: Show the composed path, including enclosing path() and nest() prefixes, in the gutter of a route declared in a Java RouterFunctions builder, and no longer give a request predicate passed as an argument of a builder route its own marker (#609)
+- fix: Join Kotlin router DSL nest prefixes and inner paths the way Spring does, and stop listing more than 100 prefix × path combinations (#627)
 - fix: List the operations of a project `@EndpointWebExtension` under its Actuator endpoint, replacing an endpoint operation with the same request predicate (an extension in test sources applies only to an endpoint in test sources), and stop listing an Actuator endpoint that declares no operation, which Boot does not serve (#654)
 - fix: Show a route that answers any HTTP method as one `ALL` row that every verb filter keeps in the Endpoints window and as `[ALL]` in URL completion, and list an OpenFeign client method without `method` as GET (#653)
 - fix: Treat a route that answers any HTTP method as answering every verb in MockMvc URL completion and navigation (also WebClient URIs and OpenAPI operation keys), in the WebTestClient response body type, and in the test-request search for MockMvc and WebTestClient requests; verbs compare case-insensitively (#659)
