@@ -1,0 +1,11 @@
+<html>
+<body>
+Reports a stereotype annotation (<code>@Component</code> or an annotation meta-annotated with it) on an abstract class
+that has no <code>@Lookup</code> method.
+<p>
+    Spring's component scan registers such a class neither as a bean nor as a stereotype source for its subclasses:
+    only concrete classes, or abstract classes with a <code>@Lookup</code> method, become beans.
+</p>
+<p>The quick-fix removes the annotation.</p>
+</body>
+</html>
