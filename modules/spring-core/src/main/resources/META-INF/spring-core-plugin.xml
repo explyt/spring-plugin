@@ -283,6 +283,17 @@
                          implementationClass="com.explyt.spring.core.inspections.SpringAliasNotMetaAnnotatedInspection"/>
 
         <localInspection language="UAST"
+                         shortName="SpringBeanNameConventionConflict"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.bean.name.convention.conflict.key"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="com.explyt.spring.core.inspections.SpringBeanNameConventionConflictInspection"/>
+
+        <localInspection language="UAST"
                          shortName="SpringUnknownBeanMethodInspection"
                          groupBundle="messages.SpringCoreBundle"
                          groupPath="Explyt Spring"
