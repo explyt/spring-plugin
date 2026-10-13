@@ -1,0 +1,15 @@
+<html>
+<body>
+Reports a <code>@Bean</code> method whose bean name is already declared by a differently named <code>@Bean</code> method
+of the same configuration class.
+<p>Spring Boot disallows bean definition overriding by default, so such a configuration fails at startup with
+<code>BeanDefinitionOverrideException</code>. Overloaded <code>@Bean</code> methods with the same method name are merged by
+Spring and are not reported. Nothing is reported when <code>spring.main.allow-bean-definition-overriding=true</code>
+is set in the module configuration.</p>
+<p>Methods annotated with <code>@Profile</code> or another <code>@Conditional</code> annotation, such as
+<code>@ConditionalOnProperty</code>, are not reported: Spring evaluates their conditions before it registers the bean name,
+so only one of them may be active.</p>
+<p>When the value of <code>spring.main.allow-bean-definition-overriding</code> cannot be resolved, for example because it is
+a placeholder or depends on a profile, the problem is reported as a warning instead of an error.</p>
+</body>
+</html>
