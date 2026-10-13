@@ -15,7 +15,7 @@ import org.jetbrains.uast.*
 object RoutePathResolver {
 
     private const val MAX_DEPTH = 5
-    private const val MAX_VALUES = 100
+    internal const val MAX_VALUES = 100
 
     private val COLLECTION_FACTORIES =
         setOf("listOf", "listOfNotNull", "setOf", "arrayOf", "mutableListOf", "mutableSetOf")
@@ -25,6 +25,12 @@ object RoutePathResolver {
     private const val IMPLICIT_PARAMETER = "it"
 
     fun resolveUriValues(expression: UExpression): List<String> = resolve(expression, 0)
+
+    fun joinPaths(prefix: String, path: String): String = when {
+        prefix.isEmpty() -> path
+        path.isEmpty() -> prefix
+        else -> "${prefix.trimEnd('/')}/${path.trimStart('/')}"
+    }
 
     private fun resolve(expression: UExpression, depth: Int): List<String> {
         ProgressManager.checkCanceled()
