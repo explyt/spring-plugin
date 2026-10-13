@@ -291,7 +291,18 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
     }
 
     private val EndpointElement.requestPredicate
-        get() = Triple(requestMethods, PATH_VARIABLE.replace(path, "$1*}"), produces)
+        get() = OperationKey(requestMethods, PATH_VARIABLE.replace(path, "$1*}"), produces, consumesRequestBody)
+
+    private data class OperationKey(
+        val requestMethods: List<String>,
+        val canonicalPath: String,
+        val produces: List<String>,
+        val consumesRequestBody: Boolean,
+    )
+
+    private val EndpointElement.consumesRequestBody: Boolean
+        get() = WRITE_METHOD in requestMethods && (psiElement as? PsiMethod)?.parameterList?.parameters.orEmpty()
+            .any { !it.isMetaAnnotatedBy(SpringCoreClasses.ACTUATOR_SELECTOR) }
 
     /**
      * The operations of a controller endpoint: Boot serves its `@RequestMapping` methods under the endpoint path the
@@ -391,6 +402,7 @@ private const val ENDPOINT_ATTRIBUTE = "endpoint"
 private val PATH_VARIABLE = Regex("""(\{\*?).+?}""")
 
 private const val READ_METHOD = "GET"
+private const val WRITE_METHOD = "POST"
 private val READ_ONLY_REQUEST_METHODS = setOf("GET", "HEAD")
 
 private val HTTP_METHOD_BY_OPERATION = mapOf(
