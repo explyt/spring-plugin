@@ -34,6 +34,38 @@ private const val LITE_CONFIGURATION = """
     }
 """
 
+private const val METHOD_NAME_COLLISION = """
+    @Configuration
+    public class Config {
+        @Bean Object svc() { return new Object(); }
+        @Bean("svc") Object other() { return new Object(); }
+    }
+"""
+
+private const val ALIAS_COLLISION = """
+    @Configuration
+    public class Config {
+        @Bean({"a", "svc"}) Object x() { return new Object(); }
+        @Bean("svc") Object y() { return new Object(); }
+    }
+"""
+
+private const val ALIAS_COLLISION_AFTER_PRIMARY_NAME = """
+    @Configuration
+    public class Config {
+        @Bean("svc") Object y() { return new Object(); }
+        @Bean({"a", "svc"}) Object x() { return new Object(); }
+    }
+"""
+
+private const val TWO_ALIASES_COLLISION = """
+    @Configuration
+    public class Config {
+        @Bean({"a", "svc"}) Object x() { return new Object(); }
+        @Bean({"b", "svc"}) Object y() { return new Object(); }
+    }
+"""
+
 private const val CONFIGURATION_WITHOUT_UNIQUE_METHODS = """
     @Configuration(enforceUniqueMethods = false)
     public class Config {
@@ -148,6 +180,14 @@ abstract class SpringDuplicateBeanNameJavaTestCase : ExplytBaseLightTestCase() {
             "Bean '$beanName' is also declared by '$firstMethod' in this class; " +
                     "Spring Boot fails at startup unless bean definition overriding is allowed",
             problem.description
+        )
+    }
+
+    protected fun assertStartupFailure(problems: List<HighlightInfo>, anchor: String, firstMethod: String) {
+        assertSingleProblem(problems, HighlightSeverity.ERROR, anchor, beanName = "svc", firstMethod = firstMethod)
+        assertEquals(
+            SpringCoreBundle.message("explyt.spring.inspection.bean.name.duplicate", "svc", firstMethod),
+            problems.single().description
         )
     }
 
@@ -401,8 +441,40 @@ class SpringDuplicateBeanNameBeforeSpring62InspectionTest : SpringDuplicateBeanN
         assertIgnoredMethodWarning(highlights(LITE_CONFIGURATION))
     }
 
-    private fun assertIgnoredMethodWarning(problems: List<HighlightInfo>) {
-        assertSingleProblem(problems, HighlightSeverity.WARNING, anchor = "b", beanName = "svc", firstMethod = "a")
+    fun testMethodNameCollidingWithExplicitNameWarnsThatOneMethodIsIgnored() {
+        assertIgnoredMethodWarning(highlights(METHOD_NAME_COLLISION), anchor = "other", firstMethod = "svc")
+    }
+
+    fun testAliasCollisionWithMissingOverridingPropertyFailsAtStartup() {
+        assertStartupFailure(highlights(ALIAS_COLLISION), anchor = "y", firstMethod = "x")
+    }
+
+    fun testAliasCollisionWithDisallowedOverridingFailsAtStartup() {
+        allowBeanDefinitionOverriding("false")
+
+        assertStartupFailure(highlights(ALIAS_COLLISION), anchor = "y", firstMethod = "x")
+    }
+
+    fun testAliasCollisionWithAllowedOverridingIsNotReported() {
+        allowBeanDefinitionOverriding("true")
+
+        assertEmpty(highlights(ALIAS_COLLISION))
+    }
+
+    fun testAliasCollisionDeclaredAfterThePrimaryNameFailsAtStartup() {
+        assertStartupFailure(highlights(ALIAS_COLLISION_AFTER_PRIMARY_NAME), anchor = "x", firstMethod = "y")
+    }
+
+    fun testCollisionOfTwoAliasesFailsAtStartup() {
+        assertStartupFailure(highlights(TWO_ALIASES_COLLISION), anchor = "y", firstMethod = "x")
+    }
+
+    private fun assertIgnoredMethodWarning(
+        problems: List<HighlightInfo>,
+        anchor: String = "b",
+        firstMethod: String = "a"
+    ) {
+        assertSingleProblem(problems, HighlightSeverity.WARNING, anchor, beanName = "svc", firstMethod = firstMethod)
         val description = problems.single().description
         assertTrue(
             "the message says that one of the methods is ignored: $description",
@@ -412,7 +484,7 @@ class SpringDuplicateBeanNameBeforeSpring62InspectionTest : SpringDuplicateBeanN
             "the context starts below Spring 6.2.0, so no startup failure is claimed: $description",
             description.contains("fails at startup")
         )
-        assertEquals(SpringCoreBundle.message(IGNORED_METHOD_MESSAGE, "svc", "a"), description)
+        assertEquals(SpringCoreBundle.message(IGNORED_METHOD_MESSAGE, "svc", firstMethod), description)
     }
 
     private companion object {
@@ -504,10 +576,18 @@ class SpringDuplicateBeanNameUnknownSpringVersionInspectionTest : SpringDuplicat
         BeanNameConventionConflictFixture.addSpringCoreWithoutCoordinates(module, testRootDisposable)
     }
 
-    fun testDisallowedOverridingKeepsTheProblem() {
+    fun testMissingOverridingPropertyWarnsThatTheVersionIsUnknown() {
+        assertUnknownVersionWarning(highlights(FULL_CONFIGURATION))
+    }
+
+    fun testDisallowedOverridingWarnsThatTheVersionIsUnknown() {
         allowBeanDefinitionOverriding("false")
 
-        assertProblem(highlights(FULL_CONFIGURATION).single(), anchor = "b", beanName = "svc", firstMethod = "a")
+        assertUnknownVersionWarning(highlights(FULL_CONFIGURATION))
+    }
+
+    fun testAliasCollisionWithMissingOverridingPropertyFailsAtStartup() {
+        assertStartupFailure(highlights(ALIAS_COLLISION), anchor = "y", firstMethod = "x")
     }
 
     fun testAllowedOverridingInFullConfigurationUsesWarning() {
@@ -522,5 +602,14 @@ class SpringDuplicateBeanNameUnknownSpringVersionInspectionTest : SpringDuplicat
         allowBeanDefinitionOverriding("true")
 
         assertEmpty(highlights(LITE_CONFIGURATION))
+    }
+
+    private fun assertUnknownVersionWarning(problems: List<HighlightInfo>) {
+        assertSingleProblem(problems, HighlightSeverity.WARNING, anchor = "b", beanName = "svc", firstMethod = "a")
+        assertEquals(SpringCoreBundle.message(UNKNOWN_VERSION_MESSAGE, "svc", "a"), problems.single().description)
+    }
+
+    private companion object {
+        const val UNKNOWN_VERSION_MESSAGE = "explyt.spring.inspection.bean.name.duplicate.version.unknown"
     }
 }
