@@ -344,17 +344,37 @@ class SpringBootApplicationMcpToolsetTraceCallChainTest : JavaCodeInsightFixture
 
     fun testCompanionCallsLinkToDistinctOuterClassNodes() = runBlockingReleasingWriteIntent {
         val chain = traceCompanion("twoParsers")
+        val companion = JavaPsiFacade.getInstance(project)
+            .findClass("explyt.trace.VmId.Companion", GlobalSearchScope.projectScope(project))!!
+        val parse = companion.findMethodsByName("parse", false).filterIsInstance<KtLightMethod>().single { it.kotlinOrigin != null }
+        val sourceName = SourceNames.qualifiedNameOf(parse)!!
+        assertTrue("The fixture must expose a light-class owner distinct from its source owner", sourceName.substringBeforeLast(".") != companion.qualifiedName)
+        assertFalse("The source owner must not use a JVM light-class separator", sourceName.any { it == 36.toChar() })
         val calls = chain[0]["callsInto"].filter { it["target"].asText().endsWith(".parse") }
         assertEquals("Both companion calls must be present in callsInto", 2, calls.size)
         assertTrue("Both calls must link to expanded nodes: $calls", calls.all { it["node"].isIntegralNumber })
         val nodes = calls.map { call -> chain.single { it["id"].asInt() == call["node"].asInt() } }
         assertEquals(2, nodes.map { it["id"].asInt() }.distinct().size)
         assertEquals(
-            setOf("explyt.trace.VmId.Companion", "explyt.trace.OtherVmId.Companion"),
+            setOf("explyt.trace.VmId", "explyt.trace.OtherVmId"),
             nodes.map { it["className"].asText() }.toSet()
         )
         assertEquals(listOf("parse", "parse"), nodes.map { it["methodName"].asText() })
         assertTrue(nodes.all { it["filePath"].asText().endsWith("Ids.kt") })
+    }
+
+    fun testCompanionInsideClassNamedCompanionUsesTheClassSourceName() = runBlockingReleasingWriteIntent {
+        val chain = traceCompanion("classNamedCompanionParse")
+        val call = companionCall(chain, "parse")
+        assertTrue("The companion call must be expanded", call["node"].isIntegralNumber)
+        val lightClass = JavaPsiFacade.getInstance(project)
+            .findClass("explyt.trace.Companion.Companion", GlobalSearchScope.projectScope(project))!!
+        val parse = lightClass.findMethodsByName("parse", false).filterIsInstance<KtLightMethod>().single { it.kotlinOrigin != null }
+        assertEquals("Companion", lightClass.name)
+        assertTrue("The callee must be the companion of a class named Companion", lightClass.qualifiedName!!.endsWith(".Companion.Companion"))
+        assertEquals("explyt.trace.Companion", SourceNames.qualifiedNameOf(parse)!!.substringBeforeLast("."))
+        val node = chain.single { it["id"].asInt() == call["node"].asInt() }
+        assertEquals("explyt.trace.Companion", node["className"].asText())
     }
 
     fun testNestedCompanionCallNamesItsImmediateOuterClass() = runBlockingReleasingWriteIntent {
@@ -364,7 +384,13 @@ class SpringBootApplicationMcpToolsetTraceCallChainTest : JavaCodeInsightFixture
         assertEquals("PROJECT", call["kind"].asText())
         assertTrue("The nested companion must be expanded", call["node"].isIntegralNumber)
         val node = chain.single { it["id"].asInt() == call["node"].asInt() }
-        assertEquals("explyt.trace.Outer.InnerId.Companion", node["className"].asText())
+        val companion = JavaPsiFacade.getInstance(project)
+            .findClass("explyt.trace.Outer.InnerId.Companion", GlobalSearchScope.projectScope(project))!!
+        val parse = companion.findMethodsByName("parse", false).filterIsInstance<KtLightMethod>().single { it.kotlinOrigin != null }
+        val expectedClassName = SourceNames.qualifiedNameOf(parse)!!.substringBeforeLast(".")
+        assertTrue("The source class name must differ from the light-class name", expectedClassName != companion.qualifiedName)
+        assertFalse("The source class name must not contain a JVM separator", expectedClassName.any { it == 36.toChar() })
+        assertEquals(expectedClassName, node["className"].asText())
     }
 
     fun testCompanionNameFallsBackToClassNavigationWithoutKotlinMethodOrigin() = runBlockingReleasingWriteIntent {
@@ -402,14 +428,14 @@ class SpringBootApplicationMcpToolsetTraceCallChainTest : JavaCodeInsightFixture
         assertEquals("explyt.trace.Owner.Companion.Nested", node["className"].asText())
     }
 
-    fun testJavaJvmStaticAndCompanionCallsKeepDistinctNodes() = runBlockingReleasingWriteIntent {
+    fun testJavaJvmStaticAndCompanionCallsKeepDistinctNodesWithTheSourceClassName() = runBlockingReleasingWriteIntent {
         val chain = traceCompanion("bothStaticParsers", javaCaller = true)
         val calls = chain[0]["callsInto"].toList()
         assertEquals(listOf("StaticVmId.parse", "StaticVmId.parse"), calls.map { it["target"].asText() })
         assertTrue(calls.all { it["node"].isIntegralNumber })
         assertEquals(2, calls.map { it["node"].asInt() }.distinct().size)
         val nodes = calls.map { call -> chain.single { it["id"].asInt() == call["node"].asInt() } }
-        assertEquals(setOf("explyt.trace.StaticVmId", "explyt.trace.StaticVmId.Companion"), nodes.map { it["className"].asText() }.toSet())
+        assertEquals(listOf("explyt.trace.StaticVmId", "explyt.trace.StaticVmId"), nodes.map { it["className"].asText() })
     }
 
     private fun companionCall(chain: JsonNode, methodName: String): JsonNode {
@@ -433,6 +459,11 @@ class SpringBootApplicationMcpToolsetTraceCallChainTest : JavaCodeInsightFixture
                 fun ownParse(raw: String): String = parse(raw)
             }
             class OtherVmId {
+                companion object {
+                    fun parse(raw: String): String = raw
+                }
+            }
+            class Companion {
                 companion object {
                     fun parse(raw: String): String = raw
                 }
@@ -475,6 +506,7 @@ class SpringBootApplicationMcpToolsetTraceCallChainTest : JavaCodeInsightFixture
                 fun objectParse(raw: String): String = IdFormat.parse(raw)
                 fun nestedParse(raw: String): String = Outer.Inner().parse(raw)
                 fun nestedCompanionParse(raw: String): String = Outer.InnerId.parse(raw)
+                fun classNamedCompanionParse(raw: String): String = Companion.parse(raw)
                 fun twoParsers(raw: String): String = VmId.parse(raw) + OtherVmId.parse(raw)
             }
         """.trimIndent()

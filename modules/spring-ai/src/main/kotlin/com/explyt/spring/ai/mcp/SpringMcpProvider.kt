@@ -1728,7 +1728,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             id = id,
             layer = containingClass?.let { detectSpringLayer(it) },
             reachedBy = traced.reachedBy?.name,
-            className = containingClass?.qualifiedName ?: containingClass?.name,
+            className = SourceNames.qualifiedOwnerNameOf(method) ?: containingClass?.name,
             methodName = SourceNames.sourceNameOf(method),
             filePath = position.filePath,
             library = position.library,
