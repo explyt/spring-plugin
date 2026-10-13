@@ -17,8 +17,7 @@ import org.jetbrains.kotlin.psi.KtObjectDeclaration
 internal object SourceNames {
 
     fun shortNameOf(method: PsiMethod): String {
-        val declaration = kotlinOwnerOf(method)
-        val owner = if (declaration is KtObjectDeclaration && declaration.isCompanion()) {
+        val owner = if (isCompanionMember(method)) {
             sourceOwnerOf(method)?.name ?: method.containingClass?.name ?: "?"
         } else {
             method.containingClass?.name ?: "?"
@@ -37,12 +36,14 @@ internal object SourceNames {
     fun qualifiedOwnerNameOf(method: PsiMethod): String? {
         val containingClass = method.containingClass ?: return null
         if (method.hasModifierProperty(PsiModifier.STATIC)) return containingClass.qualifiedName
-        val sourceOwner = shortNameOf(method).substringBeforeLast('.')
-        if (sourceOwner != containingClass.name) {
-            return qualifiedNameOf(method)?.substringBeforeLast('.') ?: containingClass.qualifiedName
+        if (isCompanionMember(method)) {
+            return sourceOwnerOf(method)?.fqName?.asString() ?: containingClass.qualifiedName
         }
         return containingClass.qualifiedName
     }
+
+    private fun isCompanionMember(method: PsiMethod): Boolean =
+        (kotlinOwnerOf(method) as? KtObjectDeclaration)?.isCompanion() == true
 
     private fun sourceOwnerOf(method: PsiMethod): KtClassOrObject? {
         val declaration = kotlinOwnerOf(method) ?: return null
