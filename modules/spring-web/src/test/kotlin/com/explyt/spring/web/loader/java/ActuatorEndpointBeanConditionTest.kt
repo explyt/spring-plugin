@@ -160,4 +160,27 @@ class ActuatorEndpointBeanConditionTest : ActuatorEndpointBeanConditionTestCase(
             class TwiceConfig { @Bean public TwiceEndpoint gatedTwice() { return new TwiceEndpoint(); } }
         """.trimIndent())
     }
+
+    override fun addPropertyGatedWebExtension() {
+        myFixture.addFileToProject("com/app/ExtEtlEndpoint.java", """
+            package com.app;
+            import org.springframework.boot.actuate.endpoint.annotation.Endpoint;
+            import org.springframework.boot.actuate.endpoint.annotation.ReadOperation;
+            import org.springframework.stereotype.Component;
+            @Component
+            @Endpoint(id = "extEtl")
+            public class ExtEtlEndpoint { @ReadOperation public String status() { return "endpoint"; } }
+        """.trimIndent())
+        myFixture.addFileToProject("com/app/ExtEtlWebExtension.java", """
+            package com.app;
+            import org.springframework.boot.actuate.endpoint.annotation.ReadOperation;
+            import org.springframework.boot.actuate.endpoint.web.annotation.EndpointWebExtension;
+            import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+            import org.springframework.stereotype.Component;
+            @Component
+            @EndpointWebExtension(endpoint = ExtEtlEndpoint.class)
+            @ConditionalOnProperty(name = "x.ext.enabled", havingValue = "true")
+            public class ExtEtlWebExtension { @ReadOperation public String status() { return "extension"; } }
+        """.trimIndent())
+    }
 }
