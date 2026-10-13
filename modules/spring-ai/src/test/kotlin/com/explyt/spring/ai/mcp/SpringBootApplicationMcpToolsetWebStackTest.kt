@@ -7,11 +7,11 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.search.GlobalSearchScope
-import kotlinx.coroutines.runBlocking
 
 /**
  * How the endpoint tools classify a multipart parameter, by the web stack the application runs on.
@@ -122,7 +122,7 @@ class SpringBootApplicationMcpToolsetMixedStackTest : McpToolsetWebStackTestCase
         TestLibrary.kotlin_1_9_22,
     )
 
-    fun testMultipartRequestParamIsAPartWhenWebFluxSitsNextToServletMvc() = runBlocking<Unit> {
+    fun testMultipartRequestParamIsAPartWhenWebFluxSitsNextToServletMvc() = runBlockingReleasingWriteIntent<Unit> {
         assertDispatchers(servlet = true, reactive = true)
         addUploadController()
 
@@ -131,7 +131,7 @@ class SpringBootApplicationMcpToolsetMixedStackTest : McpToolsetWebStackTestCase
         }
     }
 
-    fun testReactiveExchangeTypesAreNotFrameworkSuppliedToAServletApplication() = runBlocking<Unit> {
+    fun testReactiveExchangeTypesAreNotFrameworkSuppliedToAServletApplication() = runBlockingReleasingWriteIntent<Unit> {
         assertDispatchers(servlet = true, reactive = true)
         assertResolving(SERVER_WEB_EXCHANGE, WEB_SESSION)
         addExchangeController()
@@ -150,7 +150,7 @@ class SpringBootApplicationMcpToolsetReactiveStackTest : McpToolsetWebStackTestC
         TestLibrary.kotlin_1_9_22,
     )
 
-    fun testRequestParamOfAReactiveApplicationStaysAQueryParameter() = runBlocking<Unit> {
+    fun testRequestParamOfAReactiveApplicationStaysAQueryParameter() = runBlockingReleasingWriteIntent<Unit> {
         assertDispatchers(servlet = false, reactive = true)
         addUploadController()
 
@@ -159,7 +159,7 @@ class SpringBootApplicationMcpToolsetReactiveStackTest : McpToolsetWebStackTestC
         }
     }
 
-    fun testReactiveExchangeTypesAreFrameworkSuppliedToAReactiveApplication() = runBlocking<Unit> {
+    fun testReactiveExchangeTypesAreFrameworkSuppliedToAReactiveApplication() = runBlockingReleasingWriteIntent<Unit> {
         assertDispatchers(servlet = false, reactive = true)
         assertResolving(SERVER_WEB_EXCHANGE, WEB_SESSION)
         addExchangeController()
@@ -170,7 +170,7 @@ class SpringBootApplicationMcpToolsetReactiveStackTest : McpToolsetWebStackTestC
         )
     }
 
-    fun testSuspendHandlerReportsItsDeclaredParametersWithTheExchangeFrameworkSupplied() = runBlocking<Unit> {
+    fun testSuspendHandlerReportsItsDeclaredParametersWithTheExchangeFrameworkSupplied() = runBlockingReleasingWriteIntent<Unit> {
         assertDispatchers(servlet = false, reactive = true)
         assertResolving(SERVER_WEB_EXCHANGE)
         myFixture.addFileToProject(

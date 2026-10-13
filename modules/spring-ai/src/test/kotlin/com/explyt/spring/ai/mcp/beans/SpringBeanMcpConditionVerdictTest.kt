@@ -15,13 +15,13 @@ import com.explyt.spring.core.service.conditional.ConditionVerdict
 import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.mcpserver.McpToolset
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiFile
 import com.intellij.testFramework.IndexingTestUtil
-import kotlinx.coroutines.runBlocking
 
 class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
 
@@ -44,7 +44,7 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testPropertyGatedControllerWithoutPropertyIsReportedAsInactiveCandidate() = runBlocking {
+    fun testPropertyGatedControllerWithoutPropertyIsReportedAsInactiveCandidate() = runBlockingReleasingWriteIntent {
         addProperties("admin.marker=present")
         addSyncAdminController()
         assertVerdict<ConditionVerdict.Inactive>(SYNC_ADMIN_CONTROLLER)
@@ -64,7 +64,7 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
         assertTrue("detail must name the property, got $condition", "admin.sync.enabled" in condition["detail"].asText())
     }
 
-    fun testPropertyGatedControllerWithPropertyIsAnUnconditionedCandidate() = runBlocking {
+    fun testPropertyGatedControllerWithPropertyIsAnUnconditionedCandidate() = runBlockingReleasingWriteIntent {
         addProperties("admin.sync.enabled=true")
         addSyncAdminController()
         assertVerdict<ConditionVerdict.Active>(SYNC_ADMIN_CONTROLLER)
@@ -80,7 +80,7 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
         assertFalse(CONDITIONS_UNDECIDED in limitationsOf(root))
     }
 
-    fun testUnresolvablePlaceholderMakesTheCandidateUndecided() = runBlocking {
+    fun testUnresolvablePlaceholderMakesTheCandidateUndecided() = runBlockingReleasingWriteIntent {
         addProperties("admin.sync.enabled=\${SYNC_ENABLED}")
         addSyncAdminController()
         assertUndecidedBecause(SYNC_ADMIN_CONTROLLER, ConditionReason.PROPERTY_UNRESOLVABLE)
@@ -98,7 +98,7 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
         assertTrue("detail must name the property, got $condition", "admin.sync.enabled" in condition["detail"].asText())
     }
 
-    fun testCustomConditionMakesTheCandidateUndecided() = runBlocking {
+    fun testCustomConditionMakesTheCandidateUndecided() = runBlockingReleasingWriteIntent {
         addJava(
             "MyCondition",
             """
@@ -142,7 +142,7 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
         assertEquals(CONDITIONAL, condition["annotation"].asText())
     }
 
-    fun testUnresolvableProfileMakesTheCandidateUndecidedAndNamesTheProfileLimitation() = runBlocking {
+    fun testUnresolvableProfileMakesTheCandidateUndecidedAndNamesTheProfileLimitation() = runBlockingReleasingWriteIntent {
         addJava(
             "ProfiledService",
             """
@@ -170,7 +170,7 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
         assertEquals(listOf("PROFILE_NOT_DECIDABLE"), reasonsOf(condition))
     }
 
-    fun testTypeLookupKeepsTheActiveBeanAndListsTheInactiveOneSeparately() = runBlocking {
+    fun testTypeLookupKeepsTheActiveBeanAndListsTheInactiveOneSeparately() = runBlockingReleasingWriteIntent {
         addFooBeans()
         assertVerdict<ConditionVerdict.Active>(ACTIVE_FOO)
         assertVerdict<ConditionVerdict.Inactive>(INACTIVE_FOO)
@@ -188,7 +188,7 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
         assertEquals("INACTIVE", conditionOf(inactive)["state"].asText())
     }
 
-    fun testAnUndecidedBeanOfAnotherTypeDoesNotMakeTheQueryPartial() = runBlocking {
+    fun testAnUndecidedBeanOfAnotherTypeDoesNotMakeTheQueryPartial() = runBlockingReleasingWriteIntent {
         addFooBeans()
         addProperties("admin.sync.enabled=\${SYNC_ENABLED}")
         addSyncAdminController()
@@ -203,7 +203,7 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
         assertEquals("activeFoo", root["candidates"].single()["name"].asText())
     }
 
-    fun testInjectionPointWhoseOnlyCandidateIsInactiveListsIt() = runBlocking {
+    fun testInjectionPointWhoseOnlyCandidateIsInactiveListsIt() = runBlockingReleasingWriteIntent {
         addProperties("admin.marker=present")
         addSyncAdminController()
         val consumer = addJava(
@@ -236,7 +236,7 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
         assertEquals("INACTIVE", conditionOf(inactive)["state"].asText())
     }
 
-    fun testDisabledConditionFilterIsNamedAsALimitation() = runBlocking {
+    fun testDisabledConditionFilterIsNamedAsALimitation() = runBlockingReleasingWriteIntent {
         addProperties("admin.marker=present")
         addSyncAdminController()
         val settings = SpringToolRunConfigurationsSettingsState.getInstance()
@@ -259,7 +259,7 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
         }
     }
 
-    fun testTheDefaultAnswerWithAnInactiveCandidateFitsTheClientBudget() = runBlocking {
+    fun testTheDefaultAnswerWithAnInactiveCandidateFitsTheClientBudget() = runBlockingReleasingWriteIntent {
         addProperties("admin.marker=present")
         addSyncAdminController()
         assertVerdict<ConditionVerdict.Inactive>(SYNC_ADMIN_CONTROLLER)
@@ -272,7 +272,7 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
         assertTrue("payload was ${json.length} chars", json.length <= MAX_DEFAULT_PAYLOAD)
     }
 
-    fun testTwoUndecidedConditionsOnOneBeanAreBothReported() = runBlocking {
+    fun testTwoUndecidedConditionsOnOneBeanAreBothReported() = runBlockingReleasingWriteIntent {
         addProperties("twin.enabled=\${TWIN_ENABLED}")
         addMyCondition()
         addJava(
@@ -307,7 +307,7 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
         assertEquals(2, reasonsOf(condition).size)
     }
 
-    fun testDetailsAddIdAndAssumptionsToAnInactiveCandidate() = runBlocking {
+    fun testDetailsAddIdAndAssumptionsToAnInactiveCandidate() = runBlockingReleasingWriteIntent {
         addMissingBeanService()
         val verdict = verdictOf(NEEDS_MISSING)
         assertTrue("Precondition: NeedsMissing must be Inactive, got $verdict", verdict is ConditionVerdict.Inactive)
@@ -326,7 +326,7 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
         assertFalse("an INACTIVE condition carries no reasons, got $condition", condition.has("reasons"))
     }
 
-    fun testWithoutDetailsAnInactiveCandidateHasIdButNoAssumptions() = runBlocking {
+    fun testWithoutDetailsAnInactiveCandidateHasIdButNoAssumptions() = runBlockingReleasingWriteIntent {
         addMissingBeanService()
         assertVerdict<ConditionVerdict.Inactive>(NEEDS_MISSING)
 
@@ -336,7 +336,7 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
         assertFalse("compact answer carries no assumptions, got $inactive", conditionOf(inactive).has("assumptions"))
     }
 
-    fun testInjectionWithAMatchingQualifierListsTheInactiveBean() = runBlocking {
+    fun testInjectionWithAMatchingQualifierListsTheInactiveBean() = runBlockingReleasingWriteIntent {
         val root = qualifiedInjection("fast")
 
         assertEquals("NO_CANDIDATE", root["outcome"].asText())
@@ -345,14 +345,14 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
         assertEquals("INACTIVE", conditionOf(inactive)["state"].asText())
     }
 
-    fun testInjectionWithAnotherQualifierDoesNotListTheInactiveBean() = runBlocking {
+    fun testInjectionWithAnotherQualifierDoesNotListTheInactiveBean() = runBlockingReleasingWriteIntent {
         val root = qualifiedInjection("slow")
 
         assertEquals("NO_CANDIDATE", root["outcome"].asText())
         assertTrue("no inactive candidate expected, got $root", inactiveCandidatesOf(root).isEmpty())
     }
 
-    fun testLookupByAnAliasOfAnInactiveBeanNamesTheMatchedAlias() = runBlocking {
+    fun testLookupByAnAliasOfAnInactiveBeanNamesTheMatchedAlias() = runBlockingReleasingWriteIntent {
         addJava(
             "Engine",
             """
@@ -391,7 +391,7 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
         assertEquals("BEAN_METHOD", inactive["kind"].asText())
     }
 
-    fun testFactoryMethodOfAnInactiveConfigurationNamesTheConfigurationAsCarrier() = runBlocking {
+    fun testFactoryMethodOfAnInactiveConfigurationNamesTheConfigurationAsCarrier() = runBlockingReleasingWriteIntent {
         addJava(
             "EtlJob",
             """
@@ -433,7 +433,7 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
         assertTrue("detail must name the property, got $condition", "etl.enabled" in condition["detail"].asText())
     }
 
-    fun testProfileInactiveBeanIsFilteredBeforeTheVerdictAndStaysUnlisted() = runBlocking {
+    fun testProfileInactiveBeanIsFilteredBeforeTheVerdictAndStaysUnlisted() = runBlockingReleasingWriteIntent {
         addProperties("spring.profiles.active=prod")
         addJava(
             "DevOnlyService",
@@ -458,7 +458,7 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
         assertTrue("profile-inactive beans are not listed yet, got $root", inactiveCandidatesOf(root).isEmpty())
     }
 
-    fun testManyInactiveCandidatesAreSampledWithinTheDefaultBudget() = runBlocking {
+    fun testManyInactiveCandidatesAreSampledWithinTheDefaultBudget() = runBlockingReleasingWriteIntent {
         addWorkers(active = 0, inactive = INACTIVE_WORKERS)
 
         val json = toolset().findSpringBean(projectPath = project.basePath!!, typeFqn = WORKER)
@@ -472,7 +472,7 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
         assertTrue("a short sample is flagged, got $json", root["inactiveCandidatesTruncated"]?.asBoolean() == true)
     }
 
-    fun testASingleInactiveCandidateIsCountedAndNotFlaggedTruncated() = runBlocking {
+    fun testASingleInactiveCandidateIsCountedAndNotFlaggedTruncated() = runBlockingReleasingWriteIntent {
         addProperties("admin.marker=present")
         addSyncAdminController()
         assertVerdict<ConditionVerdict.Inactive>(SYNC_ADMIN_CONTROLLER)
@@ -484,7 +484,7 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
         assertFalse("a complete sample carries no truncation key, got $root", root.has("inactiveCandidatesTruncated"))
     }
 
-    fun testAContinuationPageCountsInactiveCandidatesWithoutRepeatingThem() = runBlocking {
+    fun testAContinuationPageCountsInactiveCandidatesWithoutRepeatingThem() = runBlockingReleasingWriteIntent {
         addWorkers(active = DEFAULT_LIMIT + 1, inactive = 1)
 
         val first = call(typeFqn = WORKER)
@@ -504,7 +504,7 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
         assertFalse("page 2 does not repeat the sample, got $second", second.has("inactiveCandidates"))
     }
 
-    fun testManyInactiveCandidatesDoNotCrowdOutActiveOnes() = runBlocking {
+    fun testManyInactiveCandidatesDoNotCrowdOutActiveOnes() = runBlockingReleasingWriteIntent {
         addWorkers(active = 3, inactive = INACTIVE_WORKERS)
 
         val json = toolset().findSpringBean(projectPath = project.basePath!!, typeFqn = WORKER)
@@ -517,7 +517,7 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
         assertEquals(INACTIVE_WORKERS, root["inactiveCount"]?.asInt())
     }
 
-    fun testANonConstantQualifierEmitsNoUnfilteredInactiveCandidates() = runBlocking {
+    fun testANonConstantQualifierEmitsNoUnfilteredInactiveCandidates() = runBlockingReleasingWriteIntent {
         val root = qualifiedInjection("EngineNames.FAST", nonConstantNames = true)
 
         assertTrue(
@@ -529,7 +529,7 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
         assertFalse("no unfiltered inactive count, got $root", root.has("inactiveCount"))
     }
 
-    fun testANativeAnswerWithTheFilterDisabledClaimsNoConditionEvaluation() = runBlocking {
+    fun testANativeAnswerWithTheFilterDisabledClaimsNoConditionEvaluation() = runBlockingReleasingWriteIntent {
         val nativeFixture = NativeBeanListingFixture(project)
         val settings = SpringToolRunConfigurationsSettingsState.getInstance()
         val enabled = settings.isBeanFilterEnabled

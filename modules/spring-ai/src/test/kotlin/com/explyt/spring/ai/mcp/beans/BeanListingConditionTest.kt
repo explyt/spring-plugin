@@ -19,6 +19,7 @@ import com.explyt.spring.core.service.conditional.ConditionVerdict
 import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -28,7 +29,6 @@ import com.intellij.psi.PsiClassType
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiFile
 import com.intellij.testFramework.IndexingTestUtil
-import kotlinx.coroutines.runBlocking
 
 class BeanListingConditionTest : ExplytJavaLightTestCase() {
 
@@ -61,7 +61,7 @@ class BeanListingConditionTest : ExplytJavaLightTestCase() {
         }
     }
 
-    fun testControllerExcludedByItsConditionIsListedLastAsInactive() = runBlocking<Unit> {
+    fun testControllerExcludedByItsConditionIsListedLastAsInactive() = runBlockingReleasingWriteIntent<Unit> {
         addProperties("admin.marker=present")
         addActiveControllers()
         addSyncAdminController()
@@ -94,7 +94,7 @@ class BeanListingConditionTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testControllerWhoseConditionHoldsIsAnOrdinaryRow() = runBlocking<Unit> {
+    fun testControllerWhoseConditionHoldsIsAnOrdinaryRow() = runBlockingReleasingWriteIntent<Unit> {
         addProperties("admin.sync.enabled=true")
         addActiveControllers()
         addSyncAdminController()
@@ -109,7 +109,7 @@ class BeanListingConditionTest : ExplytJavaLightTestCase() {
         assertTrue("no project row is conditioned, got $beans", projectRows(beans).none { it.has("condition") })
     }
 
-    fun testUnresolvablePlaceholderMakesTheRowUndecidedInItsOrdinaryPlace() = runBlocking<Unit> {
+    fun testUnresolvablePlaceholderMakesTheRowUndecidedInItsOrdinaryPlace() = runBlockingReleasingWriteIntent<Unit> {
         addProperties("admin.sync.enabled=\${SYNC_ENABLED}")
         addActiveControllers()
         addSyncAdminController()
@@ -133,7 +133,7 @@ class BeanListingConditionTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testUnconditionedServiceRowIsUnchanged() = runBlocking<Unit> {
+    fun testUnconditionedServiceRowIsUnchanged() = runBlockingReleasingWriteIntent<Unit> {
         addProperties("admin.marker=present")
         addJava(
             "PlainService",
@@ -158,7 +158,7 @@ class BeanListingConditionTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testProjectOriginFilterKeepsTheInactiveProjectRow() = runBlocking<Unit> {
+    fun testProjectOriginFilterKeepsTheInactiveProjectRow() = runBlockingReleasingWriteIntent<Unit> {
         addProperties("admin.marker=present")
         addActiveControllers()
         addSyncAdminController()
@@ -173,7 +173,7 @@ class BeanListingConditionTest : ExplytJavaLightTestCase() {
         assertTrue(beans.all { it["origin"].asText() == PROJECT })
     }
 
-    fun testLibraryOriginFilterLeavesTheInactiveProjectRowOut() = runBlocking<Unit> {
+    fun testLibraryOriginFilterLeavesTheInactiveProjectRowOut() = runBlockingReleasingWriteIntent<Unit> {
         addProperties("admin.marker=present")
         addActiveControllers()
         addSyncAdminController()
@@ -192,7 +192,7 @@ class BeanListingConditionTest : ExplytJavaLightTestCase() {
         assertEquals(beans.size, page["totalCount"].asInt())
     }
 
-    fun testInactiveRowIsReachedThroughTheContinuation() = runBlocking<Unit> {
+    fun testInactiveRowIsReachedThroughTheContinuation() = runBlockingReleasingWriteIntent<Unit> {
         addProperties("admin.marker=present")
         addActiveControllers()
         addSyncAdminController()
@@ -219,7 +219,7 @@ class BeanListingConditionTest : ExplytJavaLightTestCase() {
         assertTrue("Terminal nextOffset is present as JSON null: $second", second["nextOffset"]?.isNull == true)
     }
 
-    fun testTogglingTheConditionPropertyChangesTheRevision() = runBlocking<Unit> {
+    fun testTogglingTheConditionPropertyChangesTheRevision() = runBlockingReleasingWriteIntent<Unit> {
         val properties = addProperties("admin.marker=present")
         addActiveControllers()
         addSyncAdminController()
@@ -240,7 +240,7 @@ class BeanListingConditionTest : ExplytJavaLightTestCase() {
         assertEquals("RESULT_CHANGED", stale["error"]["code"].asText())
     }
 
-    fun testDefaultPageWithThreeInactiveRowsFitsTheClientBudget() = runBlocking<Unit> {
+    fun testDefaultPageWithThreeInactiveRowsFitsTheClientBudget() = runBlockingReleasingWriteIntent<Unit> {
         addProperties("admin.marker=present")
         INACTIVE_CONTROLLERS.forEach { name ->
             addJava(
@@ -277,7 +277,7 @@ class BeanListingConditionTest : ExplytJavaLightTestCase() {
         assertFalse(page["truncated"].asBoolean())
     }
 
-    fun testDisabledConditionEvaluationListsNoInactiveRow() = runBlocking<Unit> {
+    fun testDisabledConditionEvaluationListsNoInactiveRow() = runBlockingReleasingWriteIntent<Unit> {
         addProperties("admin.marker=present")
         addActiveControllers()
         addSyncAdminController()
@@ -300,7 +300,7 @@ class BeanListingConditionTest : ExplytJavaLightTestCase() {
         }
     }
 
-    fun testInactiveLibraryBeansAreCountedInsteadOfListedByDefault() = runBlocking<Unit> {
+    fun testInactiveLibraryBeansAreCountedInsteadOfListedByDefault() = runBlockingReleasingWriteIntent<Unit> {
         addProperties("admin.marker=present")
         addActiveControllers()
         addSyncAdminController()
@@ -325,7 +325,7 @@ class BeanListingConditionTest : ExplytJavaLightTestCase() {
         assertEquals(listOf(SYNC_ADMIN), beans.filter { stateOf(it) == INACTIVE }.map { it["beanName"].asText() })
     }
 
-    fun testLibraryOriginListsInactiveLibraryBeansAfterTheActiveOnes() = runBlocking<Unit> {
+    fun testLibraryOriginListsInactiveLibraryBeansAfterTheActiveOnes() = runBlockingReleasingWriteIntent<Unit> {
         addProperties("admin.marker=present")
         addActiveControllers()
         addSyncAdminController()
@@ -350,7 +350,7 @@ class BeanListingConditionTest : ExplytJavaLightTestCase() {
         assertFalse("listed library rows are not counted again, got $page", page.has(INACTIVE_LIBRARY_COUNT))
     }
 
-    fun testProjectOriginCarriesNoInactiveLibraryCount() = runBlocking<Unit> {
+    fun testProjectOriginCarriesNoInactiveLibraryCount() = runBlockingReleasingWriteIntent<Unit> {
         addProperties("admin.marker=present")
         addActiveControllers()
         addSyncAdminController()
@@ -366,7 +366,7 @@ class BeanListingConditionTest : ExplytJavaLightTestCase() {
         assertFalse("a PROJECT listing has no library rows to count, got $page", page.has(INACTIVE_LIBRARY_COUNT))
     }
 
-    fun testComponentListingIsNotFloodedByInactiveLibraryBeans() = runBlocking<Unit> {
+    fun testComponentListingIsNotFloodedByInactiveLibraryBeans() = runBlockingReleasingWriteIntent<Unit> {
         copyBeanQueryFixture()
         assertTrue(
             "Precondition: the model excludes library beans by a condition",
@@ -389,7 +389,7 @@ class BeanListingConditionTest : ExplytJavaLightTestCase() {
         assertTrue(beans.none { it["origin"]?.asText() == LIBRARY && stateOf(it) == INACTIVE })
     }
 
-    fun testDefaultPageWithAnInactiveLibraryCountFitsTheClientBudget() = runBlocking<Unit> {
+    fun testDefaultPageWithAnInactiveLibraryCountFitsTheClientBudget() = runBlockingReleasingWriteIntent<Unit> {
         addProperties("admin.marker=present")
         addActiveControllers()
         addSyncAdminController()
@@ -410,7 +410,7 @@ class BeanListingConditionTest : ExplytJavaLightTestCase() {
         assertTrue("MCP-wrapped payload was ${wrappedLength(json)} chars", wrappedLength(json) <= MAX_CLIENT_PAYLOAD)
     }
 
-    fun testNativeRowsCarryNoStaticCondition() = runBlocking<Unit> {
+    fun testNativeRowsCarryNoStaticCondition() = runBlockingReleasingWriteIntent<Unit> {
         addProperties("admin.marker=present")
         addActiveControllers()
         addSyncAdminController()

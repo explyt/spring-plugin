@@ -7,6 +7,7 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.test.TestLibrary
 import com.explyt.spring.test.addFromMaven
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.explyt.spring.web.service.SpringWebEndpointsSearcher
@@ -37,7 +38,6 @@ import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.builders.JavaModuleFixtureBuilder
 import com.intellij.testFramework.fixtures.JavaCodeInsightFixtureTestCase
-import kotlinx.coroutines.runBlocking
 import java.io.File
 
 /**
@@ -73,7 +73,7 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
      * Only project methods are traced. `Instant.now`, `trim` and `buildList` name nothing the caller can change, and
      * listing them as chain nodes buried the handful of methods that make up the request path.
      */
-    fun testChainHoldsProjectMethodsOnly() = runBlocking<Unit> {
+    fun testChainHoldsProjectMethodsOnly() = runBlockingReleasingWriteIntent<Unit> {
         val chain = traceFromHandler()["chain"]
 
         assertEquals(
@@ -99,7 +99,7 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
      * A private helper of the controller is still the controller. Charging a layer for it stopped a depth-3 trace
      * inside the repository, before the SQL-building method where the defect behind the original report was.
      */
-    fun testDepthCountsCallsIntoOtherClassesOnly() = runBlocking<Unit> {
+    fun testDepthCountsCallsIntoOtherClassesOnly() = runBlockingReleasingWriteIntent<Unit> {
         val names = traceFromHandler(depth = 1)["chain"].map(::nameOf)
 
         assertEquals(
@@ -122,7 +122,7 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
      * The start method used to be charged a layer of its own, which left the store's node missing at 3 and
      * made it appear only at 4.
      */
-    fun testDepthFollowsThatManyCallsIntoOtherClassesFromTheStart() = runBlocking<Unit> {
+    fun testDepthFollowsThatManyCallsIntoOtherClassesFromTheStart() = runBlockingReleasingWriteIntent<Unit> {
         val chain = traceLayers(REPORT_HANDLER, depth = 3)["chain"]
 
         assertEquals(
@@ -147,7 +147,7 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
         )
     }
 
-    fun testDepthTwoStopsBeforeTheThirdCallIntoAnotherClass() = runBlocking<Unit> {
+    fun testDepthTwoStopsBeforeTheThirdCallIntoAnotherClass() = runBlockingReleasingWriteIntent<Unit> {
         val chain = traceLayers(REPORT_HANDLER, depth = 2)["chain"]
 
         assertEquals(
@@ -160,7 +160,7 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
     }
 
     /** A private helper between the start method and the service is the same class, so it costs no layer. */
-    fun testHelperBetweenTheStartAndTheServiceCostsNoDepth() = runBlocking<Unit> {
+    fun testHelperBetweenTheStartAndTheServiceCostsNoDepth() = runBlockingReleasingWriteIntent<Unit> {
         val chain = traceLayers(HELPED_HANDLER, depth = 1)["chain"]
 
         assertEquals(
@@ -175,7 +175,7 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
     }
 
     /** A bean injected by its interface is followed to the implementation, where the behaviour actually is. */
-    fun testInterfaceCallIsFollowedToItsImplementation() = runBlocking<Unit> {
+    fun testInterfaceCallIsFollowedToItsImplementation() = runBlockingReleasingWriteIntent<Unit> {
         val head = traceFromHandler()["chain"][0]
 
         val serviceCall = head["callsInto"].single { it["target"].asText() == "ShortLinkActivityServiceImpl.activity" }
@@ -188,7 +188,7 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
      * A call reports the line it is made on, which is where a new argument is threaded through - not the callee's
      * declaration line, which for a framework method was a line inside a jar.
      */
-    fun testCallReportsItsCallSiteLine() = runBlocking<Unit> {
+    fun testCallReportsItsCallSiteLine() = runBlockingReleasingWriteIntent<Unit> {
         val head = traceFromHandler()["chain"][0]
 
         val serviceCall = head["callsInto"].single { it["target"].asText() == "ShortLinkActivityServiceImpl.activity" }
@@ -200,7 +200,7 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
      * inherited from `CrudRepository`: both are where the request reaches the database, and both are reported the
      * same way - an external call named after the project repository.
      */
-    fun testDeclaredAndInheritedRepositoryMethodsAreReportedAlike() = runBlocking<Unit> {
+    fun testDeclaredAndInheritedRepositoryMethodsAreReportedAlike() = runBlockingReleasingWriteIntent<Unit> {
         val calls = repositoryNode()["callsInto"].associateBy { it["target"].asText() }
 
         for (target in listOf("ShortLinkRepository.findById", "ShortLinkRepository.findBySlug")) {
@@ -215,7 +215,7 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
      * A library method called on an injected bean is where the I/O happens - the SQL runs in `JdbcTemplate.query`.
      * Dropping it with the rest of the library calls left the chain without its last, most interesting edge.
      */
-    fun testCallOnAnInjectedLibraryBeanIsListedAsExternal() = runBlocking<Unit> {
+    fun testCallOnAnInjectedLibraryBeanIsListedAsExternal() = runBlockingReleasingWriteIntent<Unit> {
         val calls = repositoryNode()["callsInto"]
 
         val query = calls.single { it["target"].asText() == "JdbcTemplate.queryForList" }
@@ -230,7 +230,7 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
     }
 
     /** An injected JDK type - a `Clock` - is plumbing: reading the time is not where the request leaves the application. */
-    fun testCallOnAnInjectedJdkTypeIsNotListed() = runBlocking<Unit> {
+    fun testCallOnAnInjectedJdkTypeIsNotListed() = runBlockingReleasingWriteIntent<Unit> {
         val service = traceFromHandler()["chain"].single { nameOf(it) == "ShortLinkActivityServiceImpl.activity" }
 
         assertEquals(
@@ -243,7 +243,7 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
      * `layer` is the stereotype of the class, which a private helper shares with the bean method calling it; what
      * tells the two apart is how the method was reached. A Kotlin `object` is not a bean and has no layer.
      */
-    fun testNodeSaysWhetherItIsAHelperOrABeanEntryPoint() = runBlocking<Unit> {
+    fun testNodeSaysWhetherItIsAHelperOrABeanEntryPoint() = runBlockingReleasingWriteIntent<Unit> {
         val chain = traceFromHandler()["chain"].associateBy(::nameOf)
 
         assertTrue("The starting method is reached by nothing", chain.getValue("ShortLinkAdminController.activity")["reachedBy"].isNull)
@@ -264,7 +264,7 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
      * The JVM signature of a Kotlin extension function carries its receiver as `$this$minusWindow`, a parameter no
      * caller passes and nobody can search for.
      */
-    fun testParametersAreTheDeclaredOnes() = runBlocking<Unit> {
+    fun testParametersAreTheDeclaredOnes() = runBlockingReleasingWriteIntent<Unit> {
         val chain = traceFromHandler()["chain"].associateBy(::nameOf)
 
         assertEquals(listOf("window"), chain.getValue("ShortLinksKt.minusWindow")["parameters"].map { it.asText() })
@@ -272,7 +272,7 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
     }
 
     /** A Kotlin `internal` function is reported by its source name, not by the mangled JVM name nobody can search. */
-    fun testInternalFunctionKeepsItsSourceName() = runBlocking<Unit> {
+    fun testInternalFunctionKeepsItsSourceName() = runBlockingReleasingWriteIntent<Unit> {
         val chain = traceFromHandler()["chain"]
 
         assertTrue(chain.any { it["methodName"].asText() == "activitySql" })
@@ -286,7 +286,7 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
      * Test references are what a signature change breaks. Searching them for `Instant.now` as well listed every test
      * of the project that reads the clock; only tests calling a traced project method belong here.
      */
-    fun testTestReferencesCoverTracedProjectMethodsOnly() = runBlocking<Unit> {
+    fun testTestReferencesCoverTracedProjectMethodsOnly() = runBlockingReleasingWriteIntent<Unit> {
         val chain = traceFromHandler(includeTests = true)["chain"]
 
         val referenced = chain.filter { node -> node["testReferences"].any { it["via"].isNull } }.map(::nameOf)
@@ -307,7 +307,7 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
      * A test written against the interface the bean is injected by - a caller or a mock of it - breaks as surely when
      * the implementation's signature changes, although it never names the implementation.
      */
-    fun testTestWrittenAgainstTheInterfaceIsListedOnTheImplementation() = runBlocking<Unit> {
+    fun testTestWrittenAgainstTheInterfaceIsListedOnTheImplementation() = runBlockingReleasingWriteIntent<Unit> {
         val references = implementationNode(traceFromHandler(includeTests = true)["chain"])["testReferences"]
 
         val throughInterfaces = references.filter { !it["via"].isNull }
@@ -325,7 +325,7 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
     }
 
     /** A web test reaches a handler through its URL, never by calling it, so no reference search finds it. */
-    fun testWebTestCallingTheHandlerUrlIsListedOnTheHandler() = runBlocking<Unit> {
+    fun testWebTestCallingTheHandlerUrlIsListedOnTheHandler() = runBlockingReleasingWriteIntent<Unit> {
         val chain = traceFromHandler(includeTests = true)["chain"]
 
         val byUrl = chain[0]["testUrlReferences"]
@@ -347,7 +347,7 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
      * IDEA Ultimate the reference search returned the request line too. The test sandbox disables that plugin, so the
      * fixture registers a reference of the same shape itself.
      */
-    fun testRequestFoundByUrlIsNotRepeatedAsAReference() = runBlocking<Unit> {
+    fun testRequestFoundByUrlIsNotRepeatedAsAReference() = runBlockingReleasingWriteIntent<Unit> {
         registerUrlReferencesToTheHandler()
         val requestLine = lineOf(WEB_TEST_SOURCE, "get(\"/api/short-links/1/activity\")")
         val webTest = "$TEST_ROOT/com/example/links/ShortLinkWebTest.kt"
@@ -371,7 +371,7 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
      * A MockMvc request never leaves the JVM: the host it names - a brand, a tenant - becomes the request's server
      * name, so the request still reaches the handler under test.
      */
-    fun testMockMvcRequestToAnyHostIsListedOnTheHandler() = runBlocking<Unit> {
+    fun testMockMvcRequestToAnyHostIsListedOnTheHandler() = runBlockingReleasingWriteIntent<Unit> {
         addSource(BRAND_ROOT, "com/example/links/ShortLinkBrandTest.kt", BRAND_TEST_SOURCE, isTestSource = true)
 
         val head = traceFromHandler(includeTests = true)["chain"][0]
@@ -386,7 +386,7 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
      * A `RANDOM_PORT` test sends its request over the network to this machine, so it reaches the handler; the same
      * request to another host is a call to another service.
      */
-    fun testRealClientToThisMachineIsListedOnTheHandler() = runBlocking<Unit> {
+    fun testRealClientToThisMachineIsListedOnTheHandler() = runBlockingReleasingWriteIntent<Unit> {
         addSource(BRAND_ROOT, "com/example/links/ShortLinkClientTest.kt", CLIENT_TEST_SOURCE, isTestSource = true)
 
         val head = traceFromHandler(includeTests = true)["chain"][0]
@@ -401,7 +401,7 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
      * Dropping a request from the references must not drop a call of the handler: a test calling it directly breaks
      * on a signature change, also when a request to its URL sits on the same line.
      */
-    fun testDirectCallOfTheHandlerStaysAReference() = runBlocking<Unit> {
+    fun testDirectCallOfTheHandlerStaysAReference() = runBlockingReleasingWriteIntent<Unit> {
         addSource(BRAND_ROOT, "com/example/links/ShortLinkBrandTest.kt", BRAND_TEST_SOURCE, isTestSource = true)
         registerUrlReferencesToTheHandler()
 
@@ -447,7 +447,7 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
             element.manager.areElementsEquivalent(element.navigationElement, resolve().navigationElement)
     }
 
-    fun testBareRequestMappingListsTestRequestsOfEveryVerb() = runBlocking<Unit> {
+    fun testBareRequestMappingListsTestRequestsOfEveryVerb() = runBlockingReleasingWriteIntent<Unit> {
         addSource(ANY_ROOT, ANY_MAIN_FILE, ANY_MAIN_SOURCE)
         addSource(ANY_TEST_ROOT, ANY_TEST_FILE, ANY_TEST_SOURCE, isTestSource = true)
         assertEquals("Precondition: /any answers every method", listOf(emptyList<String>()), requestMethodsOf("/any"))
@@ -464,7 +464,7 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
         )
     }
 
-    fun testGetMappingIgnoresTestRequestsOfAnotherVerb() = runBlocking<Unit> {
+    fun testGetMappingIgnoresTestRequestsOfAnotherVerb() = runBlockingReleasingWriteIntent<Unit> {
         addSource(ANY_ROOT, ANY_MAIN_FILE, ANY_MAIN_SOURCE)
         addSource(ANY_TEST_ROOT, ANY_TEST_FILE, ANY_TEST_SOURCE, isTestSource = true)
         assertEquals("Precondition: /only-get answers GET", listOf(listOf("GET")), requestMethodsOf("/only-get"))
@@ -492,7 +492,7 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
     )
 
     /** Absent means "not requested"; an empty list would claim that no test depends on the method. */
-    fun testTestFieldsAreAbsentWhenTestsAreNotRequested() = runBlocking<Unit> {
+    fun testTestFieldsAreAbsentWhenTestsAreNotRequested() = runBlockingReleasingWriteIntent<Unit> {
         val chain = traceFromHandler(includeTests = false)["chain"]
 
         assertTrue(
@@ -510,7 +510,7 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
      * cache hit, another thread. They are read from the method and from its class, and a project annotation carrying
      * one as a meta-annotation is reported as the annotation it stands for.
      */
-    fun testProxyAnnotationsAreListedWithWhereTheyAreDeclared() = runBlocking<Unit> {
+    fun testProxyAnnotationsAreListedWithWhereTheyAreDeclared() = runBlockingReleasingWriteIntent<Unit> {
         val chain = traceFromHandler()["chain"]
 
         assertEquals(
@@ -555,7 +555,7 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
      * The tool reports the cut too, not only the tracer: a chain of same-class helpers costs no depth, so a class
      * calling sixty of them in a row reaches the method cap.
      */
-    fun testChainCutAtItsSizeLimitIsReportedByTheTool() = runBlocking<Unit> {
+    fun testChainCutAtItsSizeLimitIsReportedByTheTool() = runBlockingReleasingWriteIntent<Unit> {
         addSource(LONG_ROOT, "com/example/links/LongChain.kt", LONG_CHAIN_SOURCE)
 
         val root = mapper.readTree(
@@ -572,7 +572,7 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
     }
 
     /** The defaults hold an ordinary controller-to-repository chain, test references included, in one page. */
-    fun testDefaultPageHoldsTheWholeChain() = runBlocking<Unit> {
+    fun testDefaultPageHoldsTheWholeChain() = runBlockingReleasingWriteIntent<Unit> {
         val root = traceFromHandler(includeTests = true)
 
         assertEquals("OK", root["status"].asText())
@@ -587,7 +587,7 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
      * A long chain is read in pages: each continuation names the revision of the first page, and together the pages
      * serve every node exactly once, in chain order, so a `node` id on one page resolves on another.
      */
-    fun testPagesContinueThroughTheWholeChain() = runBlocking<Unit> {
+    fun testPagesContinueThroughTheWholeChain() = runBlockingReleasingWriteIntent<Unit> {
         val first = tracePage(limit = 3)
         assertTrue("Precondition: the chain must be longer than one page", first["truncated"].asBoolean())
 
@@ -603,7 +603,7 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
     }
 
     /** A page is measured on the finished answer, so a small budget ends it early instead of cutting a node. */
-    fun testCharacterBudgetEndsThePageBeforeTheLimit() = runBlocking<Unit> {
+    fun testCharacterBudgetEndsThePageBeforeTheLimit() = runBlockingReleasingWriteIntent<Unit> {
         val root = tracePage(limit = 50, maxChars = 1200)
 
         assertTrue(root["truncated"].asBoolean())
@@ -612,7 +612,7 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
     }
 
     /** A revision belongs to one query: continuing a different trace with it would stitch two chains together. */
-    fun testRevisionOfAnotherQueryIsRejected() = runBlocking<Unit> {
+    fun testRevisionOfAnotherQueryIsRejected() = runBlockingReleasingWriteIntent<Unit> {
         val first = tracePage(limit = 3)
 
         val other = tracePage(limit = 3, offset = 3, expectedRevision = first["revision"].asText(), depth = 2)
@@ -621,7 +621,7 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
         assertEquals("RESULT_CHANGED", other["error"]["code"].asText())
     }
 
-    fun testContinuationWithoutRevisionIsRejected() = runBlocking<Unit> {
+    fun testContinuationWithoutRevisionIsRejected() = runBlockingReleasingWriteIntent<Unit> {
         val root = tracePage(limit = 3, offset = 3)
 
         assertEquals("ERROR", root["status"].asText())
