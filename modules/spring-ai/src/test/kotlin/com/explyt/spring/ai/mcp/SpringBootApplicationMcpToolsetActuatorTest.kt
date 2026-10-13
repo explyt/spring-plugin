@@ -180,7 +180,7 @@ class SpringBootApplicationMcpToolsetActuatorTest : ExplytKotlinLightTestCase() 
      * The full Actuator listing is the largest answer a small project produces: without a default budget one call
      * returns it whole, past what a client holds, which is how a listing reached 100 KB on a real project.
      */
-    fun testFullActuatorListingIsPagedWithinTheDefaultBudget() = runBlocking<Unit> {
+    fun testFullActuatorListingIsPagedWithinTheDefaultBudget() = runBlockingReleasingWriteIntent<Unit> {
         val explicit = toolset.endpointListingPages(
             projectPath(), endpointType = "ACTUATOR", maxChars = BoundedPageWriter.MAX_CHARS, mapper = mapper
         )

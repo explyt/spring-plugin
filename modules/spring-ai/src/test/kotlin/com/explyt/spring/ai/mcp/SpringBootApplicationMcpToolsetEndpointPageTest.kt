@@ -7,11 +7,11 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.intellij.mcpserver.annotations.McpTool
-import kotlinx.coroutines.runBlocking
 import kotlin.reflect.KParameter
 import kotlin.reflect.full.callSuspendBy
 import kotlin.reflect.full.findAnnotation
@@ -43,7 +43,7 @@ class SpringBootApplicationMcpToolsetEndpointPageTest : ExplytJavaLightTestCase(
         myFixture.copyDirectoryToProject("springBootApp", "")
     }
 
-    fun testFindServesAPageWithinItsBudget() = runBlocking<Unit> {
+    fun testFindServesAPageWithinItsBudget() = runBlockingReleasingWriteIntent<Unit> {
         val unbounded = callJson(FIND, "urlPattern" to DEMO_URL)
         val maxChars = budgetForOneRecord(unbounded)
 
@@ -57,7 +57,7 @@ class SpringBootApplicationMcpToolsetEndpointPageTest : ExplytJavaLightTestCase(
         assertEquals(unbounded["totalCount"].asInt(), page["totalCount"].asInt())
     }
 
-    fun testFindContinuationServesEveryEndpointOnceInTheUnboundedOrder() = runBlocking<Unit> {
+    fun testFindContinuationServesEveryEndpointOnceInTheUnboundedOrder() = runBlockingReleasingWriteIntent<Unit> {
         val unbounded = callJson(FIND, "urlPattern" to DEMO_URL)
         val maxChars = budgetForOneRecord(unbounded)
 
@@ -74,7 +74,7 @@ class SpringBootApplicationMcpToolsetEndpointPageTest : ExplytJavaLightTestCase(
         assertEquals(identities(unbounded["endpoints"]), pages.flatMap { identities(it["endpoints"]) })
     }
 
-    fun testFindRejectsARevisionOfAnotherQuery() = runBlocking<Unit> {
+    fun testFindRejectsARevisionOfAnotherQuery() = runBlockingReleasingWriteIntent<Unit> {
         val unbounded = callJson(FIND, "urlPattern" to DEMO_URL)
         val maxChars = budgetForOneRecord(unbounded)
         val first = callJson(FIND, "urlPattern" to DEMO_URL, "maxChars" to maxChars)
@@ -93,7 +93,7 @@ class SpringBootApplicationMcpToolsetEndpointPageTest : ExplytJavaLightTestCase(
         assertResultChanged("another httpMethod", otherMethod)
     }
 
-    fun testCompactListingServesAPageWithinItsBudget() = runBlocking<Unit> {
+    fun testCompactListingServesAPageWithinItsBudget() = runBlockingReleasingWriteIntent<Unit> {
         val unbounded = callJson(LIST, "controllerFilter" to WEB_PACKAGE, "compact" to true)
         val maxChars = budgetForOneRecord(unbounded)
 
@@ -106,7 +106,7 @@ class SpringBootApplicationMcpToolsetEndpointPageTest : ExplytJavaLightTestCase(
         assertEquals(page["endpoints"].size(), page["nextOffset"].asInt())
     }
 
-    fun testCompactListingContinuationServesEveryEndpointOnceInTheUnboundedOrder() = runBlocking<Unit> {
+    fun testCompactListingContinuationServesEveryEndpointOnceInTheUnboundedOrder() = runBlockingReleasingWriteIntent<Unit> {
         val unbounded = callJson(LIST, "controllerFilter" to WEB_PACKAGE, "compact" to true)
         val maxChars = budgetForOneRecord(unbounded)
 
@@ -124,7 +124,7 @@ class SpringBootApplicationMcpToolsetEndpointPageTest : ExplytJavaLightTestCase(
         assertEquals(identities(unbounded["endpoints"]), pages.flatMap { identities(it["endpoints"]) })
     }
 
-    fun testListingRejectsARevisionOfAnotherQuery() = runBlocking<Unit> {
+    fun testListingRejectsARevisionOfAnotherQuery() = runBlockingReleasingWriteIntent<Unit> {
         val unbounded = callJson(LIST, "controllerFilter" to WEB_PACKAGE, "compact" to true)
         val maxChars = budgetForOneRecord(unbounded)
         val first = callJson(LIST, "controllerFilter" to WEB_PACKAGE, "compact" to true, "maxChars" to maxChars)
@@ -144,7 +144,7 @@ class SpringBootApplicationMcpToolsetEndpointPageTest : ExplytJavaLightTestCase(
         assertResultChanged("another projection", otherProjection)
     }
 
-    fun testContractsArePagedOneAtATimeWhenTwoDoNotFit() = runBlocking<Unit> {
+    fun testContractsArePagedOneAtATimeWhenTwoDoNotFit() = runBlockingReleasingWriteIntent<Unit> {
         val unbounded = callJson(CONTRACT, "urlPattern" to ROUTES_URL)
         val contracts = unbounded["endpoints"].toList()
         assertEquals("Precondition: two contracts match ${ROUTES_URL}", 2, contracts.size)
@@ -167,7 +167,7 @@ class SpringBootApplicationMcpToolsetEndpointPageTest : ExplytJavaLightTestCase(
         assertEquals(identities(unbounded["endpoints"]), pages.flatMap { identities(it["endpoints"]) })
     }
 
-    fun testAContractLargerThanTheBudgetNamesTheBudgetThatFetchesIt() = runBlocking<Unit> {
+    fun testAContractLargerThanTheBudgetNamesTheBudgetThatFetchesIt() = runBlockingReleasingWriteIntent<Unit> {
         val unbounded = callJson(CONTRACT, "urlPattern" to DEMO_ITEM_URL, "httpMethod" to "GET")
         val contract = unbounded["endpoints"].single()
         assertTrue(
@@ -190,7 +190,7 @@ class SpringBootApplicationMcpToolsetEndpointPageTest : ExplytJavaLightTestCase(
         assertEquals(identities(unbounded["endpoints"]), identities(mapper.readTree(fetched)["endpoints"]))
     }
 
-    fun testAMissKeepsItsNeighbourhoodOnTheFirstPageWithinTheBudget() = runBlocking<Unit> {
+    fun testAMissKeepsItsNeighbourhoodOnTheFirstPageWithinTheBudget() = runBlockingReleasingWriteIntent<Unit> {
         val unbounded = callJson(FIND, "urlPattern" to MISS_URL)
         val nearest = unbounded["nearestByPrefix"].toList()
         assertEquals("Precondition: the URL is a miss", 0, unbounded["totalCount"].asInt())
@@ -224,7 +224,7 @@ class SpringBootApplicationMcpToolsetEndpointPageTest : ExplytJavaLightTestCase(
      * The budgets are the exact lengths of those pages less 1 to 4 characters, the window in which a page measured
      * with a non-terminal continuation would be sent over its budget.
      */
-    fun testAMissPageNeverExceedsItsBudget() = runBlocking<Unit> {
+    fun testAMissPageNeverExceedsItsBudget() = runBlockingReleasingWriteIntent<Unit> {
         val unbounded = callJson(FIND, "urlPattern" to MISS_URL, "maxChars" to BoundedPageWriter.MAX_CHARS) as ObjectNode
         assertOkPage(unbounded)
         assertEquals("Precondition: the URL is a miss", 0, unbounded["totalCount"].asInt())
@@ -262,7 +262,7 @@ class SpringBootApplicationMcpToolsetEndpointPageTest : ExplytJavaLightTestCase(
             if (k < nearest.size) put(NEAREST_TRUNCATED, true)
         }
 
-    fun testFindWithoutABudgetAnswersAsBefore() = runBlocking<Unit> {
+    fun testFindWithoutABudgetAnswersAsBefore() = runBlockingReleasingWriteIntent<Unit> {
         val page = callJson(FIND, "urlPattern" to DEMO_URL)
 
         assertFalse(page["truncated"].asBoolean())
@@ -270,14 +270,14 @@ class SpringBootApplicationMcpToolsetEndpointPageTest : ExplytJavaLightTestCase(
     }
 
     /** Today the listing follows the searcher's order across controllers, which differs between runs. */
-    fun testListingWithoutABudgetAnswersAsBefore() = runBlocking<Unit> {
+    fun testListingWithoutABudgetAnswersAsBefore() = runBlockingReleasingWriteIntent<Unit> {
         val page = callJson(LIST, "controllerFilter" to WEB_PACKAGE)
 
         assertFalse(page["truncated"].asBoolean())
         assertEquals(TODAY_LIST_WEB.sorted(), identities(page["endpoints"]).sorted())
     }
 
-    fun testContractWithoutABudgetAnswersAsBefore() = runBlocking<Unit> {
+    fun testContractWithoutABudgetAnswersAsBefore() = runBlockingReleasingWriteIntent<Unit> {
         val page = callJson(CONTRACT, "urlPattern" to ROUTES_URL)
 
         assertFalse(page["truncated"].asBoolean())
