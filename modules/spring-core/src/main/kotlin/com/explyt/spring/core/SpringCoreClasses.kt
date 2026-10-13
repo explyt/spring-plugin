@@ -64,6 +64,7 @@ object SpringCoreClasses {
     const val SERVICE = "org.springframework.stereotype.Service"
     const val CONTROLLER = "org.springframework.stereotype.Controller"
     const val REPOSITORY = "org.springframework.stereotype.Repository"
+    const val CONTROLLER_ADVICE = "org.springframework.web.bind.annotation.ControllerAdvice"
 
     const val BOOTSTRAP_WITH = "org.springframework.test.context.BootstrapWith"
     const val DYNAMIC_PROPERTY_REGISTRY = "org.springframework.test.context.DynamicPropertyRegistry"
