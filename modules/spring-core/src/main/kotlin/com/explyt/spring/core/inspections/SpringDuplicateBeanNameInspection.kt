@@ -62,14 +62,23 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
     private fun overridingOf(aClass: UClass, module: Module?, collision: Collision): Overriding {
         module ?: return Overriding.DISALLOWED
         val springVersion = SpringBootUtil.getSpringCoreVersion(module)
-        val primaryNameCollision = collision.isBetweenPrimaryNames()
-        val ignoredBeforeSpring62 = primaryNameCollision && springVersion?.isBefore(SPRING_6_2) == true
+        val kind = collision.kind
+        val primaryNames = kind == CollisionKind.PRIMARY_NAMES
+        val ignoredBeforeSpring62 = primaryNames && springVersion?.isBefore(SPRING_6_2) == true
         if (ignoredBeforeSpring62) return Overriding.IGNORED_BEFORE_SPRING_6_2
-        val ignoredOverriding = if (aClass.enforcesUniqueMethods(module)) ignoredOverridingOf(module) else null
+        val ignoredOverriding =
+            if (primaryNames && aClass.enforcesUniqueMethods(module)) ignoredOverridingOf(module) else null
         if (ignoredOverriding == Overriding.IGNORED_ON_SPRING_7) return ignoredOverriding
-        val disallowed =
-            if (primaryNameCollision && springVersion == null) Overriding.DISALLOWED_ON_UNKNOWN_SPRING
-            else Overriding.DISALLOWED
+        val disallowed = when (kind) {
+            CollisionKind.PRIMARY_NAMES ->
+                if (springVersion == null) Overriding.DISALLOWED_ON_UNKNOWN_SPRING else Overriding.DISALLOWED
+
+            CollisionKind.PRIMARY_NAME_AND_ALIAS ->
+                if (springVersion?.isBefore(SPRING_6_0) == false) Overriding.DISALLOWED
+                else Overriding.DISALLOWED_IN_REGISTRATION_ORDER
+
+            CollisionKind.ALIASES -> Overriding.DISALLOWED
+        }
         return when (val value = PropertyConditionValues(module).valueOf(ALLOW_OVERRIDING_KEY)) {
             is ConditionPropertyValue.Known ->
                 if (value.text.trim().equals("true", ignoreCase = true)) ignoredOverriding ?: Overriding.ALLOWED
@@ -82,8 +91,12 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
 
     private fun String.isBefore(version: String): Boolean = VersionComparatorUtil.compare(this, version) < 0
 
-    private fun Collision.isBetweenPrimaryNames(): Boolean =
-        first.primaryBeanName == beanName && second.primaryBeanName == beanName
+    private val Collision.kind: CollisionKind
+        get() = when (listOf(first, second).count { it.primaryBeanName == beanName }) {
+            2 -> CollisionKind.PRIMARY_NAMES
+            1 -> CollisionKind.PRIMARY_NAME_AND_ALIAS
+            else -> CollisionKind.ALIASES
+        }
 
     private val PsiMethod.primaryBeanName: String
         get() = resolveBeanName.first()
@@ -115,6 +128,7 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
             Overriding.IGNORED_ON_SPRING_7 -> SPRING_7_OVERRIDING_MESSAGE to ProblemHighlightType.GENERIC_ERROR_OR_WARNING
             Overriding.IGNORED_BEFORE_SPRING_6_2 -> IGNORED_METHOD_MESSAGE to ProblemHighlightType.WARNING
             Overriding.DISALLOWED_ON_UNKNOWN_SPRING -> UNKNOWN_SPRING_VERSION_MESSAGE to ProblemHighlightType.WARNING
+            Overriding.DISALLOWED_IN_REGISTRATION_ORDER -> REGISTRATION_ORDER_MESSAGE to ProblemHighlightType.WARNING
             else -> MESSAGE to ProblemHighlightType.GENERIC_ERROR_OR_WARNING
         }
         return manager.createProblemDescriptor(
@@ -128,10 +142,17 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
 
     private data class Collision(val beanName: String, val first: PsiMethod, val second: PsiMethod)
 
+    private enum class CollisionKind {
+        PRIMARY_NAMES,
+        PRIMARY_NAME_AND_ALIAS,
+        ALIASES
+    }
+
     private enum class Overriding {
         ALLOWED,
         DISALLOWED,
         DISALLOWED_ON_UNKNOWN_SPRING,
+        DISALLOWED_IN_REGISTRATION_ORDER,
         UNRESOLVED,
         IGNORED_BEFORE_SPRING_6_2,
         IGNORED_ON_SPRING_7,
@@ -141,6 +162,7 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
     private companion object {
         const val ALLOW_OVERRIDING_KEY = "spring.main.allow-bean-definition-overriding"
         const val ENFORCE_UNIQUE_METHODS = "enforceUniqueMethods"
+        const val SPRING_6_0 = "6.0.0"
         const val SPRING_6_2 = "6.2.0"
         const val SPRING_7 = 7
         const val MESSAGE = "explyt.spring.inspection.bean.name.duplicate"
@@ -148,6 +170,7 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
         const val SPRING_7_OVERRIDING_MESSAGE = "explyt.spring.inspection.bean.name.duplicate.overriding.spring7"
         const val IGNORED_METHOD_MESSAGE = "explyt.spring.inspection.bean.name.duplicate.ignored"
         const val UNKNOWN_SPRING_VERSION_MESSAGE = "explyt.spring.inspection.bean.name.duplicate.version.unknown"
+        const val REGISTRATION_ORDER_MESSAGE = "explyt.spring.inspection.bean.name.duplicate.alias.order"
         const val UNKNOWN_SPRING_OVERRIDING_MESSAGE =
             "explyt.spring.inspection.bean.name.duplicate.overriding.unknown.spring"
     }
