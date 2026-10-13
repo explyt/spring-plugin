@@ -27,27 +27,22 @@ import org.jetbrains.uast.toUElementOfType
 class InjectionConstructorRuleTest : ExplytKotlinLightTestCase() {
     override val libraries: Array<TestLibrary> = arrayOf(
         TestLibrary.springContext_6_0_7,
-        TestLibrary.springBootAutoConfigure_3_1_1
+        TestLibrary.springBootAutoConfigure_3_1_1,
+        TestLibrary.kotlin_1_9_22
     )
 
     fun testOnlyTheAutowiredConstructorIsAnInjectionPointOfTheSourceGutter() {
         configureFixture()
         val targets = sourceGutterTargets()
         assertTrue("The @Autowired constructor parameter must be listed: $targets", "autowiredFoo" in targets)
-        assertFalse(
-            "determineCandidateConstructors:437-448 keeps only @Autowired constructors, got $targets",
-            "plainFoo" in targets
-        )
+        assertFalse("determineCandidateConstructors:437-448 keeps only @Autowired constructors, got $targets", "plainFoo" in targets)
     }
 
     fun testOnlyTheAutowiredConstructorIsAnInjectionPointOfTheFacade() {
         configureFixture()
         val targets = facadeInjectionPoints()
         assertTrue("The @Autowired constructor parameter must be listed: $targets", "autowiredFoo" in targets)
-        assertFalse(
-            "determineCandidateConstructors:437-448 keeps only @Autowired constructors, got $targets",
-            "plainFoo" in targets
-        )
+        assertFalse("determineCandidateConstructors:437-448 keeps only @Autowired constructors, got $targets", "plainFoo" in targets)
     }
 
     fun testTheSinglePrimaryConstructorIsAnInjectionPoint() {
@@ -59,39 +54,37 @@ class InjectionConstructorRuleTest : ExplytKotlinLightTestCase() {
     fun testASecondaryConstructorNextToANoArgPrimaryIsNotAnInjectionPointOfTheSourceGutter() {
         configureFixture()
         val targets = sourceGutterTargets()
-        assertFalse(
-            "determineCandidateConstructors:461 returns none, instantiateBean:1240 uses the no-arg primary, got $targets",
-            "ignoredFoo" in targets
-        )
+        assertFalse("determineCandidateConstructors:461 returns none, instantiateBean:1240 uses the no-arg primary, got $targets", "ignoredFoo" in targets)
     }
 
     fun testASecondaryConstructorNextToANoArgPrimaryIsNotAnInjectionPointOfTheFacade() {
         configureFixture()
         val targets = facadeInjectionPoints()
-        assertFalse(
-            "determineCandidateConstructors:461 returns none, instantiateBean:1240 uses the no-arg primary, got $targets",
-            "ignoredFoo" in targets
-        )
+        assertFalse("determineCandidateConstructors:461 returns none, instantiateBean:1240 uses the no-arg primary, got $targets", "ignoredFoo" in targets)
     }
 
     fun testThePrimaryConstructorNextToANoArgSecondaryIsAnInjectionPointOfTheSourceGutter() {
         configureFixture()
         val targets = sourceGutterTargets()
-        assertTrue(
-            "determineCandidateConstructors:453-455 returns {primary, default}; autowireConstructor sorts the greedy " +
-                "primary first (ConstructorResolver:209, AutowireUtils:57-59) and uses it, got $targets",
-            "primaryFoo" in targets
-        )
+        assertTrue("determineCandidateConstructors:453-455 returns {primary, default}; ConstructorResolver:209 uses the greedy primary, got $targets", "primaryFoo" in targets)
     }
 
     fun testThePrimaryConstructorNextToANoArgSecondaryIsAnInjectionPointOfTheFacade() {
         configureFixture()
         val targets = facadeInjectionPoints()
-        assertTrue(
-            "determineCandidateConstructors:453-455 returns {primary, default}; autowireConstructor sorts the greedy " +
-                "primary first (ConstructorResolver:209, AutowireUtils:57-59) and uses it, got $targets",
-            "primaryFoo" in targets
-        )
+        assertTrue("determineCandidateConstructors:453-455 returns {primary, default}; ConstructorResolver:209 uses the greedy primary, got $targets", "primaryFoo" in targets)
+    }
+
+    fun testJvmOverloadsPrimaryWithNoArgSecondaryIsNotAnInjectionPointOfTheSourceGutter() {
+        configureFixture()
+        val targets = sourceGutterTargets()
+        assertFalse("determineCandidateConstructors:453-461 requires exactly two non-synthetic constructors; @JvmOverloads adds a third, so Spring uses the no-arg constructor, got $targets", "overloadedFoo" in targets)
+    }
+
+    fun testJvmOverloadsPrimaryWithNoArgSecondaryIsNotAnInjectionPointOfTheFacade() {
+        configureFixture()
+        val targets = facadeInjectionPoints()
+        assertFalse("determineCandidateConstructors:453-461 requires exactly two non-synthetic constructors; @JvmOverloads adds a third, so Spring uses the no-arg constructor, got $targets", "overloadedFoo" in targets)
     }
 
     private fun configureFixture() {
@@ -101,6 +94,7 @@ class InjectionConstructorRuleTest : ExplytKotlinLightTestCase() {
             package candidates
             import org.springframework.stereotype.Component
             import org.springframework.beans.factory.annotation.Autowired
+            import kotlin.jvm.JvmOverloads
             @Component class Foo
             @Component class Bar
             @Component class TwoConstructors(plainFoo: Foo, bar: Bar) {
@@ -113,6 +107,9 @@ class InjectionConstructorRuleTest : ExplytKotlinLightTestCase() {
             @Component class PrimaryWithNoArgSecondary(primaryFoo: Foo) {
                 constructor() : this(Foo())
             }
+            @Component class JvmOverloadsPrimary @JvmOverloads constructor(overloadedFoo: Foo, x: Int = 1) {
+                constructor() : this(Foo())
+            }
             """.trimIndent()
         )
         myFixture.doHighlighting()
@@ -121,32 +118,27 @@ class InjectionConstructorRuleTest : ExplytKotlinLightTestCase() {
 
     private fun assertPreconditions() {
         val beans = SpringSearchServiceFacade.getInstance(project).getAllActiveBeans(module)
-        listOf("Foo", "TwoConstructors", "SingleConstructor", "NoAutowiredConstructor", "PrimaryWithNoArgSecondary").forEach { name ->
+        listOf("Foo", "TwoConstructors", "SingleConstructor", "NoAutowiredConstructor", "PrimaryWithNoArgSecondary", "JvmOverloadsPrimary").forEach { name ->
             assertTrue("candidates.$name must be an active bean", beans.any { it.psiClass.qualifiedName == "candidates.$name" })
         }
         val twoConstructors = findClass("TwoConstructors").constructors
-        assertEquals(
-            "Exactly the one-parameter constructor is @Autowired",
-            mapOf(1 to true, 2 to false),
-            twoConstructors.associate { it.parameterList.parametersCount to (it.getAnnotation(SpringCoreClasses.AUTOWIRED) != null) }
-        )
+        assertEquals("Exactly the one-parameter constructor is @Autowired", mapOf(1 to true, 2 to false), twoConstructors.associate { it.parameterList.parametersCount to (it.getAnnotation(SpringCoreClasses.AUTOWIRED) != null) })
         val noAutowired = findClass("NoAutowiredConstructor").constructors
         assertEquals(setOf(0, 1), noAutowired.map { it.parameterList.parametersCount }.toSet())
         assertTrue(noAutowired.none { it.getAnnotation(SpringCoreClasses.AUTOWIRED) != null })
         val primaryWithSecondary = findClass("PrimaryWithNoArgSecondary").constructors
-        assertEquals(
-            "A one-parameter primary and a no-arg secondary, both without @Autowired",
-            setOf(0, 1),
-            primaryWithSecondary.map { it.parameterList.parametersCount }.toSet()
-        )
+        assertEquals("A one-parameter primary and a no-arg secondary, both without @Autowired", setOf(0, 1), primaryWithSecondary.map { it.parameterList.parametersCount }.toSet())
         assertEquals(2, primaryWithSecondary.map { it.navigationElement }.toSet().size)
         assertTrue(primaryWithSecondary.none { it.getAnnotation(SpringCoreClasses.AUTOWIRED) != null })
+        val jvmOverloads = findClass("JvmOverloadsPrimary").constructors
+        assertEquals("@JvmOverloads primary plus no-arg secondary emits (Foo, Int), (Foo), and ()", 3, jvmOverloads.size)
+        assertEquals("The light constructors must represent two source declarations", 2, jvmOverloads.map { it.navigationElement }.toSet().size)
+        assertTrue(jvmOverloads.none { it.getAnnotation(SpringCoreClasses.AUTOWIRED) != null })
     }
 
-    private fun sourceGutterTargets(): List<String> =
-        SpringGutterTestUtil.getGutterTargetString(
-            SpringGutterTestUtil.getAllBeanGuttersByIcon(myFixture, SpringIcons.SpringBean)
-        ).flatten()
+    private fun sourceGutterTargets(): List<String> = SpringGutterTestUtil.getGutterTargetString(
+        SpringGutterTestUtil.getAllBeanGuttersByIcon(myFixture, SpringIcons.SpringBean)
+    ).flatten()
 
     private fun facadeInjectionPoints(): List<String> {
         val foo = findClass("Foo").toUElementOfType<UClass>()!!
