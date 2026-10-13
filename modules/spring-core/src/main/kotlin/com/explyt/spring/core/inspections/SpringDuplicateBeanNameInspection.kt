@@ -11,11 +11,14 @@ import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.service.conditional.ConditionPropertyValue
 import com.explyt.spring.core.service.conditional.PropertyConditionValues
 import com.explyt.spring.core.util.BeanFactoryMethods
+import com.explyt.spring.core.util.SpringBootUtil
 import com.explyt.spring.core.util.SpringCoreUtil.resolveBeanName
 import com.explyt.util.ExplytPsiUtil.getMetaAnnotation
+import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
+import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiClass
@@ -56,11 +59,23 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
         val module = ModuleUtilCore.findModuleForPsiElement(psiClass) ?: return Overriding.DISALLOWED
         return when (val value = PropertyConditionValues(module).valueOf(ALLOW_OVERRIDING_KEY)) {
             is ConditionPropertyValue.Known ->
-                if (value.text.trim().equals("true", ignoreCase = true)) Overriding.ALLOWED else Overriding.DISALLOWED
+                if (value.text.trim().equals("true", ignoreCase = true)) allowedOverridingOf(psiClass, module)
+                else Overriding.DISALLOWED
 
             ConditionPropertyValue.Missing -> Overriding.DISALLOWED
-            ConditionPropertyValue.Unresolvable -> Overriding.UNKNOWN
+            ConditionPropertyValue.Unresolvable -> Overriding.UNRESOLVED
         }
+    }
+
+    private fun allowedOverridingOf(psiClass: PsiClass, module: Module): Overriding {
+        if (!psiClass.enforcesUniqueMethods()) return Overriding.ALLOWED
+        val springMajor = SpringBootUtil.getSpringCoreMajorVersion(module) ?: return Overriding.IGNORED_ON_UNKNOWN_SPRING
+        return if (springMajor < SPRING_7) Overriding.ALLOWED else Overriding.IGNORED_ON_SPRING_7
+    }
+
+    private fun PsiClass.enforcesUniqueMethods(): Boolean {
+        val configuration = getMetaAnnotation(SpringCoreClasses.CONFIGURATION) ?: return false
+        return AnnotationUtil.getBooleanAttributeValue(configuration, ENFORCE_UNIQUE_METHODS) != false
     }
 
     private fun Collision.toProblem(
@@ -70,7 +85,9 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
     ): ProblemDescriptor? {
         val anchor = second.toUElementOfType<UMethod>()?.uastAnchor?.sourcePsi ?: return null
         val (messageKey, highlightType) = when (overriding) {
-            Overriding.UNKNOWN -> UNRESOLVED_OVERRIDING_MESSAGE to ProblemHighlightType.WARNING
+            Overriding.UNRESOLVED -> UNRESOLVED_OVERRIDING_MESSAGE to ProblemHighlightType.WARNING
+            Overriding.IGNORED_ON_UNKNOWN_SPRING -> UNKNOWN_SPRING_OVERRIDING_MESSAGE to ProblemHighlightType.WARNING
+            Overriding.IGNORED_ON_SPRING_7 -> SPRING_7_OVERRIDING_MESSAGE to ProblemHighlightType.GENERIC_ERROR_OR_WARNING
             else -> MESSAGE to ProblemHighlightType.GENERIC_ERROR_OR_WARNING
         }
         return manager.createProblemDescriptor(
@@ -84,11 +101,16 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
 
     private data class Collision(val beanName: String, val first: PsiMethod, val second: PsiMethod)
 
-    private enum class Overriding { ALLOWED, DISALLOWED, UNKNOWN }
+    private enum class Overriding { ALLOWED, DISALLOWED, UNRESOLVED, IGNORED_ON_SPRING_7, IGNORED_ON_UNKNOWN_SPRING }
 
     private companion object {
         const val ALLOW_OVERRIDING_KEY = "spring.main.allow-bean-definition-overriding"
+        const val ENFORCE_UNIQUE_METHODS = "enforceUniqueMethods"
+        const val SPRING_7 = 7
         const val MESSAGE = "explyt.spring.inspection.bean.name.duplicate"
         const val UNRESOLVED_OVERRIDING_MESSAGE = "explyt.spring.inspection.bean.name.duplicate.overriding.unresolved"
+        const val SPRING_7_OVERRIDING_MESSAGE = "explyt.spring.inspection.bean.name.duplicate.overriding.spring7"
+        const val UNKNOWN_SPRING_OVERRIDING_MESSAGE =
+            "explyt.spring.inspection.bean.name.duplicate.overriding.unknown.spring"
     }
 }
