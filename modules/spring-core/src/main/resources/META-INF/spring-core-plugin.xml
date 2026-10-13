@@ -304,6 +304,17 @@
                          level="ERROR"
                          implementationClass="com.explyt.spring.core.inspections.SpringConfigurationProxyBeanMethodsInspection"/>
 
+        <localInspection language="UAST"
+                         shortName="SpringDuplicateBeanName"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.bean.name.duplicate.display"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="com.explyt.spring.core.inspections.SpringDuplicateBeanNameInspection"/>
+
         <localInspection language="Properties"
                          shortName="SpringPropertiesInspection"
                          groupBundle="messages.SpringCoreBundle"
