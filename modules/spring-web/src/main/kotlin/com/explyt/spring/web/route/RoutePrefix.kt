@@ -5,13 +5,23 @@
 
 package com.explyt.spring.web.route
 
+import com.explyt.spring.web.util.RoutePathResolver
+
 sealed interface RoutePrefix {
 
     fun then(inner: RoutePrefix): RoutePrefix
 
     data class Decided(val segments: List<String>) : RoutePrefix {
         override fun then(inner: RoutePrefix): RoutePrefix = when (inner) {
-            is Decided -> Decided(segments.flatMap { outer -> inner.segments.map { outer + it } })
+            is Decided -> {
+                if (segments.size.toLong() * inner.segments.size > RoutePathResolver.MAX_VALUES) {
+                    Undecidable
+                } else {
+                    Decided(segments.flatMap { outer -> inner.segments.map { innerPath ->
+                        RoutePathResolver.joinPaths(outer, innerPath)
+                    } })
+                }
+            }
             PathFree -> this
             Undecidable -> Undecidable
         }
