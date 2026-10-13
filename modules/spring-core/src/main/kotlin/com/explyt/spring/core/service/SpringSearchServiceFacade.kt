@@ -11,6 +11,7 @@ import com.explyt.spring.core.service.NativeSearchService.Companion.isActiveDiPr
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.core.tracker.ModificationTrackerManager
+import com.explyt.spring.core.util.InjectionConstructors
 import com.explyt.spring.core.util.InjectionPointOwners
 import com.explyt.spring.core.util.SpringCoreUtil
 import com.explyt.spring.core.util.SpringCoreUtil.getQualifierAnnotation
@@ -49,6 +50,14 @@ class SpringSearchServiceFacade(private val project: Project) {
             // The source path caches beans too, so it can hand out a bean whose PSI was invalidated by an edit just
             // like the native path can. Filter it here as well: callers dereference `psiClass` without a guard.
             nativeSearchService.filterValidBeans(springSearchService.getActiveBeansClasses(module))
+        }
+    }
+
+    fun getInjectionPointOwnerBeans(module: Module, isNative: Boolean = false): Set<PsiBean> {
+        return if (isNative || isExternalProjectExist(project)) {
+            nativeSearchService.getAllActiveBeans()
+        } else {
+            nativeSearchService.filterValidBeans(springSearchService.getInjectionPointOwnerBeans(module))
         }
     }
 
@@ -132,13 +141,13 @@ class SpringSearchServiceFacade(private val project: Project) {
         val allAutowiredAnnotations = SpringSearchUtils.getAutowiredFieldAnnotations(module)
         val allAutowiredAnnotationsNames = allAutowiredAnnotations.mapNotNull { it.qualifiedName }
 
-        val allBeans = getAllActiveBeans(module, isNative)
+        val allBeans = getInjectionPointOwnerBeans(module, isNative)
 
         val beanClasses = allBeans.mapTo(HashSet()) { it.psiClass }
         val owners = InjectionPointOwners.of(beanClasses.asSequence())
         val componentBeans = if (isNative || isExternalProjectExist(project))
             nativeSearchService.getBeanPsiClassesAnnotatedByComponent()
-        else springSearchService.getBeanPsiClassesAnnotatedByComponent(module)
+        else springSearchService.getInjectionPointComponentBeans(module)
         val componentClasses = componentBeans.mapTo(HashSet()) { it.psiClass }
 
         val allFieldsWithAutowired = owners.asSequence()
@@ -154,11 +163,13 @@ class SpringSearchServiceFacade(private val project: Project) {
         val allParametersWithAutowired = mutableSetOf<UVariable>()
         owners.forEach { owner ->
             val methods = owner.toUElementOfType<UClass>()?.methods ?: return@forEach
+            val injectionConstructors = InjectionConstructors.of(owner) { it.isAnnotatedBy(allAutowiredAnnotationsNames) }
             allParametersWithAutowired.addAll(
                 methods.asSequence()
                     .filter {
                         if (it.isConstructor) owner in beanClasses
                                 && (owner in componentClasses || it.isAnnotatedBy(allAutowiredAnnotationsNames))
+                                && it.javaPsi in injectionConstructors
                         else it.isAnnotatedBy(allAutowiredAnnotationsNames)
                                 || it.isAnnotatedBy(SpringCoreClasses.BEAN)
                     }
