@@ -11,9 +11,11 @@ import com.explyt.spring.core.inspections.BeanNameConventionConflictFixture
 import com.explyt.spring.core.inspections.SpringDuplicateBeanNameInspection
 import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.core.util.SpringBootUtil
+import com.explyt.spring.core.util.SpringCoreUtil
 import com.explyt.spring.test.ExplytBaseLightTestCase
 import com.explyt.spring.test.TestLibrary
 import com.intellij.codeInsight.daemon.impl.HighlightInfo
+import com.intellij.java.library.JavaLibraryUtil
 import com.intellij.lang.annotation.HighlightSeverity
 
 private const val FULL_CONFIGURATION = """
@@ -77,7 +79,7 @@ private fun aliasedComposedConfiguration(useSite: String) = """
 
 abstract class SpringDuplicateBeanNameKotlinTestCase : ExplytBaseLightTestCase() {
 
-    protected abstract val springMajor: Int?
+    protected abstract val springCoreVersion: String?
 
     override fun setUp() {
         super.setUp()
@@ -100,8 +102,13 @@ abstract class SpringDuplicateBeanNameKotlinTestCase : ExplytBaseLightTestCase()
                     "import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty\n\n" + body.trimIndent()
         )
         assertEquals(
+            "Precondition: spring-core version of the module",
+            springCoreVersion,
+            JavaLibraryUtil.getLibraryVersion(module, SpringCoreUtil.SPRING_CORE_MAVEN)
+        )
+        assertEquals(
             "Precondition: spring-core major version of the module",
-            springMajor,
+            springCoreVersion?.substringBefore('.')?.toInt(),
             SpringBootUtil.getSpringCoreMajorVersion(module)
         )
         assertTrue(
@@ -162,8 +169,8 @@ abstract class SpringDuplicateBeanNameKotlinTestCase : ExplytBaseLightTestCase()
 }
 
 class SpringDuplicateBeanNameInspectionTest : SpringDuplicateBeanNameKotlinTestCase() {
-    override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springBootAutoConfigure_3_1_1)
-    override val springMajor: Int = 6
+    override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springBootAutoConfigure_3_4_0)
+    override val springCoreVersion: String = "6.2.0"
 
     fun testExplicitNamesOnDifferentMethodsCollide() {
         val problem = highlights(
@@ -359,9 +366,58 @@ class SpringDuplicateBeanNameInspectionTest : SpringDuplicateBeanNameKotlinTestC
     }
 }
 
+class SpringDuplicateBeanNameBeforeSpring62InspectionTest : SpringDuplicateBeanNameKotlinTestCase() {
+    override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springBootAutoConfigure_3_1_1)
+    override val springCoreVersion: String = "6.0.10"
+
+    fun testMissingOverridingPropertyWarnsThatOneMethodIsIgnored() {
+        assertIgnoredMethodWarning(highlights(FULL_CONFIGURATION))
+    }
+
+    fun testDisallowedOverridingWarnsThatOneMethodIsIgnored() {
+        allowBeanDefinitionOverriding("false")
+
+        assertIgnoredMethodWarning(highlights(FULL_CONFIGURATION))
+    }
+
+    fun testAllowedOverridingWarnsThatOneMethodIsIgnored() {
+        allowBeanDefinitionOverriding("true")
+
+        assertIgnoredMethodWarning(highlights(FULL_CONFIGURATION))
+    }
+
+    fun testUnresolvableOverridingPropertyWarnsThatOneMethodIsIgnored() {
+        allowBeanDefinitionOverriding("${'$'}{OVERRIDING}")
+
+        assertIgnoredMethodWarning(highlights(FULL_CONFIGURATION))
+    }
+
+    fun testMissingOverridingPropertyWarnsThatOneMethodIsIgnoredInLiteClass() {
+        assertIgnoredMethodWarning(highlights(LITE_CONFIGURATION))
+    }
+
+    private fun assertIgnoredMethodWarning(problems: List<HighlightInfo>) {
+        assertSingleProblem(problems, HighlightSeverity.WARNING, anchor = "b", beanName = "svc", firstMethod = "a")
+        val description = problems.single().description
+        assertTrue(
+            "the message says that one of the functions is ignored: $description",
+            description.contains("ignore", ignoreCase = true)
+        )
+        assertFalse(
+            "the context starts below Spring 6.2.0, so no startup failure is claimed: $description",
+            description.contains("fails at startup")
+        )
+        assertEquals(SpringCoreBundle.message(IGNORED_METHOD_MESSAGE, "svc", "a"), description)
+    }
+
+    private companion object {
+        const val IGNORED_METHOD_MESSAGE = "explyt.spring.inspection.bean.name.duplicate.ignored"
+    }
+}
+
 class SpringDuplicateBeanNameSpring7InspectionTest : SpringDuplicateBeanNameKotlinTestCase() {
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springBootAutoConfigure_4_1_0)
-    override val springMajor: Int = 7
+    override val springCoreVersion: String = "7.0.8"
 
     fun testMissingOverridingPropertyKeepsTheProblemInFullConfiguration() {
         assertSpring7Problem(highlights(FULL_CONFIGURATION))
@@ -436,7 +492,7 @@ class SpringDuplicateBeanNameSpring7InspectionTest : SpringDuplicateBeanNameKotl
 
 class SpringDuplicateBeanNameUnknownSpringVersionInspectionTest : SpringDuplicateBeanNameKotlinTestCase() {
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary("org.springframework:spring-context:6.0.7", false))
-    override val springMajor: Int? = null
+    override val springCoreVersion: String? = null
 
     override fun setUp() {
         super.setUp()
