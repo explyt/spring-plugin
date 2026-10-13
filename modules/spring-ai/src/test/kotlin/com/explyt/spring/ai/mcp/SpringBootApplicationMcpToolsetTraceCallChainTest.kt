@@ -414,14 +414,14 @@ class SpringBootApplicationMcpToolsetTraceCallChainTest : JavaCodeInsightFixture
         assertEquals("explyt.trace.Owner.Companion.Nested", node["className"].asText())
     }
 
-    fun testJavaJvmStaticAndCompanionCallsKeepDistinctNodes() = runBlockingReleasingWriteIntent {
+    fun testJavaJvmStaticAndCompanionCallsKeepDistinctNodesWithTheSourceClassName() = runBlockingReleasingWriteIntent {
         val chain = traceCompanion("bothStaticParsers", javaCaller = true)
         val calls = chain[0]["callsInto"].toList()
         assertEquals(listOf("StaticVmId.parse", "StaticVmId.parse"), calls.map { it["target"].asText() })
         assertTrue(calls.all { it["node"].isIntegralNumber })
         assertEquals(2, calls.map { it["node"].asInt() }.distinct().size)
         val nodes = calls.map { call -> chain.single { it["id"].asInt() == call["node"].asInt() } }
-        assertEquals(setOf("explyt.trace.StaticVmId", "explyt.trace.StaticVmId.Companion"), nodes.map { it["className"].asText() }.toSet())
+        assertEquals(listOf("explyt.trace.StaticVmId", "explyt.trace.StaticVmId"), nodes.map { it["className"].asText() })
     }
 
     private fun companionCall(chain: JsonNode, methodName: String): JsonNode {
