@@ -2,11 +2,15 @@
 <body>
 Reports a <code>@Bean</code> method whose bean name is already declared by a differently named <code>@Bean</code> method
 of the same configuration class.
-<p>Spring Boot disallows bean definition overriding by default, so such a configuration fails at startup with
-<code>BeanDefinitionOverrideException</code>. Overloaded <code>@Bean</code> methods with the same method name are merged by
-Spring and are not reported.</p>
+<p>Spring Boot disallows bean definition overriding by default, so on Spring Framework 6.2.0 and later such a
+configuration fails at startup with <code>BeanDefinitionOverrideException</code>. Overloaded <code>@Bean</code> methods with
+the same method name are merged by Spring and are not reported.</p>
+<p>Spring Framework before 6.2.0 starts with such a configuration whatever
+<code>spring.main.allow-bean-definition-overriding</code> says and silently ignores one of the two methods, so the problem
+is reported there as a warning, for <code>@Configuration</code> and lite classes alike. Which method is kept cannot be
+told from the source order.</p>
 <p>When <code>spring.main.allow-bean-definition-overriding=true</code> is set in the module configuration, nothing is
-reported before Spring Framework 7, for a lite class such as a <code>@Component</code> with <code>@Bean</code> methods, or for
+reported on Spring Framework 6.2.x, for a lite class such as a <code>@Component</code> with <code>@Bean</code> methods, or for
 a <code>@Configuration(enforceUniqueMethods = false)</code> class, also when <code>enforceUniqueMethods</code> is set through
 a composed annotation. Spring Framework 7 fails at startup for any other <code>@Configuration</code> class whatever the
 property says, so the problem is always an error there, and it is reported as a warning when the property allows

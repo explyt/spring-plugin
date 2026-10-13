@@ -23,6 +23,7 @@ import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiMethod
+import com.intellij.util.text.VersionComparatorUtil
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.toUElementOfType
@@ -57,6 +58,7 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
 
     private fun overridingOf(aClass: UClass): Overriding {
         val module = ModuleUtilCore.findModuleForPsiElement(aClass.javaPsi) ?: return Overriding.DISALLOWED
+        if (module.isBeforeSpring62()) return Overriding.IGNORED_BEFORE_SPRING_6_2
         val ignoredOverriding = if (aClass.enforcesUniqueMethods(module)) ignoredOverridingOf(module) else null
         if (ignoredOverriding == Overriding.IGNORED_ON_SPRING_7) return ignoredOverriding
         return when (val value = PropertyConditionValues(module).valueOf(ALLOW_OVERRIDING_KEY)) {
@@ -68,6 +70,9 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
             ConditionPropertyValue.Unresolvable -> Overriding.UNRESOLVED
         }
     }
+
+    private fun Module.isBeforeSpring62(): Boolean =
+        SpringBootUtil.getSpringCoreVersion(this)?.let { VersionComparatorUtil.compare(it, SPRING_6_2) < 0 } == true
 
     private fun ignoredOverridingOf(module: Module): Overriding? {
         val springMajor = SpringBootUtil.getSpringCoreMajorVersion(module) ?: return Overriding.IGNORED_ON_UNKNOWN_SPRING
@@ -94,6 +99,7 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
             Overriding.UNRESOLVED -> UNRESOLVED_OVERRIDING_MESSAGE to ProblemHighlightType.WARNING
             Overriding.IGNORED_ON_UNKNOWN_SPRING -> UNKNOWN_SPRING_OVERRIDING_MESSAGE to ProblemHighlightType.WARNING
             Overriding.IGNORED_ON_SPRING_7 -> SPRING_7_OVERRIDING_MESSAGE to ProblemHighlightType.GENERIC_ERROR_OR_WARNING
+            Overriding.IGNORED_BEFORE_SPRING_6_2 -> IGNORED_METHOD_MESSAGE to ProblemHighlightType.WARNING
             else -> MESSAGE to ProblemHighlightType.GENERIC_ERROR_OR_WARNING
         }
         return manager.createProblemDescriptor(
@@ -107,15 +113,19 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
 
     private data class Collision(val beanName: String, val first: PsiMethod, val second: PsiMethod)
 
-    private enum class Overriding { ALLOWED, DISALLOWED, UNRESOLVED, IGNORED_ON_SPRING_7, IGNORED_ON_UNKNOWN_SPRING }
+    private enum class Overriding {
+        ALLOWED, DISALLOWED, UNRESOLVED, IGNORED_BEFORE_SPRING_6_2, IGNORED_ON_SPRING_7, IGNORED_ON_UNKNOWN_SPRING
+    }
 
     private companion object {
         const val ALLOW_OVERRIDING_KEY = "spring.main.allow-bean-definition-overriding"
         const val ENFORCE_UNIQUE_METHODS = "enforceUniqueMethods"
+        const val SPRING_6_2 = "6.2.0"
         const val SPRING_7 = 7
         const val MESSAGE = "explyt.spring.inspection.bean.name.duplicate"
         const val UNRESOLVED_OVERRIDING_MESSAGE = "explyt.spring.inspection.bean.name.duplicate.overriding.unresolved"
         const val SPRING_7_OVERRIDING_MESSAGE = "explyt.spring.inspection.bean.name.duplicate.overriding.spring7"
+        const val IGNORED_METHOD_MESSAGE = "explyt.spring.inspection.bean.name.duplicate.ignored"
         const val UNKNOWN_SPRING_OVERRIDING_MESSAGE =
             "explyt.spring.inspection.bean.name.duplicate.overriding.unknown.spring"
     }
