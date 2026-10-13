@@ -58,7 +58,7 @@ object AbstractComponentLineMarker {
             .createLineMarkerInfo(anchor)
     }
 
-    private fun implementationsOf(abstractClass: PsiClass, beans: Collection<PsiBean>): List<PsiMember> =
+    fun implementationsOf(abstractClass: PsiClass, beans: Collection<PsiBean>): List<PsiMember> =
         beans.asSequence()
             .onEach { ProgressManager.checkCanceled() }
             .filter { it.psiClass.isValid && it.psiMember.isValid }

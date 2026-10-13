@@ -545,6 +545,16 @@
                          enabledByDefault="true"
                          level="WARNING"
                          implementationClass="com.explyt.spring.core.inspections.SpringKotlinObjectInspection"/>
+        <localInspection language="UAST"
+                         shortName="SpringAbstractComponentInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.abstract.component"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.core.inspections.SpringAbstractComponentInspection"/>
 
         <localInspection language="UAST"
                          shortName="SpringInterfaceCacheAnnotationsInspection"
