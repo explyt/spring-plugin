@@ -176,6 +176,41 @@ class SpringBootApplicationMcpToolsetActuatorTest : ExplytKotlinLightTestCase() 
         )
     }
 
+    /**
+     * The full Actuator listing is the largest answer a small project produces: without a default budget one call
+     * returns it whole, past what a client holds, which is how a listing reached 100 KB on a real project.
+     */
+    fun testFullActuatorListingIsPagedWithinTheDefaultBudget() = runBlockingReleasingWriteIntent<Unit> {
+        val explicit = toolset.endpointListingPages(
+            projectPath(), endpointType = "ACTUATOR", maxChars = BoundedPageWriter.MAX_CHARS, mapper = mapper
+        )
+        assertTrue(
+            "Precondition: the listing must not fit ${BoundedPageWriter.MAX_CHARS} chars, got ${explicit.size} page",
+            explicit.size > 1
+        )
+
+        val json = toolset.getHttpEndpoints(projectPath = projectPath(), endpointType = "ACTUATOR")
+        val first = mapper.readTree(json)
+
+        assertEquals("OK", first["status"].asText())
+        assertTrue("The default page must be cut, got truncated=${first["truncated"]}", first["truncated"].asBoolean())
+        assertFalse("A cut page continues, got nextOffset=${first["nextOffset"]}", first["nextOffset"].isNull)
+        assertTrue(
+            "The default page must fit ${BoundedPageWriter.MAX_CHARS} chars, got ${json.length}",
+            json.length <= BoundedPageWriter.MAX_CHARS
+        )
+        assertEquals(
+            "Following nextOffset serves every endpoint once, in the order of the explicit-budget pages",
+            explicit.flatMap { identities(it) },
+            toolset.endpointListingPages(projectPath(), endpointType = "ACTUATOR", mapper = mapper)
+                .flatMap { identities(it) }
+        )
+    }
+
+    private fun identities(page: JsonNode): List<String> = page["endpoints"].map {
+        "${it["httpMethods"]} ${it["fullPath"].asText()} ${it["application"]?.asText()}"
+    }
+
     /** `exposed` is a fact about Actuator endpoints; any other endpoint keeps its documented shape. */
     fun testControllerEndpointHasNoExposedKey() = runBlockingReleasingWriteIntent<Unit> {
         val listed = mapper.readTree(
@@ -341,9 +376,7 @@ class SpringBootApplicationMcpToolsetActuatorTest : ExplytKotlinLightTestCase() 
     private suspend fun exactMatch(url: String): JsonNode = find(url).single { it["fullPath"].asText() == url }
 
     private suspend fun listActuator(compact: Boolean): List<JsonNode> =
-        mapper.readTree(
-            toolset.getHttpEndpoints(projectPath = projectPath(), endpointType = "ACTUATOR", compact = compact)
-        )["endpoints"].toList()
+        toolset.allListedEndpoints(projectPath(), endpointType = "ACTUATOR", compact = compact, mapper = mapper)
 
     private fun assertNoLocalPath(node: JsonNode) {
         val home = System.getProperty("user.home")

@@ -52,9 +52,7 @@ class SpringBootApplicationMcpToolsetTestApplicationActuatorTest : ExplytMultiMo
     }
 
     fun testListingMarksTheTestApplicationCopy() = runBlockingReleasingWriteIntent<Unit> {
-        val listed = mapper.readTree(
-            toolset.getHttpEndpoints(projectPath = projectPath(), endpointType = "ACTUATOR", compact = true)
-        )["endpoints"].toList()
+        val listed = toolset.allListedEndpoints(projectPath(), endpointType = "ACTUATOR", compact = true, mapper = mapper)
 
         assertTestCopyFollows(listed)
     }
