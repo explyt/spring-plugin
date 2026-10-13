@@ -5,12 +5,15 @@
 
 package com.explyt.spring.web.loader.kotlin
 
+import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.test.ExplytKotlinLightTestCase
 import com.explyt.spring.test.TestLibrary
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.loader.EndpointType
 import com.explyt.spring.web.service.SpringWebEndpointsSearcher
+import com.explyt.spring.web.util.HandlerMethods
 import com.intellij.psi.JavaPsiFacade
+import com.intellij.psi.PsiClass
 import com.intellij.psi.search.GlobalSearchScope
 
 class ComposedControllerPrefixTest : ExplytKotlinLightTestCase() {
@@ -35,17 +38,72 @@ class ComposedControllerPrefixTest : ExplytKotlinLightTestCase() {
     fun testPrefixFixedOnTheMetaAnnotationIsTheControllerPrefix() =
         assertItemsPaths("@FixedController", listOf("/fixed/items"))
 
+    fun testDirectRequestMappingPrefixWinsOverComposedControllerPrefix() =
+        assertOnlyDirectPrefixIsServed("@ApiController @RequestMapping(\"/p\")")
+
+    fun testDirectRequestMappingPrefixDeclaredFirstWinsOverComposedControllerPrefix() =
+        assertOnlyDirectPrefixIsServed("@RequestMapping(\"/p\") @ApiController")
+
+    fun testHandlerMethodsReadOnlyTheDirectPrefixBesideComposedController() =
+        assertHandlerMethodsReadOnlyTheDirectPrefix("@ApiController @RequestMapping(\"/p\")")
+
+    fun testHandlerMethodsReadOnlyTheDirectPrefixDeclaredFirstBesideComposedController() =
+        assertHandlerMethodsReadOnlyTheDirectPrefix("@RequestMapping(\"/p\") @ApiController")
+
     private fun assertItemsPaths(usage: String, expected: List<String>) {
         addSources(usage)
         assertComposedAnnotationsAreMetaAnnotated()
 
+        assertEquals(expected, itemsPaths())
+    }
+
+    private fun assertOnlyDirectPrefixIsServed(usage: String) {
+        addSources(usage)
+        assertComposedAnnotationsAreMetaAnnotated()
+        assertControllerCarriesDirectAndComposedMapping()
+
+        assertEquals(listOf("/p/items"), itemsPaths())
+    }
+
+    private fun assertHandlerMethodsReadOnlyTheDirectPrefix(usage: String) {
+        addSources(usage)
+        assertComposedAnnotationsAreMetaAnnotated()
+        assertControllerCarriesDirectAndComposedMapping()
+        assertFalse("Precondition: the loader finds the controller", itemsPaths().isEmpty())
+
+        val prefixes = HandlerMethods.requestMappingPrefixes(
+            itemsController(), MetaAnnotationsHolder.of(module, SpringWebClasses.REQUEST_MAPPING)
+        )
+
+        assertEquals(listOf("/p"), prefixes)
+    }
+
+    private fun itemsPaths(): List<String> {
         val paths = SpringWebEndpointsSearcher.getInstance(project).getAllEndpoints(module)
             .filter { it.type == EndpointType.SPRING_MVC && it.containingClass?.name == "ItemsController" }
             .map { it.path }
             .sorted()
-
         assertFalse("Precondition: the loader finds the controller", paths.isEmpty())
-        assertEquals(expected, paths)
+        return paths
+    }
+
+    private fun itemsController(): PsiClass {
+        val controller = JavaPsiFacade.getInstance(project)
+            .findClass("com.example.ItemsController", GlobalSearchScope.projectScope(project))
+        assertNotNull("Precondition: the controller is in the fixture", controller)
+        return controller!!
+    }
+
+    private fun assertControllerCarriesDirectAndComposedMapping() {
+        val controller = itemsController()
+        assertTrue(
+            "Precondition: the controller carries a direct @RequestMapping",
+            controller.hasAnnotation(SpringWebClasses.REQUEST_MAPPING)
+        )
+        assertTrue(
+            "Precondition: the controller carries the composed @ApiController",
+            controller.hasAnnotation("com.example.ApiController")
+        )
     }
 
     private fun assertComposedAnnotationsAreMetaAnnotated() {
@@ -112,6 +170,7 @@ class ComposedControllerPrefixTest : ExplytKotlinLightTestCase() {
             package com.example
 
             import org.springframework.web.bind.annotation.GetMapping
+            import org.springframework.web.bind.annotation.RequestMapping
 
             $usage
             class ItemsController {

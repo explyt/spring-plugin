@@ -75,6 +75,49 @@ class ComposedMappingDefaultPathTest : ComposedControllerPrefixJavaTestCase() {
         assertEquals(listOf("/api"), prefixes)
     }
 
+    fun testDirectRequestMappingPrefixWinsOverComposedControllerPrefix() =
+        assertOnlyDirectPrefixIsServed("@ApiController @RequestMapping(\"/p\")")
+
+    fun testDirectRequestMappingPrefixDeclaredFirstWinsOverComposedControllerPrefix() =
+        assertOnlyDirectPrefixIsServed("@RequestMapping(\"/p\") @ApiController")
+
+    fun testHandlerMethodsReadOnlyTheDirectPrefixBesideComposedController() =
+        assertHandlerMethodsReadOnlyTheDirectPrefix("@ApiController @RequestMapping(\"/p\")")
+
+    fun testHandlerMethodsReadOnlyTheDirectPrefixDeclaredFirstBesideComposedController() =
+        assertHandlerMethodsReadOnlyTheDirectPrefix("@RequestMapping(\"/p\") @ApiController")
+
+    private fun assertOnlyDirectPrefixIsServed(usage: String) {
+        addItemsController(ALIAS_TO_PATH, usage)
+        assertControllerCarriesDirectAndComposedMapping()
+
+        assertEquals(listOf("/p/items"), itemsPaths())
+    }
+
+    private fun assertHandlerMethodsReadOnlyTheDirectPrefix(usage: String) {
+        addItemsController(ALIAS_TO_PATH, usage)
+        assertControllerCarriesDirectAndComposedMapping()
+        assertFalse("Precondition: the loader finds the controller", itemsPaths().isEmpty())
+
+        val prefixes = HandlerMethods.requestMappingPrefixes(
+            itemsController(), MetaAnnotationsHolder.of(module, SpringWebClasses.REQUEST_MAPPING)
+        )
+
+        assertEquals(listOf("/p"), prefixes)
+    }
+
+    private fun assertControllerCarriesDirectAndComposedMapping() {
+        val controller = itemsController()
+        assertTrue(
+            "Precondition: the controller carries a direct @RequestMapping",
+            controller.hasAnnotation(SpringWebClasses.REQUEST_MAPPING)
+        )
+        assertTrue(
+            "Precondition: the controller carries the composed @ApiController",
+            controller.hasAnnotation("com.example.ApiController")
+        )
+    }
+
     private fun addController(usage: String) {
         myFixture.addFileToProject(
             "com/example/ReportController.java", """
