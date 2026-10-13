@@ -154,6 +154,7 @@
 - fix: Register the web additional-beans discoverer under the extension namespace that declares the extension point, so framework-provided web beans such as `WebApplicationContext` are resolved again
 - fix: Resolve `MockMvc` and `WebTestClient` autowired in tests as beans provided by test auto-configuration
 - fix: Inject the regular expression of a `@RequestMapping` path built by concatenation into the literal that actually contains it
+- fix: Keep an Actuator endpoint's write operation next to a web extension's write operation that differs only by whether it reads a request body, as Boot routes them by the consumed media types (#655)
 
 ### Spring MCP
 
