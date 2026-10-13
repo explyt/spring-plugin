@@ -17,6 +17,7 @@ import com.explyt.spring.core.service.beans.NativeBeanSnapshotReader
 import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.mcpserver.McpToolset
@@ -29,7 +30,6 @@ import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiClass
 import com.intellij.psi.search.GlobalSearchScope
-import kotlinx.coroutines.runBlocking
 import java.time.Instant
 
 /**
@@ -56,7 +56,7 @@ class StaleSnapshotBeanToolsTest : ExplytJavaLightTestCase() {
         }
     }
 
-    fun testALookupOfAHealthyTypeIsSingleDespiteAStaleBean() = runBlocking<Unit> {
+    fun testALookupOfAHealthyTypeIsSingleDespiteAStaleBean() = runBlockingReleasingWriteIntent<Unit> {
         installStaleSnapshot()
 
         val root = find(source = "AUTO", typeFqn = ORDER_STORE)
@@ -72,7 +72,7 @@ class StaleSnapshotBeanToolsTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testANativeAnswerNamesWhenTheSnapshotWasImported() = runBlocking<Unit> {
+    fun testANativeAnswerNamesWhenTheSnapshotWasImported() = runBlockingReleasingWriteIntent<Unit> {
         installStaleSnapshot()
 
         val model = find(source = "AUTO", typeFqn = ORDER_STORE)["model"]
@@ -80,7 +80,7 @@ class StaleSnapshotBeanToolsTest : ExplytJavaLightTestCase() {
         assertEquals(Instant.ofEpochMilli(IMPORTED_AT).toString(), model["snapshotImportedAt"].asText())
     }
 
-    fun testAStaticAnswerHasNoImportTime() = runBlocking<Unit> {
+    fun testAStaticAnswerHasNoImportTime() = runBlockingReleasingWriteIntent<Unit> {
         installStaleSnapshot()
 
         val model = find(source = "STATIC", typeFqn = ORDER_STORE)["model"]
@@ -93,7 +93,7 @@ class StaleSnapshotBeanToolsTest : ExplytJavaLightTestCase() {
      * The listing states what the model cannot promise as a whole through 'source' and 'snapshotImportedAt'.
      * A row keeps only its own bean's limitations, so the stale bean is the only one that says its type is gone.
      */
-    fun testTheListingNoLongerRepeatsSnapshotWideLimitationsOnEveryRow() = runBlocking<Unit> {
+    fun testTheListingNoLongerRepeatsSnapshotWideLimitationsOnEveryRow() = runBlockingReleasingWriteIntent<Unit> {
         installStaleSnapshot()
 
         val rows = listing()

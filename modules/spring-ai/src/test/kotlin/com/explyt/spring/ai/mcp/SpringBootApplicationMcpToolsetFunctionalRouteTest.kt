@@ -5,6 +5,7 @@
 
 package com.explyt.spring.ai.mcp
 
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.PsiModifier
 import com.intellij.psi.PsiManager
@@ -17,7 +18,6 @@ import com.explyt.spring.test.ExplytKotlinLightTestCase
 import com.explyt.spring.test.TestLibrary
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
-import kotlinx.coroutines.runBlocking
 
 /**
  * An endpoint the model found must survive the contract stage.
@@ -47,7 +47,7 @@ class SpringBootApplicationMcpToolsetFunctionalRouteTest : ExplytKotlinLightTest
         addAnnotatedController()
     }
 
-    fun testFunctionalRouteIsReportedAsAPartialContract() = runBlocking<Unit> {
+    fun testFunctionalRouteIsReportedAsAPartialContract() = runBlockingReleasingWriteIntent<Unit> {
         val contract = contractsOf("/v1beta/models/{model}:generateContent", httpMethod = "POST").single()
 
         assertEquals("/v1beta/models/{model}:generateContent", contract["fullPath"].asText())
@@ -67,7 +67,7 @@ class SpringBootApplicationMcpToolsetFunctionalRouteTest : ExplytKotlinLightTest
      * A caller reading `totalCount` against `endpoints.size` has no way to tell a dropped endpoint from one that
      * was never found, so the invariant is asserted on the response itself rather than on the endpoint list.
      */
-    fun testEveryCountedEndpointIsReturned() = runBlocking<Unit> {
+    fun testEveryCountedEndpointIsReturned() = runBlockingReleasingWriteIntent<Unit> {
         val root = mapper.readTree(
             toolset.getEndpointContract(urlPattern = "/v1/models", projectPath = projectPath())
         )
@@ -81,7 +81,7 @@ class SpringBootApplicationMcpToolsetFunctionalRouteTest : ExplytKotlinLightTest
     }
 
     /** The URL template is the one thing a functional route states about its request, so it is not invented. */
-    fun testPathVariablesOfAFunctionalRouteAreReported() = runBlocking<Unit> {
+    fun testPathVariablesOfAFunctionalRouteAreReported() = runBlockingReleasingWriteIntent<Unit> {
         val contract = contractsOf("/v1beta/models/{model}:generateContent", httpMethod = "POST").single()
         val parameter = contract["parameters"].single()
 
@@ -92,7 +92,7 @@ class SpringBootApplicationMcpToolsetFunctionalRouteTest : ExplytKotlinLightTest
     }
 
     /** The handler function is where the request shape is actually read, so the partial contract points at it. */
-    fun testFunctionalRouteNamesItsHandlerFunction() = runBlocking<Unit> {
+    fun testFunctionalRouteNamesItsHandlerFunction() = runBlockingReleasingWriteIntent<Unit> {
         val contract = contractsOf("/v1beta/models/{model}:generateContent", httpMethod = "POST").single()
 
         assertEquals("GatewayHandler.handle", contract["serviceCall"]["target"].asText())
@@ -104,7 +104,7 @@ class SpringBootApplicationMcpToolsetFunctionalRouteTest : ExplytKotlinLightTest
         assertFalse("A handler reference is not a call, so it has no call line", contract["serviceCalls"][0].has("callLine"))
     }
 
-    fun testFunctionalRouteUsesTheSourceNameForACompanionHandler() = runBlocking<Unit> {
+    fun testFunctionalRouteUsesTheSourceNameForACompanionHandler() = runBlockingReleasingWriteIntent<Unit> {
         val callee = routeReferenceCallee("CompanionRouterConfig.kt")
         assertTrue((callee.containingClass?.navigationElement as? KtObjectDeclaration)?.isCompanion() == true)
         assertEquals("explyt.web.Handler.Companion", callee.containingClass?.qualifiedName)
@@ -118,7 +118,7 @@ class SpringBootApplicationMcpToolsetFunctionalRouteTest : ExplytKotlinLightTest
      * path specificity alone put it first, because specificity breaks ties by descending length — and the caller
      * reads its answer off the first element.
      */
-    fun testExactMatchOutranksALongerPathThatMerelyContainsThePattern() = runBlocking<Unit> {
+    fun testExactMatchOutranksALongerPathThatMerelyContainsThePattern() = runBlockingReleasingWriteIntent<Unit> {
         val paths = contractsOf("/v1/models").map { it["fullPath"].asText() }
 
         assertTrue("The forgiving match must still find the longer paths, got $paths", paths.size > 1)
@@ -130,7 +130,7 @@ class SpringBootApplicationMcpToolsetFunctionalRouteTest : ExplytKotlinLightTest
      * and `RouterFunction<ServerResponse>` is not a response body. Reporting them is worse than reporting nothing,
      * because a caller cannot tell an invented fact from a read one.
      */
-    fun testRouteRegistrationSignatureIsNotReportedAsTheRequestShape() = runBlocking<Unit> {
+    fun testRouteRegistrationSignatureIsNotReportedAsTheRequestShape() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject(
             "JavaRouterConfig.java",
             """
@@ -165,7 +165,7 @@ class SpringBootApplicationMcpToolsetFunctionalRouteTest : ExplytKotlinLightTest
     }
 
     /** The contrast case: an annotated handler still yields the full contract, status and all. */
-    fun testAnnotatedHandlerStillYieldsACompleteContract() = runBlocking<Unit> {
+    fun testAnnotatedHandlerStillYieldsACompleteContract() = runBlockingReleasingWriteIntent<Unit> {
         val contract = contractsOf("/user/v1/models/popularity").single()
 
         assertEquals("COMPLETE", contract["contractStatus"].asText())
@@ -225,7 +225,7 @@ class SpringBootApplicationMcpToolsetFunctionalRouteTest : ExplytKotlinLightTest
         )
     }
 
-    fun testJavaStaticHandlerKeepsItsQualifiedName() = runBlocking<Unit> {
+    fun testJavaStaticHandlerKeepsItsQualifiedName() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject(
             "explyt/web/JavaHandler.java",
             """

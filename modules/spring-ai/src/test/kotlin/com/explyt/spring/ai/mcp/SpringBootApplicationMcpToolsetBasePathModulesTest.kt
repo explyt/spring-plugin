@@ -8,6 +8,7 @@ package com.explyt.spring.ai.mcp
 import com.explyt.spring.test.ExplytMultiModuleTestCase
 import com.explyt.spring.test.TestLibrary
 import com.explyt.spring.test.addFromMaven
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.explyt.spring.web.util.ApplicationBasePath
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -17,7 +18,6 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PsiTestUtil
-import kotlinx.coroutines.runBlocking
 
 /**
  * A base path belongs to one application: the lookup spans every module of the project, and each module's
@@ -34,7 +34,7 @@ class SpringBootApplicationMcpToolsetBasePathModulesTest : ExplytMultiModuleTest
     private val toolset = SpringBootApplicationMcpToolset()
     private val mapper = ObjectMapper()
 
-    fun testBasePathOfOneModuleDoesNotAdmitTheRoutesOfAnother() = runBlocking<Unit> {
+    fun testBasePathOfOneModuleDoesNotAdmitTheRoutesOfAnother() = runBlockingReleasingWriteIntent<Unit> {
         val admin = addApplicationModule("admin")
         addFileToModule(admin, "application.yml", "server:\n  servlet:\n    context-path: /admin\n")
         addFileToModule(admin, "com/example/admin/AdminController.java", controller("com.example.admin", "/console"))

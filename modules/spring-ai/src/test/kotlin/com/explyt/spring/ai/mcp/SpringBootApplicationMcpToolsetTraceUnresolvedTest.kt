@@ -7,6 +7,7 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.test.TestLibrary
 import com.explyt.spring.test.addFromMaven
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.mcpserver.annotations.McpDescription
@@ -21,7 +22,6 @@ import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.builders.JavaModuleFixtureBuilder
 import com.intellij.testFramework.fixtures.JavaCodeInsightFixtureTestCase
-import kotlinx.coroutines.runBlocking
 import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.toUElement
@@ -58,7 +58,7 @@ class SpringBootApplicationMcpToolsetTraceUnresolvedTest : JavaCodeInsightFixtur
         )
     }
 
-    fun testUnresolvedMethodOnAnInjectedProjectTypeIsAnExternalLeafMarkedUnresolved() = runBlocking {
+    fun testUnresolvedMethodOnAnInjectedProjectTypeIsAnExternalLeafMarkedUnresolved() = runBlockingReleasingWriteIntent {
         assertEquals(
             listOf(unresolvedExternal("RuleStore.missingMethod", lineOf(KOTLIN_SOURCE, "store.missingMethod(rule)"))),
             kotlinCallsOf("fun rename(rule: Rule)")
@@ -69,7 +69,7 @@ class SpringBootApplicationMcpToolsetTraceUnresolvedTest : JavaCodeInsightFixtur
         )
     }
 
-    fun testCallOnAnInjectedDependencyOfAnUnresolvedTypeIsNamedAfterTheDeclaredType() = runBlocking {
+    fun testCallOnAnInjectedDependencyOfAnUnresolvedTypeIsNamedAfterTheDeclaredType() = runBlockingReleasingWriteIntent {
         assertEquals(
             listOf(unresolvedExternal("DSLContext.selectFrom", lineOf(KOTLIN_SOURCE, "dsl.selectFrom(rule.name)"))),
             kotlinCallsOf("fun update(rule: Rule)")
@@ -81,7 +81,7 @@ class SpringBootApplicationMcpToolsetTraceUnresolvedTest : JavaCodeInsightFixtur
     }
 
     /** The resolved leaves name the simple class, `JdbcTemplate.query`, so an unresolved one does too - type arguments left out. */
-    fun testTargetNamesTheDeclaredTypeWithoutItsTypeArguments() = runBlocking {
+    fun testTargetNamesTheDeclaredTypeWithoutItsTypeArguments() = runBlockingReleasingWriteIntent {
         assertEquals(
             listOf(unresolvedExternal("RuleCache.missingMethod", lineOf(KOTLIN_SOURCE, "cache.missingMethod(rule)"))),
             kotlinCallsOf("fun remember(rule: Rule)")
@@ -92,7 +92,7 @@ class SpringBootApplicationMcpToolsetTraceUnresolvedTest : JavaCodeInsightFixtur
         )
     }
 
-    fun testTargetNamesANullableDeclaredTypeWithoutTheQuestionMark() = runBlocking {
+    fun testTargetNamesANullableDeclaredTypeWithoutTheQuestionMark() = runBlockingReleasingWriteIntent {
         assertEquals(
             listOf(unresolvedExternal("RuleCache.missingMethod", lineOf(KOTLIN_SOURCE, "spare?.missingMethod(rule)"))),
             kotlinCallsOf("fun spareRemember(rule: Rule)")
@@ -103,7 +103,7 @@ class SpringBootApplicationMcpToolsetTraceUnresolvedTest : JavaCodeInsightFixtur
         )
     }
 
-    fun testUnresolvedCallThroughALocalCopyOrACallableReferenceIsListed() = runBlocking {
+    fun testUnresolvedCallThroughALocalCopyOrACallableReferenceIsListed() = runBlockingReleasingWriteIntent {
         assertEquals(
             listOf(unresolvedExternal("DSLContext.fetch", lineOf(KOTLIN_SOURCE, "return copy.fetch(sql)"))),
             kotlinCallsOf("fun fetchAll(sql: String)")
@@ -118,7 +118,7 @@ class SpringBootApplicationMcpToolsetTraceUnresolvedTest : JavaCodeInsightFixtur
         )
     }
 
-    fun testUnresolvedCallOnTheFieldThroughThisOrInsideALambdaIsListedAtItsOwnLine() = runBlocking {
+    fun testUnresolvedCallOnTheFieldThroughThisOrInsideALambdaIsListedAtItsOwnLine() = runBlockingReleasingWriteIntent {
         assertEquals(
             listOf(unresolvedExternal("DSLContext.fetch", lineOf(KOTLIN_SOURCE, "this.dsl.fetch()"))),
             kotlinCallsOf("fun explicitThis()")
@@ -134,7 +134,7 @@ class SpringBootApplicationMcpToolsetTraceUnresolvedTest : JavaCodeInsightFixtur
      * of them missing - and folding them into the first hid the unresolved one. A call with the wrong arguments is
      * not the shape: Kotlin resolves `jdbc.execute()` to the inapplicable candidate, so the trace sees it as resolved.
      */
-    fun testResolvedAndUnresolvedCallsOfTheSameTargetAreBothListed() = runBlocking {
+    fun testResolvedAndUnresolvedCallsOfTheSameTargetAreBothListed() = runBlockingReleasingWriteIntent {
         assertTrue("Kotlin 'both' must make an unresolved call", hasUnresolvedCall(KOTLIN_TEMPLATES, "both"))
         assertEquals(
             listOf(
@@ -159,7 +159,7 @@ class SpringBootApplicationMcpToolsetTraceUnresolvedTest : JavaCodeInsightFixtur
      * `with(dsl)` or `dsl.apply`, names no receiver at all; and a fresh object, an unresolved type, the class itself,
      * a parameter shadowing the field or no receiver is never an injected dependency.
      */
-    fun testUnresolvedCallOnAnythingButAnInjectedDependencyIsLeftOut() = runBlocking {
+    fun testUnresolvedCallOnAnythingButAnInjectedDependencyIsLeftOut() = runBlockingReleasingWriteIntent {
         assertEquals(
             listOf(unresolvedExternal("DSLContext.select", lineOf(KOTLIN_SOURCE, "dsl.select().from(rule.name)"))),
             kotlinCallsOf("fun chain(rule: Rule)")
@@ -173,7 +173,7 @@ class SpringBootApplicationMcpToolsetTraceUnresolvedTest : JavaCodeInsightFixtur
     }
 
     /** `dsl()` invokes the dependency itself; without its type the call has no receiver UAST can name, and is not attributed. */
-    fun testInvokeConventionOnAnUnresolvedTypeIsNotAttributed() = runBlocking {
+    fun testInvokeConventionOnAnUnresolvedTypeIsNotAttributed() = runBlockingReleasingWriteIntent {
         assertTrue("'invoked' must make an unresolved call", hasUnresolvedCall(KOTLIN_REPOSITORY, "invoked"))
         assertEquals(emptyList<JsonNode>(), kotlinCallsOf("fun invoked()"))
     }
@@ -185,7 +185,7 @@ class SpringBootApplicationMcpToolsetTraceUnresolvedTest : JavaCodeInsightFixtur
         assertTrue("The description must say that an implicit receiver is not attributed", description.contains("implicit receiver"))
     }
 
-    fun testResolvedCallCarriesNoResolvedKey() = runBlocking {
+    fun testResolvedCallCarriesNoResolvedKey() = runBlockingReleasingWriteIntent {
         val projectCall = kotlinCallsOf("fun keep(rule: Rule)").single()
         val externalCall = kotlinCallsOf("fun rows()").single()
 

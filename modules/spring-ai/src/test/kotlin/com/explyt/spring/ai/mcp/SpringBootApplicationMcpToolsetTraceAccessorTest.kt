@@ -7,6 +7,7 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.test.TestLibrary
 import com.explyt.spring.test.addFromMaven
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.lang.java.JavaLanguage
@@ -31,7 +32,6 @@ import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.builders.JavaModuleFixtureBuilder
 import com.intellij.testFramework.fixtures.JavaCodeInsightFixtureTestCase
-import kotlinx.coroutines.runBlocking
 import java.io.File
 
 /**
@@ -70,7 +70,7 @@ class SpringBootApplicationMcpToolsetTraceAccessorTest : JavaCodeInsightFixtureT
         addSource("com/example/orders/OrderController.java", ORDER_CONTROLLER_SOURCE)
     }
 
-    fun testTrivialGettersDoNotSpendTheMethodLimit() = runBlocking {
+    fun testTrivialGettersDoNotSpendTheMethodLimit() = runBlockingReleasingWriteIntent {
         val trace = traceFromHandler()
 
         assertFalse("Sixty trivial getters must not reach the cap", trace.root["chainLimitReached"].asBoolean())
@@ -85,19 +85,19 @@ class SpringBootApplicationMcpToolsetTraceAccessorTest : JavaCodeInsightFixtureT
         }
     }
 
-    fun testComputedGetterIsTracedAsAnyProjectMethod() = runBlocking {
+    fun testComputedGetterIsTracedAsAnyProjectMethod() = runBlockingReleasingWriteIntent {
         val trace = traceFromHandler()
 
         trace.assertTraced(trace.call("OrderDto.getTotal"), "OrderDto.getTotal")
     }
 
-    fun testTrivialSetterIsAnAccessor() = runBlocking {
+    fun testTrivialSetterIsAnAccessor() = runBlockingReleasingWriteIntent {
         val trace = traceFromHandler()
 
         trace.assertAccessor(trace.call("OrderDto.setF0"))
     }
 
-    fun testSameClassAccessorIsListedAndNotExpanded() = runBlocking {
+    fun testSameClassAccessorIsListedAndNotExpanded() = runBlockingReleasingWriteIntent {
         val trace = traceFromHandler()
 
         val baseCall = trace.call("OrderService.getBase")
@@ -106,7 +106,7 @@ class SpringBootApplicationMcpToolsetTraceAccessorTest : JavaCodeInsightFixtureT
         assertFalse(trace.chain.any { nameOf(it) == "OrderService.getBase" })
     }
 
-    fun testKotlinPropertyAccessorsCalledFromJava() = runBlocking {
+    fun testKotlinPropertyAccessorsCalledFromJava() = runBlockingReleasingWriteIntent {
         val trace = traceFromHandler()
 
         listOf("CustomerDto.getName", "CustomerDto.setEmail", "CustomerDto.getLabel").forEach { target ->
@@ -116,34 +116,34 @@ class SpringBootApplicationMcpToolsetTraceAccessorTest : JavaCodeInsightFixtureT
         trace.assertTraced(trace.call("CustomerDto.getCode"), "CustomerDto.getCode")
     }
 
-    fun testKotlinPropertyDelegatedToAnotherObjectIsNotAnAccessor() = runBlocking {
+    fun testKotlinPropertyDelegatedToAnotherObjectIsNotAnAccessor() = runBlockingReleasingWriteIntent {
         val trace = traceFromHandler()
 
         trace.assertTraced(trace.call("NamedWrapper.getName"), "NamedWrapper.getName")
     }
 
-    fun testAccessorGeneratedFromAFieldIsAnAccessor() = runBlocking {
+    fun testAccessorGeneratedFromAFieldIsAnAccessor() = runBlockingReleasingWriteIntent {
         val trace = traceFromHandler()
 
         listOf("GeneratedDto.getCity", "GeneratedDto.setCity", "GeneratedDto.setCountry", "GeneratedDto.getPlain")
             .forEach { target -> trace.assertAccessor(trace.call(target)) }
     }
 
-    fun testGeneratedMethodThatDoesNotMirrorItsFieldIsNotAnAccessor() = runBlocking {
+    fun testGeneratedMethodThatDoesNotMirrorItsFieldIsNotAnAccessor() = runBlockingReleasingWriteIntent {
         val trace = traceFromHandler()
 
         listOf("GeneratedDto.fetchCity", "GeneratedDto.getStreet", "GeneratedDto.getZip", "GeneratedDto.setZip")
             .forEach { target -> trace.assertTraced(trace.call(target), target) }
     }
 
-    fun testGeneratedAccessorOfAFieldThatComputesItsValueIsNotAnAccessor() = runBlocking {
+    fun testGeneratedAccessorOfAFieldThatComputesItsValueIsNotAnAccessor() = runBlockingReleasingWriteIntent {
         val trace = traceFromHandler()
 
         listOf("GeneratedDto.getRegion", "GeneratedDto.getNamed")
             .forEach { target -> trace.assertTraced(trace.call(target), target) }
     }
 
-    fun testRecordComponentAccessorIsAnAccessor() = runBlocking {
+    fun testRecordComponentAccessorIsAnAccessor() = runBlockingReleasingWriteIntent {
         val trace = traceFromHandler()
 
         trace.assertAccessor(trace.call("LineDto.sku"))
@@ -160,7 +160,7 @@ class SpringBootApplicationMcpToolsetTraceAccessorTest : JavaCodeInsightFixtureT
             }
     }
 
-    fun testOrdinaryCallRecordKeepsItsKeys() = runBlocking {
+    fun testOrdinaryCallRecordKeepsItsKeys() = runBlockingReleasingWriteIntent {
         val trace = traceFromHandler()
 
         val serviceCall = trace.chain[0]["callsInto"].single { it["target"].asText() == "OrderService.total" }

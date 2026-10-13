@@ -17,6 +17,7 @@ import com.explyt.spring.core.service.beans.NativeBeanSnapshotReader
 import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.openapi.externalSystem.model.DataNode
@@ -28,7 +29,6 @@ import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiClass
 import com.intellij.psi.search.GlobalSearchScope
-import kotlinx.coroutines.runBlocking
 
 /**
  * The existing listing, now answering from the same chosen model the lookup tool uses.
@@ -60,7 +60,7 @@ class BeanListingContextTest : ExplytJavaLightTestCase() {
      * The lookup tool counts `@Bean(name = {"systemClock", "utcClock"})` as one identity; this listing has
      * always enumerated names, and moving it onto the shared model must not quietly change that to identities.
      */
-    fun testAliasesStayOneRowPerName() = runBlocking<Unit> {
+    fun testAliasesStayOneRowPerName() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("beanQuery", "")
 
         val beans = listing(beanType = "COMPONENT")
@@ -80,7 +80,7 @@ class BeanListingContextTest : ExplytJavaLightTestCase() {
      * Dropping it would report a bean that exists in the application as absent, which is the failure the empty
      * string exists to avoid.
      */
-    fun testABeanWithNoProjectModuleKeepsItsRow() = runBlocking<Unit> {
+    fun testABeanWithNoProjectModuleKeepsItsRow() = runBlockingReleasingWriteIntent<Unit> {
         installNativeRoot(applicationClass(), "libraryClock", CLOCK)
         assertEquals(
             "Precondition: the root must be loaded, otherwise nothing is proven",
@@ -96,7 +96,7 @@ class BeanListingContextTest : ExplytJavaLightTestCase() {
     }
 
     /** Two loaded roots for one application are a question for the caller, not a merged answer. */
-    fun testAmbiguousContextIsReportedInsteadOfMerged() = runBlocking<Unit> {
+    fun testAmbiguousContextIsReportedInsteadOfMerged() = runBlockingReleasingWriteIntent<Unit> {
         val application = applicationClass()
         installNativeRoot(application, "clockOne", CLOCK, suffix = "one")
         installNativeRoot(application, "clockTwo", CLOCK, suffix = "two")
@@ -117,7 +117,7 @@ class BeanListingContextTest : ExplytJavaLightTestCase() {
     }
 
     /** An unknown source is refused rather than silently treated as the default. */
-    fun testUnknownSourceIsRefused() = runBlocking<Unit> {
+    fun testUnknownSourceIsRefused() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("beanQuery", "")
 
         try {
@@ -134,7 +134,7 @@ class BeanListingContextTest : ExplytJavaLightTestCase() {
      * The class-name search exists to disambiguate an omitted path; letting it rescue a supplied one would
      * answer about a codebase the caller did not name, which is exactly what a wrong path looks like.
      */
-    fun testASuppliedPathIsNotRescuedByTheClassNameSearch() = runBlocking<Unit> {
+    fun testASuppliedPathIsNotRescuedByTheClassNameSearch() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("beanQuery", "")
 
         try {
@@ -149,7 +149,7 @@ class BeanListingContextTest : ExplytJavaLightTestCase() {
     }
 
     /** With one project open, an omitted path is the question the resolver answers rather than refuses. */
-    fun testAnOmittedPathIsAnsweredFromTheOnlyOpenProject() = runBlocking<Unit> {
+    fun testAnOmittedPathIsAnsweredFromTheOnlyOpenProject() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("beanQuery", "")
 
         val beans = listing(beanType = "COMPONENT", projectPath = null)

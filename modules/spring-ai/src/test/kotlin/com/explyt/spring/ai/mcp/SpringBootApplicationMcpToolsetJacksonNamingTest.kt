@@ -7,13 +7,13 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.test.ExplytKotlinLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PsiTestUtil
-import kotlinx.coroutines.runBlocking
 
 /**
  * Property names and nullability in `explyt_get_spring_endpoint_contract` as Jackson writes them: the naming strategy
@@ -34,7 +34,7 @@ class SpringBootApplicationMcpToolsetJacksonNamingTest : ExplytKotlinLightTestCa
     private val toolset = SpringBootApplicationMcpToolset()
     private val mapper = ObjectMapper()
 
-    fun testJsonNamingRenamesPropertiesAndIsReported() = runBlocking<Unit> {
+    fun testJsonNamingRenamesPropertiesAndIsReported() = runBlockingReleasingWriteIntent<Unit> {
         addController(
             "RouteSettings",
             """
@@ -56,7 +56,7 @@ class SpringBootApplicationMcpToolsetJacksonNamingTest : ExplytKotlinLightTestCa
         )
     }
 
-    fun testInheritedJsonNamingApplies() = runBlocking<Unit> {
+    fun testInheritedJsonNamingApplies() = runBlockingReleasingWriteIntent<Unit> {
         addController(
             "RouteSettings",
             """
@@ -69,7 +69,7 @@ class SpringBootApplicationMcpToolsetJacksonNamingTest : ExplytKotlinLightTestCa
         assertEquals(listOf("routing-enabled"), responseSchema()["fields"].map { it["name"].asText() })
     }
 
-    fun testConfiguredStrategyRenamesNestedClassesAndAcronymsLikeJackson() = runBlocking<Unit> {
+    fun testConfiguredStrategyRenamesNestedClassesAndAcronymsLikeJackson() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject("application.yml", "spring:\n  jackson:\n    property-naming-strategy: SNAKE_CASE\n")
         addController(
             "RouteSettings",
@@ -86,7 +86,7 @@ class SpringBootApplicationMcpToolsetJacksonNamingTest : ExplytKotlinLightTestCa
         assertEquals(listOf("retry_count"), field(schema, "inner")["nested"]["fields"].map { it["name"].asText() })
     }
 
-    fun testCustomStrategyIsUnknownAndRenamesNothing() = runBlocking<Unit> {
+    fun testCustomStrategyIsUnknownAndRenamesNothing() = runBlockingReleasingWriteIntent<Unit> {
         addController(
             "RouteSettings",
             """
@@ -102,7 +102,7 @@ class SpringBootApplicationMcpToolsetJacksonNamingTest : ExplytKotlinLightTestCa
         assertEquals(listOf("routingEnabled"), schema["fields"].map { it["name"].asText() })
     }
 
-    fun testEnumValuesAreNotRenamed() = runBlocking<Unit> {
+    fun testEnumValuesAreNotRenamed() = runBlockingReleasingWriteIntent<Unit> {
         addController(
             "RouteSettings",
             """
@@ -116,7 +116,7 @@ class SpringBootApplicationMcpToolsetJacksonNamingTest : ExplytKotlinLightTestCa
         assertEquals(listOf("FastPath", "SlowPath"), mode["nested"]["enumValues"].map { it.asText() })
     }
 
-    fun testKotlinNullability() = runBlocking<Unit> {
+    fun testKotlinNullability() = runBlockingReleasingWriteIntent<Unit> {
         addController("RouteSettings", "data class RouteSettings(val count: Int, val limit: Int?, val name: String)")
 
         val schema = responseSchema()
@@ -126,7 +126,7 @@ class SpringBootApplicationMcpToolsetJacksonNamingTest : ExplytKotlinLightTestCa
         assertEquals(false, field(schema, "name")["nullable"].booleanValue())
     }
 
-    fun testJavaNullabilityIsUnknownWithoutAnAnnotation() = runBlocking<Unit> {
+    fun testJavaNullabilityIsUnknownWithoutAnAnnotation() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject(
             "com/example/web/Version.java", """
             package com.example.web;
@@ -153,7 +153,7 @@ class SpringBootApplicationMcpToolsetJacksonNamingTest : ExplytKotlinLightTestCa
         assertEquals(true, field(schema, "optional")["nullable"].booleanValue())
     }
 
-    fun testObjectMapperBeanMakesTheStrategyUnknown() = runBlocking<Unit> {
+    fun testObjectMapperBeanMakesTheStrategyUnknown() = runBlockingReleasingWriteIntent<Unit> {
         addJacksonConfig(
             """
             @Configuration
@@ -173,7 +173,7 @@ class SpringBootApplicationMcpToolsetJacksonNamingTest : ExplytKotlinLightTestCa
         assertFalse(field(schema, "routingEnabled").has("declaredName"))
     }
 
-    fun testBuilderCustomizerClassMakesTheStrategyUnknown() = runBlocking<Unit> {
+    fun testBuilderCustomizerClassMakesTheStrategyUnknown() = runBlockingReleasingWriteIntent<Unit> {
         assertResolves(BOOT_3_CUSTOMIZER)
         addJacksonConfig(
             """
@@ -197,7 +197,7 @@ class SpringBootApplicationMcpToolsetJacksonNamingTest : ExplytKotlinLightTestCa
         assertEquals(listOf("routingEnabled"), schema["fields"].map { it["name"].asText() })
     }
 
-    fun testBuilderCustomizerBeanMakesTheStrategyUnknown() = runBlocking<Unit> {
+    fun testBuilderCustomizerBeanMakesTheStrategyUnknown() = runBlockingReleasingWriteIntent<Unit> {
         assertResolves(BOOT_3_CUSTOMIZER)
         addJacksonConfig(
             """
@@ -217,7 +217,7 @@ class SpringBootApplicationMcpToolsetJacksonNamingTest : ExplytKotlinLightTestCa
         assertEquals("@Bean customizer in com.example.config.JacksonConfig", schema["namingStrategySource"].asText())
     }
 
-    fun testMapperBuilderBeanMakesTheStrategyUnknown() = runBlocking<Unit> {
+    fun testMapperBuilderBeanMakesTheStrategyUnknown() = runBlockingReleasingWriteIntent<Unit> {
         assertResolves("org.springframework.http.converter.json.Jackson2ObjectMapperBuilder")
         addJacksonConfig(
             """
@@ -236,7 +236,7 @@ class SpringBootApplicationMcpToolsetJacksonNamingTest : ExplytKotlinLightTestCa
         assertEquals("@Bean builder in com.example.config.JacksonConfig", schema["namingStrategySource"].asText())
     }
 
-    fun testJavaObjectMapperBeanMakesTheStrategyUnknown() = runBlocking<Unit> {
+    fun testJavaObjectMapperBeanMakesTheStrategyUnknown() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject(
             "com/example/config/JavaJacksonConfig.java", """
             package com.example.config;
@@ -260,7 +260,7 @@ class SpringBootApplicationMcpToolsetJacksonNamingTest : ExplytKotlinLightTestCa
         assertEquals("@Bean objectMapper in com.example.config.JavaJacksonConfig", schema["namingStrategySource"].asText())
     }
 
-    fun testInferredReturnTypeOfAMapperBeanIsRead() = runBlocking<Unit> {
+    fun testInferredReturnTypeOfAMapperBeanIsRead() = runBlockingReleasingWriteIntent<Unit> {
         addJacksonConfig(
             """
             @Configuration
@@ -278,7 +278,7 @@ class SpringBootApplicationMcpToolsetJacksonNamingTest : ExplytKotlinLightTestCa
         assertEquals("@Bean objectMapper in com.example.config.JacksonConfig", schema["namingStrategySource"].asText())
     }
 
-    fun testAnonymousCustomizerOutsideABeanIsNotASource() = runBlocking<Unit> {
+    fun testAnonymousCustomizerOutsideABeanIsNotASource() = runBlockingReleasingWriteIntent<Unit> {
         assertResolves(BOOT_3_CUSTOMIZER)
         myFixture.addFileToProject(
             "com/example/config/Wiring.java", """
@@ -303,7 +303,7 @@ class SpringBootApplicationMcpToolsetJacksonNamingTest : ExplytKotlinLightTestCa
         assertEquals(setOf("className", "fields"), schema.fieldNames().asSequence().toSet())
     }
 
-    fun testMapperBeanInATestSourceRootIsNotASource() = runBlocking<Unit> {
+    fun testMapperBeanInATestSourceRootIsNotASource() = runBlockingReleasingWriteIntent<Unit> {
         val testRoot = myFixture.tempDirFixture.findOrCreateDir("src/test/kotlin")
         PsiTestUtil.addSourceRoot(module, testRoot, true)
         try {
@@ -337,7 +337,7 @@ class SpringBootApplicationMcpToolsetJacksonNamingTest : ExplytKotlinLightTestCa
         }
     }
 
-    fun testAMapperBeanIsNamedBeforeACustomizerClass() = runBlocking<Unit> {
+    fun testAMapperBeanIsNamedBeforeACustomizerClass() = runBlockingReleasingWriteIntent<Unit> {
         assertResolves(BOOT_3_CUSTOMIZER)
         addJacksonConfig(
             """
@@ -361,7 +361,7 @@ class SpringBootApplicationMcpToolsetJacksonNamingTest : ExplytKotlinLightTestCa
         assertEquals("@Bean objectMapper in com.example.config.ZzConfig", schema["namingStrategySource"].asText())
     }
 
-    fun testJsonNamingOutranksAnObjectMapperBean() = runBlocking<Unit> {
+    fun testJsonNamingOutranksAnObjectMapperBean() = runBlockingReleasingWriteIntent<Unit> {
         addJacksonConfig(
             """
             @Configuration
@@ -386,7 +386,7 @@ class SpringBootApplicationMcpToolsetJacksonNamingTest : ExplytKotlinLightTestCa
         assertEquals(listOf("routing_enabled"), schema["fields"].map { it["name"].asText() })
     }
 
-    fun testObjectMapperBeanOutranksThePropertyAndKeepsItVisible() = runBlocking<Unit> {
+    fun testObjectMapperBeanOutranksThePropertyAndKeepsItVisible() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject("application.yml", "spring:\n  jackson:\n    property-naming-strategy: SNAKE_CASE\n")
         addJacksonConfig(
             """
@@ -410,7 +410,7 @@ class SpringBootApplicationMcpToolsetJacksonNamingTest : ExplytKotlinLightTestCa
         assertEquals(listOf("routingEnabled"), schema["fields"].map { it["name"].asText() })
     }
 
-    fun testPlainDtoWithoutABeanOrAPropertyCarriesNoNamingKeys() = runBlocking<Unit> {
+    fun testPlainDtoWithoutABeanOrAPropertyCarriesNoNamingKeys() = runBlockingReleasingWriteIntent<Unit> {
         addController("RouteSettings", "data class RouteSettings(val routingEnabled: Boolean)")
 
         val schema = responseSchema()
@@ -419,7 +419,7 @@ class SpringBootApplicationMcpToolsetJacksonNamingTest : ExplytKotlinLightTestCa
         assertEquals(listOf("routingEnabled"), schema["fields"].map { it["name"].asText() })
     }
 
-    fun testUnrelatedBeanLeavesTheNamingKeysAbsent() = runBlocking<Unit> {
+    fun testUnrelatedBeanLeavesTheNamingKeysAbsent() = runBlockingReleasingWriteIntent<Unit> {
         addJacksonConfig(
             """
             class Ledger
@@ -438,7 +438,7 @@ class SpringBootApplicationMcpToolsetJacksonNamingTest : ExplytKotlinLightTestCa
         assertEquals(setOf("className", "fields"), schema.fieldNames().asSequence().toSet())
     }
 
-    fun testNestedClassUnderAnObjectMapperBeanIsUnknownToo() = runBlocking<Unit> {
+    fun testNestedClassUnderAnObjectMapperBeanIsUnknownToo() = runBlockingReleasingWriteIntent<Unit> {
         addJacksonConfig(
             """
             @Configuration
