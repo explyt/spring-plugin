@@ -74,6 +74,26 @@ class InjectionConstructorRuleTest : ExplytKotlinLightTestCase() {
         )
     }
 
+    fun testThePrimaryConstructorNextToANoArgSecondaryIsAnInjectionPointOfTheSourceGutter() {
+        configureFixture()
+        val targets = sourceGutterTargets()
+        assertTrue(
+            "determineCandidateConstructors:453-455 returns {primary, default}; autowireConstructor sorts the greedy " +
+                "primary first (ConstructorResolver:209, AutowireUtils:57-59) and uses it, got $targets",
+            "primaryFoo" in targets
+        )
+    }
+
+    fun testThePrimaryConstructorNextToANoArgSecondaryIsAnInjectionPointOfTheFacade() {
+        configureFixture()
+        val targets = facadeInjectionPoints()
+        assertTrue(
+            "determineCandidateConstructors:453-455 returns {primary, default}; autowireConstructor sorts the greedy " +
+                "primary first (ConstructorResolver:209, AutowireUtils:57-59) and uses it, got $targets",
+            "primaryFoo" in targets
+        )
+    }
+
     private fun configureFixture() {
         myFixture.configureByText(
             "Candidates.kt",
@@ -90,6 +110,9 @@ class InjectionConstructorRuleTest : ExplytKotlinLightTestCase() {
             @Component class NoAutowiredConstructor() {
                 constructor(ignoredFoo: Foo) : this()
             }
+            @Component class PrimaryWithNoArgSecondary(primaryFoo: Foo) {
+                constructor() : this(Foo())
+            }
             """.trimIndent()
         )
         myFixture.doHighlighting()
@@ -98,7 +121,7 @@ class InjectionConstructorRuleTest : ExplytKotlinLightTestCase() {
 
     private fun assertPreconditions() {
         val beans = SpringSearchServiceFacade.getInstance(project).getAllActiveBeans(module)
-        listOf("Foo", "TwoConstructors", "SingleConstructor", "NoAutowiredConstructor").forEach { name ->
+        listOf("Foo", "TwoConstructors", "SingleConstructor", "NoAutowiredConstructor", "PrimaryWithNoArgSecondary").forEach { name ->
             assertTrue("candidates.$name must be an active bean", beans.any { it.psiClass.qualifiedName == "candidates.$name" })
         }
         val twoConstructors = findClass("TwoConstructors").constructors
@@ -110,6 +133,14 @@ class InjectionConstructorRuleTest : ExplytKotlinLightTestCase() {
         val noAutowired = findClass("NoAutowiredConstructor").constructors
         assertEquals(setOf(0, 1), noAutowired.map { it.parameterList.parametersCount }.toSet())
         assertTrue(noAutowired.none { it.getAnnotation(SpringCoreClasses.AUTOWIRED) != null })
+        val primaryWithSecondary = findClass("PrimaryWithNoArgSecondary").constructors
+        assertEquals(
+            "A one-parameter primary and a no-arg secondary, both without @Autowired",
+            setOf(0, 1),
+            primaryWithSecondary.map { it.parameterList.parametersCount }.toSet()
+        )
+        assertEquals(2, primaryWithSecondary.map { it.navigationElement }.toSet().size)
+        assertTrue(primaryWithSecondary.none { it.getAnnotation(SpringCoreClasses.AUTOWIRED) != null })
     }
 
     private fun sourceGutterTargets(): List<String> =

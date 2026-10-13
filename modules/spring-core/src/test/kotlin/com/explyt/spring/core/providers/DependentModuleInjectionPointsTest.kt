@@ -49,6 +49,74 @@ class DependentModuleInjectionPointsTest : ExplytMultiModuleTestCase() {
         assertTrue("The dependent-module consumer must be listed: $targets", "abstractFoo" in targets)
     }
 
+    fun testFacadeListsTheSingleConstructorConsumerInTheDependentModule() {
+        val lib = addFixture()
+        assertConstructorConsumerPreconditions(lib)
+
+        val points = facadeInjectionPoints(lib, "com.example.lib.Foo")
+        assertTrue("Control: the @Autowired constructor consumer stays listed: $points", "autowiredCtorFoo" in points)
+        assertTrue("The single-constructor consumer in the dependent module must be listed: $points", "ctorFoo" in points)
+    }
+
+    fun testSourceGutterListsTheSingleConstructorConsumerInTheDependentModule() {
+        val lib = addFixture()
+        assertConstructorConsumerPreconditions(lib)
+
+        open(lib, FOO_PATH)
+        val targets = SpringGutterTestUtil.getGutterTargetString(
+            SpringGutterTestUtil.getAllBeanGuttersByIcon(myFixture, SpringIcons.SpringBean)
+        ).flatten()
+        assertTrue("Control: the @Autowired constructor consumer stays listed: $targets", "autowiredCtorFoo" in targets)
+        assertTrue("The single-constructor consumer in the dependent module must be listed: $targets", "ctorFoo" in targets)
+    }
+
+    fun testAbstractComponentMarkerListsTheSingleConstructorConsumerInTheDependentModule() {
+        val lib = addFixture()
+        assertConstructorConsumerPreconditions(lib)
+
+        val targets = abstractComponentTargets(lib)
+        assertTrue("Control: the @Autowired constructor consumer stays listed: $targets", "autowiredCtorAbstractFoo" in targets)
+        assertTrue(
+            "The single-constructor consumer in the dependent module must be listed: $targets",
+            "ctorAbstractFoo" in targets
+        )
+    }
+
+    /**
+     * Spring injects through the only constructor of `ConstructorConsumer` (no `@Autowired`), so it is a consumer exactly
+     * like `AutowiredConstructorConsumer`; both live in the main module, which depends on `lib`.
+     */
+    private fun assertConstructorConsumerPreconditions(lib: Module) {
+        assertTrue(
+            "The main module must depend on lib",
+            ModuleRootManager.getInstance(module).dependencies.contains(lib)
+        )
+        val scope = GlobalSearchScope.projectScope(project)
+        val facade = JavaPsiFacade.getInstance(project)
+        val single = facade.findClass("com.example.lib.app.ConstructorConsumer", scope)
+            ?: throw AssertionError("ConstructorConsumer must resolve")
+        val singleConstructor = single.constructors.single()
+        assertNull("The single constructor carries no @Autowired", singleConstructor.getAnnotation(AUTOWIRED))
+        assertEquals(listOf("ctorAbstractFoo", "ctorFoo"), singleConstructor.parameterList.parameters.map { it.name })
+        val autowired = facade.findClass("com.example.lib.app.AutowiredConstructorConsumer", scope)
+            ?: throw AssertionError("AutowiredConstructorConsumer must resolve")
+        assertNotNull("The control constructor is @Autowired", autowired.constructors.single().getAnnotation(AUTOWIRED))
+
+        val mainBeans = SpringSearchServiceFacade.getInstance(project).getAllActiveBeans(module)
+            .mapNotNull { it.psiClass.qualifiedName }
+        assertTrue(
+            "ConstructorConsumer must be an active bean of the main module: $mainBeans",
+            "com.example.lib.app.ConstructorConsumer" in mainBeans
+        )
+        val libBeans = SpringSearchServiceFacade.getInstance(project).getAllActiveBeans(lib)
+            .mapNotNull { it.psiClass.qualifiedName }
+        assertTrue("Foo must be an active bean of lib: $libBeans", "com.example.lib.Foo" in libBeans)
+        assertFalse(
+            "The consumer must not be a bean of lib itself: $libBeans",
+            "com.example.lib.app.ConstructorConsumer" in libBeans
+        )
+    }
+
     private fun addFixture(): Module {
         val lib = addDependencyModule("lib")
         addFileToModule(
@@ -82,6 +150,29 @@ class DependentModuleInjectionPointsTest : ExplytMultiModuleTestCase() {
             @Component public class Consumer {
                 @Autowired Foo foo;
                 @Autowired AbstractFoo abstractFoo;
+            }
+            """.trimIndent()
+        )
+        addFileToModule(
+            module, "com/example/lib/app/ConstructorConsumer.java", """
+            package com.example.lib.app;
+            import com.example.lib.AbstractFoo;
+            import com.example.lib.Foo;
+            import org.springframework.stereotype.Component;
+            @Component public class ConstructorConsumer {
+                public ConstructorConsumer(AbstractFoo ctorAbstractFoo, Foo ctorFoo) {}
+            }
+            """.trimIndent()
+        )
+        addFileToModule(
+            module, "com/example/lib/app/AutowiredConstructorConsumer.java", """
+            package com.example.lib.app;
+            import com.example.lib.AbstractFoo;
+            import com.example.lib.Foo;
+            import org.springframework.beans.factory.annotation.Autowired;
+            import org.springframework.stereotype.Component;
+            @Component public class AutowiredConstructorConsumer {
+                @Autowired public AutowiredConstructorConsumer(AbstractFoo autowiredCtorAbstractFoo, Foo autowiredCtorFoo) {}
             }
             """.trimIndent()
         )
@@ -129,6 +220,7 @@ class DependentModuleInjectionPointsTest : ExplytMultiModuleTestCase() {
 
     companion object {
         private const val FOO_PATH = "com/example/lib/Foo.java"
+        private const val AUTOWIRED = "org.springframework.beans.factory.annotation.Autowired"
         private const val ABSTRACT_FOO_PATH = "com/example/lib/AbstractFoo.java"
     }
 }
