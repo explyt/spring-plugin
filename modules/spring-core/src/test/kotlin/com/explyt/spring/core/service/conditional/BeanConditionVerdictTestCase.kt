@@ -462,6 +462,49 @@ abstract class BeanConditionVerdictTestCase : BeanConditionTestCase() {
         assertTrue("com.app.MetaMissingClassConfig" in excludedBeans())
     }
 
+    fun testComposedClassConditionIgnoresMissingClassAliasDefault() {
+        addComposedClassCondition()
+        val config = addGapConfiguration("AliasDefaultClassConfig", "@OnFoo", "@OnFoo")
+        assertComposedClassConditionPreconditions(config)
+
+        assertEquals(ConditionVerdict.Active, verdictOf(config))
+    }
+
+    fun testComposedClassConditionIgnoresMissingClassAliasSetAtUseSite() {
+        addComposedClassCondition()
+        val config = addGapConfiguration(
+            "AliasSetClassConfig",
+            "@OnFoo(classes = \"com.example.AlsoMissing\")",
+            "@OnFoo(classes = [\"com.example.AlsoMissing\"])"
+        )
+        assertComposedClassConditionPreconditions(config)
+        assertNull(com.intellij.psi.JavaPsiFacade.getInstance(project).findClass("com.example.AlsoMissing", config.resolveScope))
+
+        assertEquals(ConditionVerdict.Active, verdictOf(config))
+    }
+
+    private fun addComposedClassCondition() = addGapSource(
+        "OnFoo",
+        "@java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy.RUNTIME) @ConditionalOnClass " +
+            "public @interface OnFoo { @org.springframework.core.annotation.AliasFor(annotation = ConditionalOnClass.class, " +
+            "attribute = \"name\") String[] classes() default \"com.example.Missing\"; }",
+        "@Retention(AnnotationRetention.RUNTIME) @ConditionalOnClass annotation class OnFoo(" +
+            "@get:org.springframework.core.annotation.AliasFor(annotation = ConditionalOnClass::class, attribute = \"name\") " +
+            "val classes: Array<String> = [\"com.example.Missing\"])"
+    )
+
+    private fun assertComposedClassConditionPreconditions(config: com.intellij.psi.PsiClass) {
+        com.explyt.spring.core.service.ComposedBeanNameFixture.assertSpringCoreMajorVersion(myFixture, module, 6)
+        val onFoo = beanClass("com.app.OnFoo")
+        assertAnnotatedBy(onFoo, "org.springframework.boot.autoconfigure.condition.ConditionalOnClass")
+        assertAnnotatedBy(config, "com.app.OnFoo")
+        assertNotNull(
+            "Precondition: OnFoo.classes declares @AliasFor",
+            onFoo.findMethodsByName("classes", false).single().getAnnotation("org.springframework.core.annotation.AliasFor")
+        )
+        assertNull(com.intellij.psi.JavaPsiFacade.getInstance(project).findClass("com.example.Missing", config.resolveScope))
+    }
+
     private fun registerConditionBeans(beans: List<com.explyt.spring.core.service.PsiBean>) {
         val point = com.explyt.spring.core.service.beans.discoverer.AdditionalBeansDiscoverer.EP_NAME.getPoint(project)
         point.registerExtension(object : com.explyt.spring.core.service.beans.discoverer.AdditionalBeansDiscoverer() {

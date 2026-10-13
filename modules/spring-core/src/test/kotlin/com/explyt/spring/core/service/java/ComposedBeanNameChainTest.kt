@@ -227,6 +227,24 @@ class ComposedBeanNameChainTest : ExplytJavaLightTestCase() {
         listOf("x"),
     )
 
+    fun testNearestMetaChainWinsOverEarlierDeclaredDeeperChain() = assertBeanNames(
+        """
+        @Bean("deep")
+        @Retention(RetentionPolicy.RUNTIME)
+        @interface DeepBean {}
+        @DeepBean
+        @Retention(RetentionPolicy.RUNTIME)
+        @interface MiddleBean {}
+        @MiddleBean
+        @Bean("near")
+        @Retention(RetentionPolicy.RUNTIME)
+        @interface MyBean {}
+        """,
+        "@MyBean",
+        mapOf(("beanname.MyBean" to "value") to emptyList()),
+        listOf("near"),
+    )
+
     private fun assertBeanNames(
         declarations: String,
         usage: String,

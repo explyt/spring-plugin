@@ -65,6 +65,12 @@ class MetaAnnotationsHolder private constructor(
         }
     }
 
+    fun getDeclaredAnnotationValues(uAnnotated: UAnnotated, targetMethods: Set<String>): Set<UExpression> {
+        return uAnnotated.uAnnotations.flatMapTo(mutableSetOf()) {
+            getDeclaredAnnotationMemberValues(it, targetMethods)
+        }
+    }
+
     @Deprecated("Use UAST method instead this. getAnnotationValues(org.jetbrains.uast.UAnnotated, java.util.Set)")
     fun getAnnotationMemberValues(psiMember: PsiMember, targetMethods: Set<String>): Set<PsiAnnotationMemberValue> {
         return psiMember.annotations
@@ -119,6 +125,29 @@ class MetaAnnotationsHolder private constructor(
     }
 
     fun getAnnotationMemberValues(annotation: UAnnotation, targetMethods: Set<String>): Set<UExpression> {
+        val useSite = annotation.javaPsi ?: return emptySet()
+        val useSiteFqn = useSite.qualifiedName
+        if (useSiteFqn !in annotationByFqn) return emptySet()
+        if (useSiteFqn == rootFqn) return getDeclaredAnnotationMemberValues(annotation, targetMethods)
+        val sources = MergedAnnotationAttributes(
+            rootFqn,
+            { it.qualifiedName in annotationByFqn },
+            lazy { MergedAnnotationAttributes.conventionMappingApplies(MergedAnnotationAttributes.moduleOf(useSite)) },
+        ).resolve(useSite, targetMethods) ?: return getDeclaredAnnotationMemberValues(annotation, targetMethods)
+        return sources.flatMapTo(linkedSetOf()) { getValues(expressionOf(it, annotation)) }
+    }
+
+    private fun expressionOf(source: MergedAnnotationAttributes.Source, useSite: UAnnotation): UExpression? =
+        when (source) {
+            is MergedAnnotationAttributes.Source.Default -> MergedAnnotationAttributes.defaultValueOf(source.attribute)
+            is MergedAnnotationAttributes.Source.Declared -> {
+                val annotation = if (source.annotation == useSite.javaPsi) useSite
+                else source.annotation.toUElement() as? UAnnotation
+                annotation?.findDeclaredAttributeValue(source.attribute)
+            }
+        }
+
+    fun getDeclaredAnnotationMemberValues(annotation: UAnnotation, targetMethods: Set<String>): Set<UExpression> {
         val annotationMemberValues = mutableListOf<UExpression>()
         val annotationsToProceed = mutableListOf(annotation)
 
