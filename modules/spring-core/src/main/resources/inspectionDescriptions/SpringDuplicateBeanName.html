@@ -5,10 +5,14 @@ of the same configuration class.
 <p>Spring Boot disallows bean definition overriding by default, so on Spring Framework 6.2.0 and later such a
 configuration fails at startup with <code>BeanDefinitionOverrideException</code>. Overloaded <code>@Bean</code> methods with
 the same method name are merged by Spring and are not reported.</p>
-<p>Spring Framework before 6.2.0 starts with such a configuration whatever
-<code>spring.main.allow-bean-definition-overriding</code> says and silently ignores one of the two methods, so the problem
-is reported there as a warning, for <code>@Configuration</code> and lite classes alike. Which method is kept cannot be
-told from the source order.</p>
+<p>When the shared name is the primary bean name of both methods, that is the first name declared in
+<code>@Bean</code>, or the method name when none is declared, Spring Framework before 6.2.0 starts with such a
+configuration whatever <code>spring.main.allow-bean-definition-overriding</code> says and silently ignores one of the two
+methods, so the problem is reported there as a warning, for <code>@Configuration</code> and lite classes alike. Which
+method is kept cannot be told from the source order. A name that is an alias of at least one of the methods, that is a
+name declared after the first one in <code>@Bean</code>, fails at startup on every Spring Framework version unless bean
+definition overriding is allowed. When the Spring Framework version cannot be determined and overriding is not allowed,
+a collision of primary names is reported as a warning that names both outcomes.</p>
 <p>When <code>spring.main.allow-bean-definition-overriding=true</code> is set in the module configuration, nothing is
 reported on Spring Framework 6.2.x, for a lite class such as a <code>@Component</code> with <code>@Bean</code> methods, or for
 a <code>@Configuration(enforceUniqueMethods = false)</code> class, also when <code>enforceUniqueMethods</code> is set through

@@ -37,8 +37,11 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
     ): Array<ProblemDescriptor>? {
         val psiClass = aClass.javaPsi
         val collisions = collisionsIn(psiClass).ifEmpty { return null }
-        val overriding = overridingOf(aClass).takeUnless { it == Overriding.ALLOWED } ?: return null
-        return collisions.mapNotNull { it.toProblem(manager, isOnTheFly, overriding) }.toTypedArray()
+        val module = ModuleUtilCore.findModuleForPsiElement(psiClass)
+        return collisions.mapNotNull { collision ->
+            overridingOf(aClass, module, collision).takeUnless { it == Overriding.ALLOWED }
+                ?.let { collision.toProblem(manager, isOnTheFly, it) }
+        }.toTypedArray()
     }
 
     private fun collisionsIn(psiClass: PsiClass): List<Collision> {
@@ -56,23 +59,34 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
 
     private fun PsiMethod.isConditional(): Boolean = getMetaAnnotation(SpringCoreClasses.CONDITIONAL) != null
 
-    private fun overridingOf(aClass: UClass): Overriding {
-        val module = ModuleUtilCore.findModuleForPsiElement(aClass.javaPsi) ?: return Overriding.DISALLOWED
-        if (module.isBeforeSpring62()) return Overriding.IGNORED_BEFORE_SPRING_6_2
+    private fun overridingOf(aClass: UClass, module: Module?, collision: Collision): Overriding {
+        module ?: return Overriding.DISALLOWED
+        val springVersion = SpringBootUtil.getSpringCoreVersion(module)
+        val primaryNameCollision = collision.isBetweenPrimaryNames()
+        val ignoredBeforeSpring62 = primaryNameCollision && springVersion?.isBefore(SPRING_6_2) == true
+        if (ignoredBeforeSpring62) return Overriding.IGNORED_BEFORE_SPRING_6_2
         val ignoredOverriding = if (aClass.enforcesUniqueMethods(module)) ignoredOverridingOf(module) else null
         if (ignoredOverriding == Overriding.IGNORED_ON_SPRING_7) return ignoredOverriding
+        val disallowed =
+            if (primaryNameCollision && springVersion == null) Overriding.DISALLOWED_ON_UNKNOWN_SPRING
+            else Overriding.DISALLOWED
         return when (val value = PropertyConditionValues(module).valueOf(ALLOW_OVERRIDING_KEY)) {
             is ConditionPropertyValue.Known ->
                 if (value.text.trim().equals("true", ignoreCase = true)) ignoredOverriding ?: Overriding.ALLOWED
-                else Overriding.DISALLOWED
+                else disallowed
 
-            ConditionPropertyValue.Missing -> Overriding.DISALLOWED
+            ConditionPropertyValue.Missing -> disallowed
             ConditionPropertyValue.Unresolvable -> Overriding.UNRESOLVED
         }
     }
 
-    private fun Module.isBeforeSpring62(): Boolean =
-        SpringBootUtil.getSpringCoreVersion(this)?.let { VersionComparatorUtil.compare(it, SPRING_6_2) < 0 } == true
+    private fun String.isBefore(version: String): Boolean = VersionComparatorUtil.compare(this, version) < 0
+
+    private fun Collision.isBetweenPrimaryNames(): Boolean =
+        first.primaryBeanName == beanName && second.primaryBeanName == beanName
+
+    private val PsiMethod.primaryBeanName: String
+        get() = resolveBeanName.first()
 
     private fun ignoredOverridingOf(module: Module): Overriding? {
         val springMajor = SpringBootUtil.getSpringCoreMajorVersion(module) ?: return Overriding.IGNORED_ON_UNKNOWN_SPRING
@@ -100,6 +114,7 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
             Overriding.IGNORED_ON_UNKNOWN_SPRING -> UNKNOWN_SPRING_OVERRIDING_MESSAGE to ProblemHighlightType.WARNING
             Overriding.IGNORED_ON_SPRING_7 -> SPRING_7_OVERRIDING_MESSAGE to ProblemHighlightType.GENERIC_ERROR_OR_WARNING
             Overriding.IGNORED_BEFORE_SPRING_6_2 -> IGNORED_METHOD_MESSAGE to ProblemHighlightType.WARNING
+            Overriding.DISALLOWED_ON_UNKNOWN_SPRING -> UNKNOWN_SPRING_VERSION_MESSAGE to ProblemHighlightType.WARNING
             else -> MESSAGE to ProblemHighlightType.GENERIC_ERROR_OR_WARNING
         }
         return manager.createProblemDescriptor(
@@ -114,7 +129,13 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
     private data class Collision(val beanName: String, val first: PsiMethod, val second: PsiMethod)
 
     private enum class Overriding {
-        ALLOWED, DISALLOWED, UNRESOLVED, IGNORED_BEFORE_SPRING_6_2, IGNORED_ON_SPRING_7, IGNORED_ON_UNKNOWN_SPRING
+        ALLOWED,
+        DISALLOWED,
+        DISALLOWED_ON_UNKNOWN_SPRING,
+        UNRESOLVED,
+        IGNORED_BEFORE_SPRING_6_2,
+        IGNORED_ON_SPRING_7,
+        IGNORED_ON_UNKNOWN_SPRING
     }
 
     private companion object {
@@ -126,6 +147,7 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
         const val UNRESOLVED_OVERRIDING_MESSAGE = "explyt.spring.inspection.bean.name.duplicate.overriding.unresolved"
         const val SPRING_7_OVERRIDING_MESSAGE = "explyt.spring.inspection.bean.name.duplicate.overriding.spring7"
         const val IGNORED_METHOD_MESSAGE = "explyt.spring.inspection.bean.name.duplicate.ignored"
+        const val UNKNOWN_SPRING_VERSION_MESSAGE = "explyt.spring.inspection.bean.name.duplicate.version.unknown"
         const val UNKNOWN_SPRING_OVERRIDING_MESSAGE =
             "explyt.spring.inspection.bean.name.duplicate.overriding.unknown.spring"
     }
