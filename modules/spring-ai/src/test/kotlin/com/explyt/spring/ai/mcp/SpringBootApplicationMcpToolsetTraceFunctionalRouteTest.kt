@@ -6,6 +6,7 @@
 package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.web.loader.RouterBuilderRouteWalker
 import com.explyt.spring.test.addFromMaven
 import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.fasterxml.jackson.databind.JsonNode
@@ -16,7 +17,9 @@ import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.pom.java.LanguageLevel
+import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiManager
+import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PlatformTestUtil
@@ -285,7 +288,7 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
         )
     }
 
-    fun testJavaBuilderPathNestTraceHasNoInventedRoute() = runBlockingReleasingWriteIntent<Unit> {
+    fun testJavaBuilderPathNestTraceStartsWithThePrefixedRoute() = runBlockingReleasingWriteIntent<Unit> {
         val source = ORDER_ROUTES_SOURCE.replace(
             ".GET(\"/java/orders\", handler::list)",
             ".path(\"/a\", b -> b.GET(\"/b\", handler::list))"
@@ -296,7 +299,7 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
         val head = traceAt(ORDER_ROUTES_FILE, source, "b.GET(\"/b\", handler::list)")["chain"][0]
 
         assertEquals("OrderHandler.list", nameOf(head))
-        assertFalse("An unresolved Java nesting prefix leaves the route unknown, got ${head["route"]}", head.has("route"))
+        assertEquals("GET /a/b", head["route"]?.asText())
         assertEquals(listOf("OrderService.list"), targetsOf(head))
     }
 
@@ -429,14 +432,113 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
         assertEquals(listOf("OrderService.find", "OrderService.remove"), targetsOf(head))
     }
 
-    fun testJavaRouteNestedUnderAPredicatePrefixHasNoInventedRoute() = runBlockingReleasingWriteIntent<Unit> {
-        assertNestedJavaRouteHasNoInventedRoute(
-            ".nest(org.springframework.web.reactive.function.server.RequestPredicates.path(\"/a\"), b -> b.GET(\"/x\", handler::list))"
+    fun testJavaRouteNestedUnderAPredicatePrefixKeepsItsFullPathAndRequest() = runBlockingReleasingWriteIntent<Unit> {
+        assertNestedJavaRouteKeepsItsFullPath(
+            ".nest(org.springframework.web.reactive.function.server.RequestPredicates.path(\"/a\"), b -> b.GET(\"/x\", handler::list))",
+            anchor = "b.GET(\"/x\", handler::list)",
+            path = "/a/x"
         )
     }
 
-    fun testJavaRouteNestedUnderABuilderPathHasNoInventedRoute() = runBlockingReleasingWriteIntent<Unit> {
-        assertNestedJavaRouteHasNoInventedRoute(".path(\"/a\", b -> b.GET(\"/x\", handler::list))")
+    fun testJavaRouteNestedUnderABuilderPathKeepsItsFullPathAndRequest() = runBlockingReleasingWriteIntent<Unit> {
+        assertNestedJavaRouteKeepsItsFullPath(
+            ".path(\"/a\", b -> b.GET(\"/x\", handler::list))",
+            anchor = "b.GET(\"/x\", handler::list)",
+            path = "/a/x"
+        )
+    }
+
+    fun testJavaRouteNestedUnderAComposedPathPredicateKeepsItsFullPathAndRequest() = runBlockingReleasingWriteIntent<Unit> {
+        assertNestedJavaRouteKeepsItsFullPath(
+            ".nest(org.springframework.web.reactive.function.server.RequestPredicates.path(\"/a\")" +
+                    ".and(org.springframework.web.reactive.function.server.RequestPredicates.accept(org.springframework.http.MediaType.APPLICATION_JSON)), " +
+                    "b -> b.GET(\"/b\", handler::list))",
+            anchor = "b.GET(\"/b\", handler::list)",
+            path = "/a/b"
+        )
+    }
+
+    fun testJavaRouteNestedUnderTwoBuilderPathsKeepsItsFullPathAndRequest() = runBlockingReleasingWriteIntent<Unit> {
+        assertNestedJavaRouteKeepsItsFullPath(
+            ".path(\"/a\", b1 -> b1.path(\"/b\", b2 -> b2.GET(\"/c\", handler::list)))",
+            anchor = "b2.GET(\"/c\", handler::list)",
+            path = "/a/b/c"
+        )
+    }
+
+    fun testJavaRouteNestedUnderAVariablePredicateHasNoInventedRoute() = runBlockingReleasingWriteIntent<Unit> {
+        val template = ORDER_ROUTES_SOURCE.replace(
+            "return RouterFunctions.route()",
+            "org.springframework.web.reactive.function.server.RequestPredicate api = " +
+                    "org.springframework.web.reactive.function.server.RequestPredicates.path(System.getenv(\"X\"));\n" +
+                    "        return RouterFunctions.route()"
+        )
+        assertNestedJavaRouteHasNoInventedRoute(".nest(api, b -> b.GET(\"/x\", handler::list))", template)
+    }
+
+    fun testJavaLocalBuilderRouteKeepsItsRoute() = runBlockingReleasingWriteIntent<Unit> {
+        val source = orderRoutesReturning(
+            """
+            RouterFunctions.Builder b = RouterFunctions.route();
+                    b.GET("/x", handler::list);
+                    return b.build();
+            """.trimIndent()
+        )
+        val requests = ORDER_TEST_SOURCE.replace("get().uri(\"/java/orders\")", "get().uri(\"/x\")")
+        addSource(MAIN_ROOT, ORDER_ROUTES_FILE, source)
+        addSource(TEST_ROOT, ORDER_TEST_FILE, requests, isTestSource = true)
+        assertFalse("Precondition: the builder walker does not model a local builder", orderRoutesWalk().modelled)
+
+        val head = traceAt(ORDER_ROUTES_FILE, source, "b.GET(\"/x\", handler::list)", includeTests = true)["chain"][0]
+
+        assertEquals("OrderHandler.list", nameOf(head))
+        assertEquals("GET /x", head["route"]?.asText())
+        assertUrlReferences(head, ORDER_TEST_FILE, "/x", requests, "get().uri(\"/x\")")
+    }
+
+    fun testJavaEarlyReturnRouteKeepsItsRoute() = runBlockingReleasingWriteIntent<Unit> {
+        val source = orderRoutesReturning(
+            """
+            if (System.getenv("X") != null) {
+                        return RouterFunctions.route().GET("/a", handler::list).build();
+                    }
+                    return RouterFunctions.route().GET("/b", request -> ServerResponse.ok().build()).build();
+            """.trimIndent()
+        )
+        val requests = ORDER_TEST_SOURCE.replace("get().uri(\"/java/orders\")", "get().uri(\"/a\")")
+        addSource(MAIN_ROOT, ORDER_ROUTES_FILE, source)
+        addSource(TEST_ROOT, ORDER_TEST_FILE, requests, isTestSource = true)
+        assertFalse(
+            "Precondition: the builder walker does not model the route of an early return",
+            "/a" in orderRoutesWalk().paths
+        )
+
+        val head = traceAt(ORDER_ROUTES_FILE, source, "GET(\"/a\", handler::list)", includeTests = true)["chain"][0]
+
+        assertEquals("OrderHandler.list", nameOf(head))
+        assertEquals("GET /a", head["route"]?.asText())
+        assertUrlReferences(head, ORDER_TEST_FILE, "/a", requests, "get().uri(\"/a\")")
+    }
+
+    fun testJavaLocalBuilderNestedRouteHasNoInventedRoute() = runBlockingReleasingWriteIntent<Unit> {
+        val source = orderRoutesReturning(
+            """
+            RouterFunctions.Builder b = RouterFunctions.route();
+                    b.path("/p", c -> c.GET("/x", handler::list));
+                    return b.build();
+            """.trimIndent()
+        )
+        val requests = ORDER_TEST_SOURCE.replace("get().uri(\"/java/orders\")", "get().uri(\"/x\")")
+        addSource(MAIN_ROOT, ORDER_ROUTES_FILE, source)
+        addSource(TEST_ROOT, ORDER_TEST_FILE, requests, isTestSource = true)
+        assertFalse("Precondition: the builder walker does not model a local builder", orderRoutesWalk().modelled)
+
+        val head = traceAt(ORDER_ROUTES_FILE, source, "c.GET(\"/x\", handler::list)", includeTests = true)["chain"][0]
+
+        assertEquals("OrderHandler.list", nameOf(head))
+        assertFalse("An unmodelled Java nesting prefix leaves the route unknown, got ${head["route"]}", head.has("route"))
+        val toX = head["testUrlReferences"]?.filter { it["endpointPath"].asText() == "/x" }.orEmpty()
+        assertTrue("No request is matched to the prefix-less path, got $toX", toX.isEmpty())
     }
 
     fun testRouteWithoutAPathHasNoTestUrlReferences() = runBlockingReleasingWriteIntent<Unit> {
@@ -484,11 +586,41 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
         assertTrue("The whole factory is traced, got ${targetsOf(head)}", "CatalogService.remove" in targetsOf(head))
     }
 
-    private suspend fun assertNestedJavaRouteHasNoInventedRoute(nestedRoute: String) {
+    private class WalkSummary(val modelled: Boolean, val paths: List<String>)
+
+    private fun orderRoutesWalk(): WalkSummary = ReadAction.compute<WalkSummary, Throwable> {
+        val routes = JavaPsiFacade.getInstance(project)
+            .findClass("com.example.routes.orders.OrderRoutes", GlobalSearchScope.projectScope(project))!!
+        val walk = RouterBuilderRouteWalker.walkOf(routes.findMethodsByName("orderRoutes", false).single())
+        WalkSummary(walk.modelled, walk.routes.map { it.path })
+    }
+
+    private fun orderRoutesReturning(body: String): String {
+        val start = ORDER_ROUTES_SOURCE.indexOf("return RouterFunctions.route()")
+        val end = ORDER_ROUTES_SOURCE.indexOf(".build();", start) + ".build();".length
+        return ORDER_ROUTES_SOURCE.replaceRange(start, end, body)
+    }
+
+    private suspend fun assertNestedJavaRouteKeepsItsFullPath(nestedRoute: String, anchor: String, path: String) {
         val source = ORDER_ROUTES_SOURCE.replace(".GET(\"/java/orders\", handler::list)", nestedRoute)
+        val requests = ORDER_TEST_SOURCE.replace("get().uri(\"/java/orders\")", "get().uri(\"$path\")")
+        addSource(MAIN_ROOT, ORDER_ROUTES_FILE, source)
+        addSource(TEST_ROOT, ORDER_TEST_FILE, requests, isTestSource = true)
+        assertRouteModelled(path, "GET")
+
+        val head = traceAt(ORDER_ROUTES_FILE, source, anchor, includeTests = true)["chain"][0]
+
+        assertEquals("OrderHandler.list", nameOf(head))
+        assertEquals("GET $path", head["route"]?.asText())
+        assertUrlReferences(head, ORDER_TEST_FILE, path, requests, "get().uri(\"$path\")")
+    }
+
+    private suspend fun assertNestedJavaRouteHasNoInventedRoute(nestedRoute: String, template: String = ORDER_ROUTES_SOURCE) {
+        val source = template.replace(".GET(\"/java/orders\", handler::list)", nestedRoute)
         val requests = ORDER_TEST_SOURCE.replace("get().uri(\"/java/orders\")", "get().uri(\"/x\")")
         addSource(MAIN_ROOT, ORDER_ROUTES_FILE, source)
         addSource(TEST_ROOT, ORDER_TEST_FILE, requests, isTestSource = true)
+        assertRouteNotModelled("/x", "GET")
 
         val head = traceAt(ORDER_ROUTES_FILE, source, "b.GET(\"/x\", handler::list)", includeTests = true)["chain"][0]
 
