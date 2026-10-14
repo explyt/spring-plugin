@@ -26,13 +26,17 @@ import com.intellij.testFramework.fixtures.CodeInsightTestFixture
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertFalse
 import junit.framework.TestCase.assertNotNull
+import junit.framework.TestCase.assertNull
 import junit.framework.TestCase.assertTrue
+import org.jetbrains.uast.UAnnotated
 import org.jetbrains.uast.UMethod
+import org.jetbrains.uast.evaluateString
 import org.jetbrains.uast.toUElement
 
 abstract class ComposedMethodMappingFixture(
     private val codeInsightFixture: CodeInsightTestFixture,
     private val module: Module,
+    private val controllerName: String = "ItemsController",
 ) {
 
     data class MappingShape(
@@ -51,6 +55,16 @@ abstract class ComposedMethodMappingFixture(
             handlerNames().contains(methodName)
         )
         return rows.filter { it.first == methodName }.map { it.second to it.third }.sortedBy { it.first }
+    }
+
+    fun assertMappingPathCannotBeEvaluated(methodName: String) {
+        val method = handler(methodName).toUElement() as UMethod
+        val mappings = MetaAnnotationsHolder.of(module, SpringWebClasses.REQUEST_MAPPING)
+        val annotation = mappings.nearestAnnotation(method as UAnnotated)
+        assertNotNull("Precondition: $methodName declares a mapping", annotation)
+        val values = mappings.getAnnotationMemberValues(annotation!!, setOf("path", "value"))
+        assertEquals("Precondition: $methodName declares one path value", 1, values.size)
+        assertNull("Precondition: the declared path cannot be evaluated", values.single().evaluateString())
     }
 
     fun gutterShape(methodName: String): MappingShape {
@@ -88,7 +102,7 @@ abstract class ComposedMethodMappingFixture(
     private fun controllerEndpoints(): List<Triple<String?, String, List<String>>> {
         assertComposedMappingsAreMetaAnnotated()
         val rows = SpringWebEndpointsSearcher.getInstance(codeInsightFixture.project).getAllEndpoints(module)
-            .filter { it.type == EndpointType.SPRING_MVC && it.containingClass?.name == "ItemsController" }
+            .filter { it.type == EndpointType.SPRING_MVC && it.containingClass?.name == controllerName }
             .map { Triple((it.psiElement.toUElement() as? UMethod)?.name, it.path, it.requestMethods) }
         assertFalse("Precondition: the loader finds the controller", rows.isEmpty())
         return rows
@@ -103,7 +117,7 @@ abstract class ComposedMethodMappingFixture(
     }
 
     private fun controller(): PsiClass {
-        val controller = facade().findClass("com.example.ItemsController", GlobalSearchScope.projectScope(codeInsightFixture.project))
+        val controller = facade().findClass("com.example.$controllerName", GlobalSearchScope.projectScope(codeInsightFixture.project))
         assertNotNull("Precondition: the controller is in the fixture", controller)
         return controller!!
     }

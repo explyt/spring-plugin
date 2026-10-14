@@ -17,6 +17,39 @@ class ComposedMethodMappingTest : ComposedMethodMappingKotlinTestCase() {
 
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springWebMvc_6_0_7)
 
+    fun testUnreadableMappingPathProducesNoEndpointRow() {
+        myFixture.addFileToProject(
+            "com/example/UnreadableController.kt", """
+            package com.example
+            import org.springframework.web.bind.annotation.GetMapping
+            import org.springframework.web.bind.annotation.RequestMapping
+            import org.springframework.web.bind.annotation.RestController
+
+            @RestController
+            @RequestMapping("/api")
+            class UnreadableController {
+                @GetMapping(PathHolder.UNRESOLVED)
+                fun unreadable(): String = ""
+
+                @GetMapping("/known")
+                fun known(): String = ""
+            }
+            """.trimIndent()
+        )
+        val unreadableFixture = object : ComposedMethodMappingFixture(myFixture, module, "UnreadableController") {
+            override fun identifierOf(method: PsiMethod): PsiElement = (method.navigationElement as KtNamedFunction).nameIdentifier!!
+        }
+        unreadableFixture.assertMappingPathCannotBeEvaluated("unreadable")
+        assertEquals(listOf("/api/known" to listOf("GET")), unreadableFixture.endpointRows("known"))
+        assertEquals(emptyList<Pair<String, List<String>>>(), unreadableFixture.endpointRows("unreadable"))
+    }
+
+    fun testBareDirectMappingServesTheClassPrefix() =
+        assertEquals(listOf("/api" to listOf("GET")), fixture.endpointRows("directNoPath"))
+
+    fun testLiteralDirectMappingServesTheClassPrefixAndPath() =
+        assertEquals(listOf("/api/items" to listOf("GET")), fixture.endpointRows("normalLiteralPath"))
+
     fun testBareComposedMappingServesItsAliasDefaultPath() =
         assertEquals(listOf("/api/items" to listOf("GET")), fixture.endpointRows("bare"))
 
@@ -169,6 +202,12 @@ abstract class ComposedMethodMappingKotlinTestCase : ExplytKotlinLightTestCase()
 
                 @ApiGetV
                 fun twoLevel(): String = ""
+
+                @GetMapping
+                fun directNoPath(): String = ""
+
+                @GetMapping("/items")
+                fun normalLiteralPath(): String = ""
 
                 @ApiConv
                 fun convention(): String = ""

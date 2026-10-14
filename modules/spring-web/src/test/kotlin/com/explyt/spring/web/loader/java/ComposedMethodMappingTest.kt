@@ -16,6 +16,39 @@ class ComposedMethodMappingTest : ComposedMethodMappingJavaTestCase() {
 
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springWebMvc_6_0_7)
 
+    fun testUnreadableMappingPathProducesNoEndpointRow() {
+        myFixture.addFileToProject(
+            "com/example/UnreadableController.java", """
+            package com.example;
+            import org.springframework.web.bind.annotation.GetMapping;
+            import org.springframework.web.bind.annotation.RequestMapping;
+            import org.springframework.web.bind.annotation.RestController;
+
+            @RestController
+            @RequestMapping("/api")
+            public class UnreadableController {
+                @GetMapping(PathHolder.UNRESOLVED)
+                public String unreadable() { return ""; }
+
+                @GetMapping("/known")
+                public String known() { return ""; }
+            }
+            """.trimIndent()
+        )
+        val unreadableFixture = object : ComposedMethodMappingFixture(myFixture, module, "UnreadableController") {
+            override fun identifierOf(method: PsiMethod): PsiElement = method.nameIdentifier!!
+        }
+        unreadableFixture.assertMappingPathCannotBeEvaluated("unreadable")
+        assertEquals(listOf("/api/known" to listOf("GET")), unreadableFixture.endpointRows("known"))
+        assertEquals(emptyList<Pair<String, List<String>>>(), unreadableFixture.endpointRows("unreadable"))
+    }
+
+    fun testBareDirectMappingServesTheClassPrefix() =
+        assertEquals(listOf("/api" to listOf("GET")), fixture.endpointRows("directNoPath"))
+
+    fun testLiteralDirectMappingServesTheClassPrefixAndPath() =
+        assertEquals(listOf("/api/items" to listOf("GET")), fixture.endpointRows("normalLiteralPath"))
+
     fun testBareComposedMappingServesItsAliasDefaultPath() =
         assertEquals(listOf("/api/items" to listOf("GET")), fixture.endpointRows("bare"))
 
@@ -174,6 +207,12 @@ abstract class ComposedMethodMappingJavaTestCase : ExplytJavaLightTestCase() {
 
                 @ApiGetV
                 public String twoLevel() { return ""; }
+
+                @GetMapping
+                public String directNoPath() { return ""; }
+
+                @GetMapping("/items")
+                public String normalLiteralPath() { return ""; }
 
                 @ApiConv
                 public String convention() { return ""; }
