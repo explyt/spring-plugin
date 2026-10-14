@@ -79,7 +79,7 @@ import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.UParameter
 import org.jetbrains.uast.UResolvable
 import org.jetbrains.uast.visitor.AbstractUastVisitor
-import org.jetbrains.uast.evaluateString
+
 import org.jetbrains.uast.getParentOfType
 import org.jetbrains.uast.getUastParentOfType
 import org.jetbrains.uast.toUElement
@@ -1344,12 +1344,10 @@ class SpringBootApplicationMcpToolset : McpToolset {
         if (uHandler == null || module == null) return MediaTypes(emptyList(), emptyList())
         val mah = SpringSearchService.getInstance(project)
             .getMetaAnnotations(module, SpringWebClasses.REQUEST_MAPPING)
-        val mapping = HandlerMethods.mappingSourceOf(uHandler.javaPsi) { it.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING) }
-            ?.toUElement() as? UMethod ?: uHandler
-        return MediaTypes(
-            produces = mah.getAnnotationValues(mapping, setOf("produces")).mapNotNull { it.evaluateString() },
-            consumes = mah.getAnnotationValues(mapping, setOf("consumes")).mapNotNull { it.evaluateString() },
-        )
+        val mappingSource = HandlerMethods.mappingSourceOf(uHandler.javaPsi) { it.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING) }
+            ?: uHandler.javaPsi
+        val mapping = HandlerMethods.methodMapping(mappingSource, mah)
+        return MediaTypes(produces = mapping.produces, consumes = mapping.consumes)
     }
 
     /**

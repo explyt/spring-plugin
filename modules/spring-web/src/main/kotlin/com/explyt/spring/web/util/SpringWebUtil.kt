@@ -345,28 +345,18 @@ object SpringWebUtil {
         val psiClass = psiMethod.containingClass ?: return null
         val controllerName = psiClass.name ?: return null
 
-        val requestMappingMah = MetaAnnotationsHolder.of(module, REQUEST_MAPPING)
-        val path = requestMappingMah.getAnnotationMemberValues(mappingSource, setOf("path", "value")).asSequence()
-            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
-            .firstOrNull() ?: ""
+        val mapping = HandlerMethods.methodMapping(mappingSource, MetaAnnotationsHolder.of(module, REQUEST_MAPPING))
+        val path = mapping.paths.firstOrNull()?.path ?: ""
         if (isAbsolutePath(path)) return null
-        val produces = requestMappingMah.getAnnotationMemberValues(mappingSource, setOf("produces"))
-            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
-        val consumes = requestMappingMah.getAnnotationMemberValues(mappingSource, setOf("consumes"))
-            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
 
         val fullPath = simplifyUrl(MappingPathPlaceholders.resolve(module, "$prefix/${removeParams(path)}"))
-
-        val requestMethods =
-            requestMappingMah.getAnnotationMemberValues(mappingSource, setOf("method"))
-                .map { it.text.split('.').last() }
 
         val description = uMethod.comments.firstOrNull()?.getCommentText() ?: ""
         val returnTypeFqn = getTypeFqn(HandlerSignature.declaredReturnType(psiMethod), psiMethod.language)
 
         return EndpointInfo(
             fullPath,
-            requestMethods,
+            mapping.methods,
             psiMethod,
             uMethod.name,
             controllerName.replace("controller", "", true)
@@ -377,8 +367,8 @@ object SpringWebUtil {
             collectRequestParameters(psiMethod),
             getRequestBodyInfo(psiMethod),
             collectRequestHeaders(psiMethod),
-            produces,
-            consumes
+            mapping.produces,
+            mapping.consumes
         )
     }
 
@@ -388,17 +378,9 @@ object SpringWebUtil {
      * verbs, empty for a mapping that restricts none.
      */
     fun requestMappingOf(member: PsiMember, requestMappingMah: MetaAnnotationsHolder): RequestMapping {
-        val annotated = member.toUElement() as? UAnnotated ?: return RequestMapping(listOf(""), emptyList())
-        val values = requestMappingMah.getAnnotationValues(annotated, setOf("value"))
-        val paths = if (values.isEmpty()) listOf("") else values.mapNotNull { it.evaluateString() }
-        val methods = requestMappingMah.getAnnotationValues(annotated, setOf("method"))
-            .mapNotNull { requestMethodName(it) }
-        return RequestMapping(paths, methods)
+        val mapping = HandlerMethods.methodMapping(member, requestMappingMah)
+        return RequestMapping(mapping.paths.map { it.path }.ifEmpty { listOf("") }, mapping.methods)
     }
-
-    private fun requestMethodName(value: UExpression): String? =
-        ((value as? UResolvable)?.resolve() as? PsiEnumConstant)?.name
-            ?: value.sourcePsi?.text?.split('.')?.last()
 
     data class RequestMapping(val paths: List<String>, val methods: List<String>)
 

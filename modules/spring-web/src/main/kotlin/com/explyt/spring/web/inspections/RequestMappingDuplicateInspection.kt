@@ -8,17 +8,17 @@ package com.explyt.spring.web.inspections
 import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.web.SpringWebBundle
 import com.explyt.spring.web.SpringWebClasses
+import com.explyt.spring.web.util.HandlerMethods
 import com.explyt.util.ExplytPsiUtil.getHighlightRange
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedByOrSelf
 import com.explyt.util.ExplytPsiUtil.isPublic
-import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.openapi.module.ModuleUtilCore
-import com.intellij.psi.PsiAnnotationMemberValue
+import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiMethod
 import io.ktor.http.*
 import org.jetbrains.kotlin.build.joinToReadableString
@@ -57,7 +57,7 @@ class RequestMappingDuplicateInspection : SpringWebBaseUastLocalInspectionTool()
         methodsByUrlMap.forEach { (_, duplicates) ->
             if (duplicates.size < 2) return@forEach
             for (duplicate in duplicates) {
-                val psiElement = duplicate.psiAnnotationMemberValue.toUElement()?.sourcePsi ?: continue
+                val psiElement = duplicate.anchor ?: continue
                 holder.registerProblem(
                     manager.createProblemDescriptor(
                         psiElement, psiElement.getHighlightRange(),
@@ -77,47 +77,25 @@ class RequestMappingDuplicateInspection : SpringWebBaseUastLocalInspectionTool()
     private fun toUrlMethodPair(
         requestMappingMah: MetaAnnotationsHolder, psiMethod: PsiMethod
     ): List<DuplicateUrlInfo> {
-        return requestMappingMah.getAnnotationMemberValues(psiMethod, TARGET_VALUE)
-            .flatMap { toDuplicateUrlInfo(it, psiMethod, requestMappingMah) }
-    }
-
-    private fun toDuplicateUrlInfo(
-        psiValue: PsiAnnotationMemberValue, psiMethod: PsiMethod, requestMappingMah: MetaAnnotationsHolder
-    ): List<DuplicateUrlInfo> {
-        val urlString = AnnotationUtil.getStringAttributeValue(psiValue) ?: return emptyList()
-        val httpMethods = requestMappingMah.getHttpMethods(psiMethod)
-        return httpMethods.mapNotNull { getDuplicateUrlInfo(urlString, it, psiMethod, psiValue) }
-    }
-
-    private fun getDuplicateUrlInfo(
-        urlString: String,
-        string: String,
-        psiMethod: PsiMethod,
-        psiValue: PsiAnnotationMemberValue
-    ): DuplicateUrlInfo? {
-        val url = try {
-            Url(urlString)
-        } catch (_: Exception) {
-            return null
+        val mapping = HandlerMethods.methodMapping(psiMethod, requestMappingMah)
+        val httpMethods = mapping.methods.toSet()
+        return mapping.paths.flatMap { (path, anchor) ->
+            val url = urlOf(path) ?: return@flatMap emptyList()
+            httpMethods.map { DuplicateUrlInfo(url, it, psiMethod, anchor) }
         }
-        return DuplicateUrlInfo(url, string, psiMethod, psiValue)
     }
 
-    private fun MetaAnnotationsHolder.getHttpMethods(
-        psiMethod: PsiMethod
-    ) = getAnnotationMemberValues(psiMethod, TARGET_METHOD)
-        .mapTo(mutableSetOf()) { it.text.split('.').last() }
-
-    companion object {
-        private val TARGET_VALUE = setOf("value")
-        private val TARGET_METHOD = setOf("method")
+    private fun urlOf(urlString: String): Url? = try {
+        Url(urlString)
+    } catch (_: Exception) {
+        null
     }
 
     private data class DuplicateUrlInfo(
         val url: Url,
         val methodType: String,
         val psiMethod: PsiMethod,
-        val psiAnnotationMemberValue: PsiAnnotationMemberValue,
+        val anchor: PsiElement?,
     )
 }
 
@@ -138,21 +116,16 @@ private class RequestMappingVisitor(
         val psiMethod = uAnnotation.getContainingUMethod()?.javaPsi ?: return true
         val psiClass = psiMethod.containingClass ?: return true
         if (!psiClass.isMetaAnnotatedBy(SpringWebClasses.CONTROLLER)) return true
-        val httpMethods = requestMappingMah.getHttpMethods(psiMethod)
+        val httpMethods = HandlerMethods.methodMapping(psiMethod, requestMappingMah).methods.toSet()
 
         val conflictingEndpoints = psiClass.methods.asSequence()
             .filter { it != psiMethod }
             .filter { it.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING) }
-            .filter {
-                requestMappingMah.getAnnotationMemberValues(it, TARGET_VALUE).any { anotherEndpoint ->
-                    AnnotationUtil.getStringAttributeValue(anotherEndpoint) == endpoint
-                }
-            }
-            .filter {
-                requestMappingMah.getHttpMethods(it)
-                    .intersect(httpMethods).isNotEmpty()
-            }.mapTo(mutableListOf()) {
-                it.name
+            .map { it to HandlerMethods.methodMapping(it, requestMappingMah) }
+            .filter { (_, mapping) -> mapping.paths.any { it.path == endpoint } }
+            .filter { (_, mapping) -> mapping.methods.intersect(httpMethods).isNotEmpty() }
+            .mapTo(mutableListOf()) { (method, _) ->
+                method.name
             }
 
         if (conflictingEndpoints.isEmpty()) return true
@@ -173,15 +146,4 @@ private class RequestMappingVisitor(
 
         return true
     }
-
-    private fun MetaAnnotationsHolder.getHttpMethods(
-        psiMethod: PsiMethod
-    ) = getAnnotationMemberValues(psiMethod, TARGET_METHOD)
-        .mapTo(mutableSetOf()) { it.text.split('.').last() }
-
-    companion object {
-        private val TARGET_VALUE = setOf("value")
-        private val TARGET_METHOD = setOf("method")
-    }
-
 }
