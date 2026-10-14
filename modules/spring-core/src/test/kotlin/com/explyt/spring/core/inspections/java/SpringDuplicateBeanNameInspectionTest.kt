@@ -7,20 +7,168 @@ package com.explyt.spring.core.inspections.java
 
 import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.core.inspections.BeanNameConventionConflictFixture
 import com.explyt.spring.core.inspections.SpringDuplicateBeanNameInspection
 import com.explyt.spring.core.tracker.ModificationTrackerManager
+import com.explyt.spring.core.util.SpringBootUtil
 import com.explyt.spring.test.ExplytBaseLightTestCase
 import com.explyt.spring.test.TestLibrary
 import com.intellij.codeInsight.daemon.impl.HighlightInfo
 import com.intellij.lang.annotation.HighlightSeverity
 
-class SpringDuplicateBeanNameInspectionTest : ExplytBaseLightTestCase() {
-    override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springBootAutoConfigure_3_1_1)
+private const val FULL_CONFIGURATION = """
+    @Configuration
+    public class Config {
+        @Bean("svc") Object a() { return new Object(); }
+        @Bean("svc") Object b() { return new Object(); }
+    }
+"""
+
+private const val LITE_CONFIGURATION = """
+    @Component
+    public class Config {
+        @Bean("svc") Object a() { return new Object(); }
+        @Bean("svc") Object b() { return new Object(); }
+    }
+"""
+
+private const val CONFIGURATION_WITHOUT_UNIQUE_METHODS = """
+    @Configuration(enforceUniqueMethods = false)
+    public class Config {
+        @Bean("svc") Object a() { return new Object(); }
+        @Bean("svc") Object b() { return new Object(); }
+    }
+"""
+
+private const val COMPOSED_CONFIGURATION = """
+    @Configuration
+    @Retention(RetentionPolicy.RUNTIME)
+    @interface MyConfig {}
+
+    @MyConfig
+    public class Config {
+        @Bean("svc") Object a() { return new Object(); }
+        @Bean("svc") Object b() { return new Object(); }
+    }
+"""
+
+private const val COMPOSED_CONFIGURATION_WITHOUT_UNIQUE_METHODS = """
+    @Configuration(enforceUniqueMethods = false)
+    @Retention(RetentionPolicy.RUNTIME)
+    @interface MyConfig {}
+
+    @MyConfig
+    public class Config {
+        @Bean("svc") Object a() { return new Object(); }
+        @Bean("svc") Object b() { return new Object(); }
+    }
+"""
+
+private fun aliasedComposedConfiguration(useSite: String) = """
+    @Configuration
+    @Retention(RetentionPolicy.RUNTIME)
+    @interface MyConfig {
+        @AliasFor(annotation = Configuration.class, attribute = "enforceUniqueMethods") boolean unique() default false;
+    }
+
+    $useSite
+    public class Config {
+        @Bean("svc") Object a() { return new Object(); }
+        @Bean("svc") Object b() { return new Object(); }
+    }
+"""
+
+abstract class SpringDuplicateBeanNameJavaTestCase : ExplytBaseLightTestCase() {
+
+    protected abstract val springMajor: Int?
 
     override fun setUp() {
         super.setUp()
         myFixture.enableInspections(SpringDuplicateBeanNameInspection::class.java)
     }
+
+    protected fun allowBeanDefinitionOverriding(value: String) {
+        myFixture.addFileToProject("application.properties", "spring.main.allow-bean-definition-overriding=$value")
+        ModificationTrackerManager.getInstance(project).invalidateAll()
+    }
+
+    protected fun highlights(body: String): List<HighlightInfo> {
+        myFixture.configureByText(
+            "Config.java",
+            "package demo;\n\nimport java.lang.annotation.Retention;\n" +
+                    "import java.lang.annotation.RetentionPolicy;\n" +
+                    "import org.springframework.core.annotation.AliasFor;\n" +
+                    "import org.springframework.context.annotation.Bean;\n" +
+                    "import org.springframework.context.annotation.Configuration;\n" +
+                    "import org.springframework.context.annotation.Profile;\n" +
+                    "import org.springframework.stereotype.Component;\n" +
+                    "import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;\n\n" + body.trimIndent()
+        )
+        assertEquals(
+            "Precondition: spring-core major version of the module",
+            springMajor,
+            SpringBootUtil.getSpringCoreMajorVersion(module)
+        )
+        assertTrue(
+            "Precondition: the inspection is available for the file",
+            SpringDuplicateBeanNameInspection().isAvailableForFile(myFixture.file)
+        )
+        assertBeanAnnotationResolves()
+        return myFixture.doHighlighting().filter { it.inspectionToolId == INSPECTION_ID }
+    }
+
+    protected fun assertConditionalAnnotationResolves(annotation: String) {
+        assertNotNull("Precondition: $annotation must come from the fixture library", myFixture.findClass(annotation))
+        assertTrue(
+            "Precondition: demo.Config must use resolved $annotation",
+            myFixture.findClass("demo.Config").methods.any { it.hasAnnotation(annotation) }
+        )
+    }
+
+    private fun assertBeanAnnotationResolves() {
+        assertNotNull("Precondition: @Bean must come from the fixture library", myFixture.findClass(SpringCoreClasses.BEAN))
+        val beanMethods = myFixture.findClass("demo.Config").methods
+        assertTrue(
+            "Precondition: every method of demo.Config must carry a resolved ${SpringCoreClasses.BEAN}",
+            beanMethods.isNotEmpty() && beanMethods.all { it.hasAnnotation(SpringCoreClasses.BEAN) }
+        )
+    }
+
+    protected fun assertProblem(problem: HighlightInfo, anchor: String, beanName: String, firstMethod: String) {
+        assertEquals(HighlightSeverity.ERROR, problem.severity)
+        assertEquals(anchor, problem.text)
+        assertEquals(
+            "Bean '$beanName' is also declared by '$firstMethod' in this class; " +
+                    "Spring Boot fails at startup unless bean definition overriding is allowed",
+            problem.description
+        )
+    }
+
+    protected fun assertSingleProblem(
+        problems: List<HighlightInfo>,
+        severity: HighlightSeverity,
+        anchor: String,
+        beanName: String,
+        firstMethod: String
+    ) {
+        assertEquals("one problem: $problems", 1, problems.size)
+        val problem = problems.single()
+        assertEquals(severity, problem.severity)
+        assertEquals(anchor, problem.text)
+        assertTrue(
+            "the message names bean '$beanName' and method '$firstMethod': ${problem.description}",
+            problem.description.contains("'$beanName'") && problem.description.contains("'$firstMethod'")
+        )
+    }
+
+    private companion object {
+        const val INSPECTION_ID = "SpringDuplicateBeanName"
+    }
+}
+
+class SpringDuplicateBeanNameInspectionTest : SpringDuplicateBeanNameJavaTestCase() {
+    override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springBootAutoConfigure_3_1_1)
+    override val springMajor: Int = 6
 
     fun testExplicitNamesOnDifferentMethodsCollide() {
         val problem = highlights(
@@ -186,35 +334,15 @@ class SpringDuplicateBeanNameInspectionTest : ExplytBaseLightTestCase() {
     }
 
     fun testAllowedOverridingSuppressesTheProblem() {
-        myFixture.addFileToProject("application.properties", "spring.main.allow-bean-definition-overriding=true")
-        ModificationTrackerManager.getInstance(project).invalidateAll()
+        allowBeanDefinitionOverriding("true")
 
-        assertEmpty(
-            highlights(
-                """
-                @Configuration
-                public class Config {
-                    @Bean("svc") Object a() { return new Object(); }
-                    @Bean("svc") Object b() { return new Object(); }
-                }
-                """
-            )
-        )
+        assertEmpty(highlights(FULL_CONFIGURATION))
     }
 
     fun testUnresolvableOverridingPropertyUsesWarning() {
-        myFixture.addFileToProject("application.properties", "spring.main.allow-bean-definition-overriding=\${OVERRIDING}")
-        ModificationTrackerManager.getInstance(project).invalidateAll()
+        allowBeanDefinitionOverriding("\${OVERRIDING}")
 
-        val problem = highlights(
-            """
-            @Configuration
-            public class Config {
-                @Bean("svc") Object a() { return new Object(); }
-                @Bean("svc") Object b() { return new Object(); }
-            }
-            """
-        ).single()
+        val problem = highlights(FULL_CONFIGURATION).single()
 
         assertEquals(HighlightSeverity.WARNING, problem.severity)
         assertEquals(
@@ -228,62 +356,115 @@ class SpringDuplicateBeanNameInspectionTest : ExplytBaseLightTestCase() {
     }
 
     fun testDisallowedOverridingKeepsTheProblem() {
-        myFixture.addFileToProject("application.properties", "spring.main.allow-bean-definition-overriding=false")
-        ModificationTrackerManager.getInstance(project).invalidateAll()
+        allowBeanDefinitionOverriding("false")
 
-        val problem = highlights(
-            """
-            @Configuration
-            public class Config {
-                @Bean("svc") Object a() { return new Object(); }
-                @Bean("svc") Object b() { return new Object(); }
-            }
-            """
-        ).single()
+        val problem = highlights(FULL_CONFIGURATION).single()
 
         assertProblem(problem, anchor = "b", beanName = "svc", firstMethod = "a")
     }
+}
 
-    private fun highlights(body: String): List<HighlightInfo> {
-        myFixture.configureByText(
-            "Config.java",
-"package demo;\n\nimport org.springframework.context.annotation.Bean;\n" +
-                    "import org.springframework.context.annotation.Configuration;\n" +
-                    "import org.springframework.context.annotation.Profile;\n" +
-                    "import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;\n\n" + body.trimIndent()
-        )
-        assertBeanAnnotationResolves()
-        return myFixture.doHighlighting().filter { it.inspectionToolId == INSPECTION_ID }
+class SpringDuplicateBeanNameSpring7InspectionTest : SpringDuplicateBeanNameJavaTestCase() {
+    override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springBootAutoConfigure_4_1_0)
+    override val springMajor: Int = 7
+
+    fun testMissingOverridingPropertyKeepsTheProblemInFullConfiguration() {
+        assertSpring7Problem(highlights(FULL_CONFIGURATION))
     }
 
-    private fun assertConditionalAnnotationResolves(annotation: String) {
-        assertNotNull("Precondition: $annotation must come from the fixture library", myFixture.findClass(annotation))
-        assertTrue(
-            "Precondition: demo.Config must use resolved $annotation",
-            myFixture.findClass("demo.Config").methods.any { it.hasAnnotation(annotation) }
+    fun testDisallowedOverridingKeepsTheProblemInFullConfiguration() {
+        allowBeanDefinitionOverriding("false")
+
+        assertSpring7Problem(highlights(FULL_CONFIGURATION))
+    }
+
+    fun testAllowedOverridingKeepsTheProblemInFullConfiguration() {
+        allowBeanDefinitionOverriding("true")
+
+        assertSpring7Problem(highlights(FULL_CONFIGURATION))
+    }
+
+    fun testUnresolvableOverridingPropertyKeepsTheErrorInFullConfiguration() {
+        allowBeanDefinitionOverriding("\${OVERRIDING}")
+
+        assertSpring7Problem(highlights(FULL_CONFIGURATION))
+    }
+
+    fun testComposedConfigurationWithoutUniqueMethodEnforcementSuppressesTheProblem() {
+        allowBeanDefinitionOverriding("true")
+
+        assertSpring7Problem(highlights(COMPOSED_CONFIGURATION))
+        assertEmpty(highlights(COMPOSED_CONFIGURATION_WITHOUT_UNIQUE_METHODS))
+    }
+
+    fun testComposedConfigurationAliasDefaultWithoutUniqueMethodEnforcementSuppressesTheProblem() {
+        allowBeanDefinitionOverriding("true")
+
+        assertSpring7Problem(highlights(aliasedComposedConfiguration("@MyConfig(unique = true)")))
+        assertEmpty(highlights(aliasedComposedConfiguration("@MyConfig")))
+    }
+
+    fun testDisallowedOverridingKeepsTheProblemInLiteClass() {
+        allowBeanDefinitionOverriding("false")
+
+        assertProblem(highlights(LITE_CONFIGURATION).single(), anchor = "b", beanName = "svc", firstMethod = "a")
+    }
+
+    fun testAllowedOverridingSuppressesTheProblemInLiteClass() {
+        allowBeanDefinitionOverriding("true")
+
+        assertEmpty(highlights(LITE_CONFIGURATION))
+    }
+
+    fun testDisallowedOverridingKeepsTheProblemWithoutUniqueMethodEnforcement() {
+        allowBeanDefinitionOverriding("false")
+
+        assertProblem(
+            highlights(CONFIGURATION_WITHOUT_UNIQUE_METHODS).single(), anchor = "b", beanName = "svc", firstMethod = "a"
         )
     }
 
-    private fun assertBeanAnnotationResolves() {
-        assertNotNull("Precondition: @Bean must come from the fixture library", myFixture.findClass(SpringCoreClasses.BEAN))
-        val beanMethods = myFixture.findClass("demo.Config").methods
-        assertTrue(
-            "Precondition: every method of demo.Config must carry a resolved ${SpringCoreClasses.BEAN}",
-            beanMethods.isNotEmpty() && beanMethods.all { it.hasAnnotation(SpringCoreClasses.BEAN) }
-        )
+    fun testAllowedOverridingSuppressesTheProblemWithoutUniqueMethodEnforcement() {
+        allowBeanDefinitionOverriding("true")
+
+        assertEmpty(highlights(CONFIGURATION_WITHOUT_UNIQUE_METHODS))
     }
 
-    private fun assertProblem(problem: HighlightInfo, anchor: String, beanName: String, firstMethod: String) {
-        assertEquals(HighlightSeverity.ERROR, problem.severity)
-        assertEquals(anchor, problem.text)
+    private fun assertSpring7Problem(problems: List<HighlightInfo>) {
+        assertSingleProblem(problems, HighlightSeverity.ERROR, anchor = "b", beanName = "svc", firstMethod = "a")
         assertEquals(
-            "Bean '$beanName' is also declared by '$firstMethod' in this class; " +
-                    "Spring Boot fails at startup unless bean definition overriding is allowed",
-            problem.description
+            SpringCoreBundle.message("explyt.spring.inspection.bean.name.duplicate.overriding.spring7", "svc", "a"),
+            problems.single().description
+        )
+    }
+}
+
+class SpringDuplicateBeanNameUnknownSpringVersionInspectionTest : SpringDuplicateBeanNameJavaTestCase() {
+    override val libraries: Array<TestLibrary> = arrayOf(TestLibrary("org.springframework:spring-context:6.0.7", false))
+    override val springMajor: Int? = null
+
+    override fun setUp() {
+        super.setUp()
+        BeanNameConventionConflictFixture.addSpringCoreWithoutCoordinates(module, testRootDisposable)
+    }
+
+    fun testDisallowedOverridingKeepsTheProblem() {
+        allowBeanDefinitionOverriding("false")
+
+        assertProblem(highlights(FULL_CONFIGURATION).single(), anchor = "b", beanName = "svc", firstMethod = "a")
+    }
+
+    fun testAllowedOverridingInFullConfigurationUsesWarning() {
+        allowBeanDefinitionOverriding("true")
+
+        assertSingleProblem(
+            highlights(FULL_CONFIGURATION), HighlightSeverity.WARNING, anchor = "b", beanName = "svc", firstMethod = "a"
         )
     }
 
-    private companion object {
-        const val INSPECTION_ID = "SpringDuplicateBeanName"
+    fun testAllowedOverridingSuppressesTheProblemInLiteClass() {
+        allowBeanDefinitionOverriding("true")
+
+        assertEmpty(highlights(LITE_CONFIGURATION))
     }
 }
