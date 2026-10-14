@@ -45,6 +45,8 @@ class MergedAnnotationAttributes(
         return attributeGroups(path.last().type, targetAttributes).mapNotNull { sourceOf(path, it) }
     }
 
+    fun metaDistanceOf(useSite: PsiAnnotation): Int? = metaPathOf(useSite)?.lastIndex
+
     fun conventionOverrideOf(useSite: PsiAnnotation, targetAttribute: String): ConventionOverride? {
         if (!conventionMapping) return null
         val path = metaPathOf(useSite)?.takeIf { it.size > 1 } ?: return null
