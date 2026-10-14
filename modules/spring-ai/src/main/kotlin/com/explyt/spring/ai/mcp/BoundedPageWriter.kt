@@ -5,6 +5,7 @@
 
 package com.explyt.spring.ai.mcp
 
+import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 
@@ -94,23 +95,42 @@ class BoundedPageWriter {
         sampleTruncatedField: String,
         totalCount: Int,
         revision: String,
-        page: PageRequest
+        page: PageRequest,
+        firstItem: ObjectNode? = null,
+        maxSampleChars: Int = Int.MAX_VALUE,
     ): ObjectNode {
         val fitted = envelope.deepCopy()
         val served = fitted.putArray(sampleField)
         fitted.put(sampleTruncatedField, true)
         for (item in sample) {
             served.add(item)
-            val probe = pageEnvelope(fitted, revision, totalCount, page.offset).apply { putArray(itemsField) }
-            val placeholderLength = encodedLength(probe)
-            setContinuation(probe, totalCount, page.offset)
-            if (maxOf(placeholderLength, encodedLength(probe)) > page.maxChars) {
+            if (encodedLength(served) > maxSampleChars ||
+                firstPageLength(fitted, itemsField, firstItem, totalCount, revision, page.offset) > page.maxChars
+            ) {
                 served.remove(served.size() - 1)
                 break
             }
         }
         if (served.size() == sample.size) fitted.remove(sampleTruncatedField)
         return fitted
+    }
+
+    private fun firstPageLength(
+        envelope: ObjectNode,
+        itemsField: String,
+        firstItem: ObjectNode?,
+        totalCount: Int,
+        revision: String,
+        offset: Int
+    ): Int {
+        val probe = pageEnvelope(envelope, revision, totalCount, offset)
+        val items = probe.putArray(itemsField)
+        val placeholderLength = encodedLength(probe)
+        val emptyLength = maxOf(placeholderLength, terminalLength(probe, totalCount, offset))
+        if (firstItem == null) return emptyLength
+        items.add(firstItem)
+        setContinuation(probe, totalCount, offset + 1)
+        return maxOf(emptyLength, encodedLength(probe))
     }
 
     fun writeError(
@@ -237,7 +257,7 @@ class BoundedPageWriter {
     private fun terminalLength(root: ObjectNode, totalCount: Int, offset: Int): Int =
         root.deepCopy().apply { setContinuation(this, totalCount, offset) }.let(::encodedLength)
 
-    private fun encodedLength(node: ObjectNode): Int = mapper.writeValueAsString(node).length
+    private fun encodedLength(node: JsonNode): Int = mapper.writeValueAsString(node).length
 
     private val mapper = ObjectMapper()
 

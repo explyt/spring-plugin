@@ -77,6 +77,7 @@ class BeanSnapshotService(private val project: Project) {
         // a recorded context and does not move when the IDE's profile inputs do.
         if (selection.nativeContext == null) {
             parts += ProfilesService.getInstance(project).beanQueryProfileInputs()
+            parts += "conditions-evaluated:${SpringToolRunConfigurationsSettingsState.getInstance().isBeanFilterEnabled}"
         } else {
             parts += "native-root:${selection.nativeContext.linkedPath}"
         }
