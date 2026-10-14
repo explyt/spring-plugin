@@ -7,6 +7,7 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
 import com.explyt.spring.core.service.SpringSearchService
+import com.explyt.spring.core.service.beans.BeanConditionRecord
 import com.explyt.spring.core.service.conditional.ConditionReason
 import com.explyt.spring.core.service.conditional.ConditionVerdict
 import com.explyt.spring.core.tracker.ModificationTrackerManager
@@ -176,6 +177,172 @@ class SpringBootApplicationMcpToolsetActuatorBeanConditionTest : ExplytKotlinLig
         } finally {
             settings.isBeanFilterEnabled = wasEnabled
         }
+    }
+
+    fun testFindFirstPageNamesConditionsNotEvaluatedWhenEvaluationIsDisabled() = runBlockingReleasingWriteIntent<Unit> {
+        addProperties(EXPOSE_ALL)
+        addPsEtlEndpoint()
+
+        val page = withConditionEvaluation(enabled = false) { findPage() }
+
+        assertServedPage(page)
+        assertConditionsNotEvaluated(page)
+    }
+
+    fun testFindContinuationPageNamesConditionsNotEvaluatedWhenEvaluationIsDisabled() = runBlockingReleasingWriteIntent<Unit> {
+        addProperties(EXPOSE_ALL)
+        addPsEtlEndpoint()
+
+        val continuation = withConditionEvaluation(enabled = false) {
+            val first = findPage()
+            assertServedPage(first)
+            findPage(offset = nextOffsetOf(first), expectedRevision = first["revision"].asText())
+        }
+
+        assertServedPage(continuation)
+        assertConditionsNotEvaluated(continuation)
+    }
+
+    fun testFindPageHasNoLimitationsWhenEvaluationIsEnabled() = runBlockingReleasingWriteIntent<Unit> {
+        addProperties(EXPOSE_ALL)
+        addPsEtlEndpoint()
+
+        val page = withConditionEvaluation(enabled = true) { findPage() }
+
+        assertServedPage(page)
+        assertFalse("evaluated conditions leave no limitation, got $page", page.has(FIELD_LIMITATIONS))
+    }
+
+    fun testListingFirstPageNamesConditionsNotEvaluatedWhenEvaluationIsDisabled() = runBlockingReleasingWriteIntent<Unit> {
+        addProperties(EXPOSE_ALL)
+        addPsEtlEndpoint()
+
+        val first = withConditionEvaluation(enabled = false) { actuatorListingPages() }.first()
+
+        assertServedPage(first)
+        assertConditionsNotEvaluated(first)
+    }
+
+    fun testListingContinuationPagesNameConditionsNotEvaluatedWhenEvaluationIsDisabled() = runBlockingReleasingWriteIntent<Unit> {
+        addProperties(EXPOSE_ALL)
+        addPsEtlEndpoint()
+
+        val pages = withConditionEvaluation(enabled = false) { actuatorListingPages() }
+
+        assertTrue("precondition: the listing spans more than one page, got ${pages.size}", pages.size >= 2)
+        for (continuation in pages.drop(1)) {
+            assertServedPage(continuation)
+            assertConditionsNotEvaluated(continuation)
+        }
+    }
+
+    fun testListingPagesHaveNoLimitationsWhenEvaluationIsEnabled() = runBlockingReleasingWriteIntent<Unit> {
+        addProperties(EXPOSE_ALL)
+        addPsEtlEndpoint()
+
+        val pages = withConditionEvaluation(enabled = true) { actuatorListingPages() }
+
+        assertTrue("precondition: the listing spans more than one page, got ${pages.size}", pages.size >= 2)
+        for (page in pages) {
+            assertServedPage(page)
+            assertFalse("evaluated conditions leave no limitation, got $page", page.has(FIELD_LIMITATIONS))
+        }
+    }
+
+    fun testContractFirstPageNamesConditionsNotEvaluatedWhenEvaluationIsDisabled() = runBlockingReleasingWriteIntent<Unit> {
+        addProperties(EXPOSE_ALL)
+        addPsEtlEndpoint()
+
+        val page = withConditionEvaluation(enabled = false) { contractPage() }
+
+        assertServedPage(page)
+        assertConditionsNotEvaluated(page)
+    }
+
+    fun testContractContinuationPageNamesConditionsNotEvaluatedWhenEvaluationIsDisabled() = runBlockingReleasingWriteIntent<Unit> {
+        addProperties(EXPOSE_ALL)
+        addPsEtlEndpoint()
+
+        val continuation = withConditionEvaluation(enabled = false) {
+            val first = contractPage()
+            assertServedPage(first)
+            contractPage(offset = nextOffsetOf(first), expectedRevision = first["revision"].asText())
+        }
+
+        assertServedPage(continuation)
+        assertConditionsNotEvaluated(continuation)
+    }
+
+    fun testContractPageHasNoLimitationsWhenEvaluationIsEnabled() = runBlockingReleasingWriteIntent<Unit> {
+        addProperties(EXPOSE_ALL)
+        addPsEtlEndpoint()
+
+        val page = withConditionEvaluation(enabled = true) { contractPage() }
+
+        assertServedPage(page)
+        assertFalse("evaluated conditions leave no limitation, got $page", page.has(FIELD_LIMITATIONS))
+    }
+
+    private inline fun <T> withConditionEvaluation(enabled: Boolean, block: () -> T): T {
+        val settings = SpringToolRunConfigurationsSettingsState.getInstance()
+        val wasEnabled = settings.isBeanFilterEnabled
+        settings.isBeanFilterEnabled = enabled
+        try {
+            return block()
+        } finally {
+            settings.isBeanFilterEnabled = wasEnabled
+        }
+    }
+
+    private suspend fun findPage(offset: Int = 0, expectedRevision: String? = null): JsonNode =
+        mapper.readTree(
+            toolset.findEndpoint(
+                urlPattern = ACTUATOR_PREFIX,
+                projectPath = projectPath(),
+                offset = offset,
+                maxChars = FIND_PAGE_CHARS,
+                expectedRevision = expectedRevision,
+            )
+        )
+
+    private suspend fun contractPage(offset: Int = 0, expectedRevision: String? = null): JsonNode =
+        mapper.readTree(
+            toolset.getEndpointContract(
+                urlPattern = ACTUATOR_PREFIX,
+                projectPath = projectPath(),
+                offset = offset,
+                maxChars = CONTRACT_PAGE_CHARS,
+                expectedRevision = expectedRevision,
+            )
+        )
+
+    private suspend fun actuatorListingPages(): List<JsonNode> =
+        toolset.endpointListingPages(
+            projectPath(),
+            endpointType = "ACTUATOR",
+            compact = true,
+            maxChars = LISTING_PAGE_CHARS,
+            mapper = mapper,
+        )
+
+    private fun assertServedPage(page: JsonNode) {
+        assertEquals("precondition: a page is served, got $page", "OK", page["status"]?.asText())
+        assertTrue("precondition: the page holds endpoints, got $page", (page["endpoints"]?.size() ?: 0) > 0)
+    }
+
+    private fun nextOffsetOf(page: JsonNode): Int {
+        assertTrue("precondition: the first page is cut, got $page", page["truncated"]?.asBoolean() == true)
+        val next = page["nextOffset"]
+        assertTrue("precondition: the first page names its continuation, got $page", next != null && next.isInt)
+        return next.asInt()
+    }
+
+    private fun assertConditionsNotEvaluated(page: JsonNode) {
+        assertEquals(
+            "a page answered without condition evaluation names that limitation, got $page",
+            listOf(BeanConditionRecord.CONDITIONS_NOT_EVALUATED),
+            page[FIELD_LIMITATIONS]?.map { it.asText() }
+        )
     }
 
     fun testNearestRouteOfAMissCarriesTheBeanCondition() = runBlockingReleasingWriteIntent<Unit> {
@@ -357,5 +524,10 @@ class SpringBootApplicationMcpToolsetActuatorBeanConditionTest : ExplytKotlinLig
         const val CLIENT_ROOT_BUDGET = 2000
         const val TWICE = "com.app.TwiceEndpoint"
         const val TWICE_PATH = "/actuator/twice"
+        const val ACTUATOR_PREFIX = "/actuator"
+        const val FIELD_LIMITATIONS = "limitations"
+        const val FIND_PAGE_CHARS = 4000
+        const val CONTRACT_PAGE_CHARS = 8000
+        const val LISTING_PAGE_CHARS = 1500
     }
 }
