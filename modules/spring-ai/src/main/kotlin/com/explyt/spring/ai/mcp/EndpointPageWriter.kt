@@ -7,6 +7,7 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.ai.mcp.entities.EntityInventory
 import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
+import com.explyt.spring.core.service.beans.BeanConditionRecord
 import com.explyt.spring.web.loader.EndpointElement
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
@@ -25,14 +26,15 @@ class EndpointPageWriter(private val project: Project) {
     ): String {
         val beanFilterEnabled = SpringToolRunConfigurationsSettingsState.getInstance().isBeanFilterEnabled
         val revision = EntityInventory.revision(project, query + ("beanFilterEnabled" to beanFilterEnabled.toString()))
+        val withLimitations = envelope.withConditionLimitation(beanFilterEnabled)
         val withNeighbourhood = when {
-            nearestByPrefix == null -> envelope
+            nearestByPrefix == null -> withLimitations
             page.offset == 0 -> writer.fitSample(
-                envelope, FIELD_ENDPOINTS, FIELD_NEAREST, nearestByPrefix.map(::toNode),
+                withLimitations, FIELD_ENDPOINTS, FIELD_NEAREST, nearestByPrefix.map(::toNode),
                 FIELD_NEAREST_TRUNCATED, endpoints.size, revision, page
             )
 
-            else -> envelope.deepCopy().apply { putArray(FIELD_NEAREST) }
+            else -> withLimitations.deepCopy().apply { putArray(FIELD_NEAREST) }
         }
         return writer.write(
             envelope = withNeighbourhood,
@@ -47,6 +49,10 @@ class EndpointPageWriter(private val project: Project) {
         )
     }
 
+    private fun ObjectNode.withConditionLimitation(beanFilterEnabled: Boolean): ObjectNode =
+        if (beanFilterEnabled) this
+        else deepCopy().apply { putArray(FIELD_LIMITATIONS).add(BeanConditionRecord.CONDITIONS_NOT_EVALUATED) }
+
     private fun toNode(value: Any): ObjectNode = mapper.valueToTree(value)
 
     private val writer = BoundedPageWriter()
@@ -56,5 +62,6 @@ class EndpointPageWriter(private val project: Project) {
         const val FIELD_ENDPOINTS = "endpoints"
         const val FIELD_NEAREST = "nearestByPrefix"
         const val FIELD_NEAREST_TRUNCATED = "nearestByPrefixTruncated"
+        const val FIELD_LIMITATIONS = "limitations"
     }
 }
