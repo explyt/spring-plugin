@@ -11,13 +11,11 @@ import com.explyt.spring.test.ExplytKotlinLightTestCase
 import com.explyt.spring.test.TestLibrary
 import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.openapi.util.registry.Registry
-import com.intellij.psi.ElementManipulators
+import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiLanguageInjectionHost
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.util.PsiTreeUtil
-import org.jetbrains.uast.UAnnotation
-import org.jetbrains.uast.getParentOfType
-import org.jetbrains.uast.toUElement
+import org.jetbrains.uast.*
 
 class QualifierBeanReferenceTest : ExplytKotlinLightTestCase() {
     override val libraries = arrayOf(TestLibrary.springContext_6_0_7, TestLibrary.springBootAutoConfigure_3_1_1)
@@ -81,12 +79,13 @@ class QualifierBeanReferenceTest : ExplytKotlinLightTestCase() {
     }
 
     fun testInterpolatedTemplateHasNoBeanNameReference() {
-        configureBeans()
+        configureBeans("anima")
         configureConsumer(
             "@Autowired @Qualifier(\"${'$'}{PREFIX}<caret>a\") lateinit var injected: Animal",
             annotationDeclaration = "const val PREFIX = \"anim\""
         )
         val host = qualifierHost()
+        assertEquals("anima", (host.toUElement() as? UExpression)?.evaluateString())
         assertEquals(emptyList<CompleteBeanReference>(), host.references.filterIsInstance<CompleteBeanReference>())
     }
 
@@ -95,7 +94,8 @@ class QualifierBeanReferenceTest : ExplytKotlinLightTestCase() {
         configureConsumer("@Autowired @Qualifier(\"ani\\n<caret>mal\") lateinit var injected: Animal")
         val host = qualifierHost()
         val reference = qualifierReference(host)
-        assertEquals(ElementManipulators.getValueTextRange(host), reference.rangeInElement)
+        assertEquals(TextRange(1, host.textLength - 1), reference.rangeInElement)
+        assertEquals("ani\\nmal", reference.value)
         assertResolvesTo(bean, reference)
     }
 

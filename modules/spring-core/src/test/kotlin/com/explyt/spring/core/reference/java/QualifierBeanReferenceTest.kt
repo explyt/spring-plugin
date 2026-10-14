@@ -10,6 +10,7 @@ import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
 import com.intellij.codeInsight.lookup.LookupElement
+import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.util.registry.Registry
 import com.intellij.psi.PsiLanguageInjectionHost
 import com.intellij.psi.PsiMethod
@@ -50,7 +51,17 @@ class QualifierBeanReferenceTest : ExplytJavaLightTestCase() {
         assertResolvesTo(bean, qualifierReference())
     }
 
-    private fun configureBeans(): PsiMethod {
+    fun testEscapedValueReferenceUsesWholeHostValueRange() {
+        val bean = configureBeans("ani\\nmal")
+        configureConsumer("@Autowired @Qualifier(\"ani\\nm<caret>al\") Animal injected;")
+        val host = qualifierHost()
+        val reference = qualifierReference()
+        assertEquals(TextRange(1, host.textLength - 1), reference.rangeInElement)
+        assertEquals("ani\\nmal", reference.value)
+        assertResolvesTo(bean, reference)
+    }
+
+    private fun configureBeans(animalName: String = "animal"): PsiMethod {
         myFixture.addFileToProject(
             "com/explyt/demo/App.java",
             "package com.explyt.demo; @org.springframework.boot.autoconfigure.SpringBootApplication public class App {}"
@@ -65,13 +76,13 @@ class QualifierBeanReferenceTest : ExplytJavaLightTestCase() {
             import org.springframework.context.annotation.Configuration;
             @Configuration(proxyBeanMethods = false)
             public class Beans {
-                @Bean public Animal animal() { return new Animal(); }
+                @Bean("$animalName") public Animal animal() { return new Animal(); }
                 @Bean public Vehicle vehicle() { return new Vehicle(); }
             }
             """.trimIndent()
         )
         val beans = SpringSearchServiceFacade.getInstance(project).getAllActiveBeans(module)
-        val animalBeans = beans.filter { it.name == "animal" }
+        val animalBeans = beans.filter { it.name == animalName.replace("\\n", "\n") }
         assertEquals("Precondition: one active animal factory", 1, animalBeans.size)
         assertEquals("com.explyt.demo.Animal", animalBeans.single().psiClass.qualifiedName)
         val vehicleBeans = beans.filter { it.name == "vehicle" }
