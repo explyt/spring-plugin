@@ -5,6 +5,7 @@
 
 package com.explyt.spring.ai.mcp.beans
 
+import com.explyt.spring.ai.mcp.BoundedPageWriter
 import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.service.beans.NativeBeanSnapshotReader
@@ -18,6 +19,7 @@ import com.explyt.spring.test.TestLibrary
 import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.node.ObjectNode
 import com.intellij.mcpserver.McpToolset
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiFile
@@ -253,6 +255,36 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
             assertEquals("syncAdminController", candidate["name"].asText())
             assertFalse("no verdict without evaluation, got $candidate", candidate.has("condition"))
             assertTrue(inactiveCandidatesOf(root).isEmpty())
+        } finally {
+            settings.isBeanFilterEnabled = enabled
+            ModificationTrackerManager.getInstance(project).invalidateAll()
+        }
+    }
+
+    fun testTogglingConditionEvaluationChangesTheRevision() = runBlockingReleasingWriteIntent {
+        addWorkers(active = 2, inactive = 1)
+        val settings = SpringToolRunConfigurationsSettingsState.getInstance()
+        val enabled = settings.isBeanFilterEnabled
+        assertTrue("Precondition: condition evaluation starts enabled", enabled)
+        val first = call(typeFqn = WORKER, limit = 1)
+        assertEquals("Precondition: the first page is served, got $first", "OK", first["status"].asText())
+        assertTrue("Precondition: the first page is truncated, got $first", first["truncated"].asBoolean())
+        assertFalse("Precondition: page 1 is read with conditions evaluated, got $first", CONDITIONS_NOT_EVALUATED in limitationsOf(first))
+
+        settings.isBeanFilterEnabled = false
+        try {
+            val fresh = call(typeFqn = WORKER, limit = 1)
+            assertTrue("Precondition: the toggle changes the answer, got $fresh", CONDITIONS_NOT_EVALUATED in limitationsOf(fresh))
+
+            val stale = call(
+                typeFqn = WORKER,
+                limit = 1,
+                offset = first["nextOffset"].asInt(),
+                expectedRevision = first["revision"].asText()
+            )
+
+            assertEquals("a continuation across the toggle must restart, got $stale", "ERROR", stale["status"].asText())
+            assertEquals("RESULT_CHANGED", stale["error"]["code"].asText())
         } finally {
             settings.isBeanFilterEnabled = enabled
             ModificationTrackerManager.getInstance(project).invalidateAll()
@@ -517,6 +549,67 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
         assertEquals(INACTIVE_WORKERS, root["inactiveCount"]?.asInt())
     }
 
+    fun testASmallBudgetServesAnActiveCandidateBeforeTheInactiveSample() = runBlockingReleasingWriteIntent {
+        addWorkers(active = 2, inactive = MAX_INACTIVE_SAMPLE + 1)
+        val roomy = call(typeFqn = WORKER, limit = 1, maxChars = BoundedPageWriter.MAX_CHARS) as ObjectNode
+        assertEquals("Precondition: the roomy page is served, got $roomy", "OK", roomy["status"].asText())
+        assertEquals("Precondition: the roomy page holds one active candidate, got $roomy", 1, roomy["candidates"].size())
+        val sample = inactiveCandidatesOf(roomy)
+        assertEquals("Precondition: the roomy page samples inactive candidates, got $roomy", MAX_INACTIVE_SAMPLE, sample.size)
+        assertEquals("Precondition: the roomy sample is flagged as cut, got $roomy", true, roomy["inactiveCandidatesTruncated"]?.asBoolean())
+        val sampleFree = roomy.deepCopy().apply { remove("inactiveCandidates") }
+        val sampleFreeLength = mapper.writeValueAsString(sampleFree).length
+        val firstSampledLength = mapper.writeValueAsString(sample.first()).length
+        val budget = maxOf(sampleFreeLength, 2 * (firstSampledLength + 2), BoundedPageWriter.MIN_CHARS)
+        val oneSampled = sampleFree.deepCopy().apply { remove("inactiveCandidatesTruncated"); putArray("inactiveCandidates").add(sample.first()) }
+        assertTrue(
+            "Precondition: no inactive candidate fits beside the first active one within $budget chars",
+            mapper.writeValueAsString(oneSampled).length > budget
+        )
+
+        val json = callJson(typeFqn = WORKER, maxChars = budget)
+
+        val root = mapper.readTree(json)
+        assertEquals("answer was $json", "OK", root["status"].asText())
+        assertTrue("payload was ${json.length} chars within $budget", json.length <= budget)
+        assertFalse("an active candidate must be served, got $json", root["candidates"].isEmpty)
+        assertEquals(MAX_INACTIVE_SAMPLE + 1, root["inactiveCount"]?.asInt())
+        assertEquals("a cut sample is flagged, got $json", true, root["inactiveCandidatesTruncated"]?.asBoolean())
+    }
+
+    fun testTheDefaultBudgetSampleDisplacesOnlyTheActiveCandidatesItsOwnLengthAccountsFor() = runBlockingReleasingWriteIntent {
+        addWorkers(active = DEFAULT_LIMIT + 1, inactive = MAX_INACTIVE_SAMPLE)
+        addWorkers(active = DEFAULT_LIMIT + 1, inactive = 0, role = HELPER_ROLE)
+        val unsampled = call(typeFqn = HELPER)
+        assertEquals("Precondition: the baseline is served, got $unsampled", "OK", unsampled["status"].asText())
+        assertFalse("Precondition: the baseline has no inactive candidates, got $unsampled", unsampled.has("inactiveCount"))
+        assertTrue("Precondition: the baseline page is cut, got $unsampled", unsampled["truncated"].asBoolean())
+
+        val json = callJson(typeFqn = WORKER)
+
+        val sampled = mapper.readTree(json)
+        assertEquals("answer was $json", "OK", sampled["status"].asText())
+        assertEquals("Precondition: every inactive worker is counted, got $json", MAX_INACTIVE_SAMPLE, sampled["inactiveCount"]?.asInt())
+        val sample = sampled["inactiveCandidates"]
+        assertNotNull("Precondition: the default page samples inactive candidates, got $json", sample)
+        val sampleCost = envelopeLengthOf(sampled) - envelopeLengthOf(unsampled)
+        val baseline = unsampled["candidates"].size()
+        val served = sampled["candidates"].size()
+        val displaced = baseline - served
+        val shortest = unsampled["candidates"].minOf { mapper.writeValueAsString(it).length + 1 }
+        val sampleLength = mapper.writeValueAsString(sample).length
+        val measurement = "a sample of ${sample.size()} ($sampleLength chars) costing $sampleCost chars moved $displaced of " +
+                "$baseline active candidates to later pages (shortest candidate $shortest chars, page ${json.length} " +
+                "chars, budget $MAX_DEFAULT_PAYLOAD)"
+        println("#634 measurement: $measurement")
+        assertTrue(measurement, served >= 1)
+        assertTrue(measurement, sample.size() <= MAX_INACTIVE_SAMPLE)
+        assertTrue(measurement, sampleLength <= MAX_DEFAULT_PAYLOAD / 2)
+    }
+
+    private fun envelopeLengthOf(page: JsonNode): Int =
+        mapper.writeValueAsString((page as ObjectNode).deepCopy().apply { remove("candidates") }).length
+
     fun testANonConstantQualifierEmitsNoUnfilteredInactiveCandidates() = runBlockingReleasingWriteIntent {
         val root = qualifiedInjection("EngineNames.FAST", nonConstantNames = true)
 
@@ -562,16 +655,16 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
         }
     }
 
-    private fun addWorkers(active: Int, inactive: Int) {
+    private fun addWorkers(active: Int, inactive: Int, role: String = WORKER_ROLE) {
         addJava(
-            "Worker",
+            role,
             """
             package com.explyt.demo;
 
-            public interface Worker {}
+            public interface $role {}
             """
         )
-        val activeWorkers = (1..active).map { "ActiveWorker$it" }
+        val activeWorkers = (1..active).map { "Active$role$it" }
         activeWorkers.forEach { name ->
             addJava(
                 name,
@@ -581,11 +674,11 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
                 import org.springframework.stereotype.Component;
 
                 @Component
-                public class $name implements Worker {}
+                public class $name implements $role {}
                 """
             )
         }
-        val inactiveWorkers = (1..inactive).map { "ConditionalWorker$it" }
+        val inactiveWorkers = (1..inactive).map { "Conditional$role$it" }
         inactiveWorkers.forEach { name ->
             addJava(
                 name,
@@ -596,8 +689,8 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
                 import org.springframework.stereotype.Component;
 
                 @Component
-                @ConditionalOnProperty(name = "worker.$name.enabled", havingValue = "true")
-                public class $name implements Worker {}
+                @ConditionalOnProperty(name = "${role.lowercase()}.$name.enabled", havingValue = "true")
+                public class $name implements $role {}
                 """
             )
         }
@@ -720,21 +813,38 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
         column: Int? = null,
         includeDetails: Boolean = false,
         offset: Int = 0,
-        expectedRevision: String? = null
+        expectedRevision: String? = null,
+        limit: Int = DEFAULT_LIMIT,
+        maxChars: Int = MAX_DEFAULT_PAYLOAD
     ): JsonNode = mapper.readTree(
-        toolset().findSpringBean(
-            projectPath = project.basePath!!,
-            applicationClassName = APPLICATION,
-            source = "STATIC",
-            typeFqn = typeFqn,
-            beanName = beanName,
-            filePath = filePath,
-            line = line,
-            column = column,
-            includeDetails = includeDetails,
-            offset = offset,
-            expectedRevision = expectedRevision
-        )
+        callJson(typeFqn, beanName, filePath, line, column, includeDetails, offset, expectedRevision, limit, maxChars)
+    )
+
+    private suspend fun callJson(
+        typeFqn: String? = null,
+        beanName: String? = null,
+        filePath: String? = null,
+        line: Int? = null,
+        column: Int? = null,
+        includeDetails: Boolean = false,
+        offset: Int = 0,
+        expectedRevision: String? = null,
+        limit: Int = DEFAULT_LIMIT,
+        maxChars: Int = MAX_DEFAULT_PAYLOAD
+    ): String = toolset().findSpringBean(
+        projectPath = project.basePath!!,
+        applicationClassName = APPLICATION,
+        source = "STATIC",
+        typeFqn = typeFqn,
+        beanName = beanName,
+        filePath = filePath,
+        line = line,
+        column = column,
+        offset = offset,
+        limit = limit,
+        maxChars = maxChars,
+        expectedRevision = expectedRevision,
+        includeDetails = includeDetails
     )
 
     private fun toolset(): SpringBeanMcpToolset {
@@ -873,7 +983,10 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
         const val INACTIVE_WORKERS = 15
         const val MAX_INACTIVE_SAMPLE = 3
         const val DEFAULT_LIMIT = 5
+        const val WORKER_ROLE = "Worker"
         const val WORKER = "com.explyt.demo.Worker"
+        const val HELPER_ROLE = "Helper"
+        const val HELPER = "com.explyt.demo.Helper"
         const val CONDITIONS_UNDECIDED = "CONDITIONS_UNDECIDED"
         const val PROFILE_NOT_DECIDABLE = "PROFILE_NOT_DECIDABLE"
         const val CONDITIONS_NOT_EVALUATED = "CONDITIONS_NOT_EVALUATED"
