@@ -21,10 +21,14 @@ import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.MethodSignatureUtil
 import com.intellij.psi.util.PsiModificationTracker
+import org.jetbrains.uast.UAnnotated
+import org.jetbrains.uast.evaluateString
+import org.jetbrains.uast.toUElement
 
 object HandlerMethods {
 
     private val parameterMethodsKey = Key.create<CachedValue<List<PsiMethod>>>("explyt.web.parameterMethods")
+    private val MAPPING_PATH_ATTRIBUTES = setOf("path", "value")
 
     enum class HierarchyOrder { INTERFACES_FIRST, SUPERCLASS_FIRST }
 
@@ -48,10 +52,17 @@ object HandlerMethods {
         isMapped: (PsiClass) -> Boolean,
     ): PsiClass? = typeHierarchy(controller, order).firstOrNull(isMapped)
 
-    fun requestMappingPrefixes(controller: PsiClass, requestMappingMah: MetaAnnotationsHolder): List<String> =
-        mappedType(controller) { it.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING) }
-            ?.let { requestMappingMah.getAnnotationMemberValues(it, setOf("path", "value")) }.orEmpty()
-            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
+    fun requestMappingPrefixes(controller: PsiClass, requestMappingMah: MetaAnnotationsHolder): List<String> {
+        val mappedType = mappedType(controller) { it.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING) }
+            ?: return emptyList()
+        val annotated = mappedType.toUElement() as? UAnnotated
+            ?: return requestMappingMah.nearestAnnotation(mappedType)
+                ?.let { requestMappingMah.getAnnotationMemberValues(it, MAPPING_PATH_ATTRIBUTES) }.orEmpty()
+                .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
+        return requestMappingMah.nearestAnnotation(annotated)
+            ?.let { requestMappingMah.getAnnotationMemberValues(it, MAPPING_PATH_ATTRIBUTES) }.orEmpty()
+            .mapNotNull { it.evaluateString() }
+    }
 
     fun mostSpecificMethod(method: PsiMethod, controller: PsiClass): PsiMethod {
         val overrides = controller.findMethodsByName(method.name, true)
