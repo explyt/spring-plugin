@@ -9,8 +9,8 @@ import com.explyt.spring.core.util.SpringCoreUtil.SPRING_BOOT_MAVEN
 import com.explyt.spring.core.util.SpringCoreUtil.SPRING_CORE_MAVEN
 import com.intellij.java.library.JavaLibraryUtil
 import com.intellij.openapi.module.Module
-import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.util.Key
+import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.CachedValue
 import com.intellij.psi.util.CachedValueProvider
@@ -21,18 +21,22 @@ import com.intellij.util.containers.ContainerUtil
 import com.intellij.util.text.VersionComparatorUtil
 import org.jetbrains.kotlin.idea.base.util.module
 
-private val SPRING_CORE_MAJOR_VERSION_KEY = Key.create<CachedValue<Int?>>("explyt.spring.core.major.version")
+private val SPRING_CORE_VERSION_KEY = Key.create<CachedValue<String?>>("explyt.spring.core.version")
 
 object SpringBootUtil {
 
     @RequiresReadLock
-    fun getSpringCoreMajorVersion(module: Module): Int? =
-        CachedValuesManager.getManager(module.project).getCachedValue(module, SPRING_CORE_MAJOR_VERSION_KEY, {
-            val majorVersion = JavaLibraryUtil.getLibraryVersion(module, SPRING_CORE_MAVEN)
-                ?.substringBefore('.')
-                ?.toIntOrNull()
-            CachedValueProvider.Result.create(majorVersion, ProjectRootManager.getInstance(module.project))
+    fun getSpringCoreVersion(module: Module): String? =
+        CachedValuesManager.getManager(module.project).getCachedValue(module, SPRING_CORE_VERSION_KEY, {
+            CachedValueProvider.Result.create(
+                JavaLibraryUtil.getLibraryVersion(module, SPRING_CORE_MAVEN),
+                ProjectRootManager.getInstance(module.project)
+            )
         }, false)
+
+    @RequiresReadLock
+    fun getSpringCoreMajorVersion(module: Module): Int? =
+        getSpringCoreVersion(module)?.substringBefore('.')?.toIntOrNull()
 
     @Suppress("UnstableApiUsage")
     fun getSpringBootVersion(module: Module): SpringBootVersion? {
