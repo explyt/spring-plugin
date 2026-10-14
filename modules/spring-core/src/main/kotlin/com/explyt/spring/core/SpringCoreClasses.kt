@@ -29,6 +29,7 @@ object SpringCoreClasses {
         "org.springframework.boot.actuate.endpoint.web.annotation.ServletEndpoint"
     const val ACTUATOR_ENDPOINT_WEB_EXTENSION =
         "org.springframework.boot.actuate.endpoint.web.annotation.EndpointWebExtension"
+    const val ACTUATOR_ENDPOINT_EXTENSION = "org.springframework.boot.actuate.endpoint.annotation.EndpointExtension"
     const val ACTUATOR_ENDPOINT_AUTO_CONFIGURATION =
         "org.springframework.boot.actuate.autoconfigure.endpoint.EndpointAutoConfiguration"
     const val SPRING_APPLICATION = "org.springframework.boot.SpringApplication"
