@@ -13,7 +13,6 @@ import com.explyt.spring.web.util.MappingPathPlaceholders
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.spring.web.util.WebApplicationStack
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
-import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
@@ -74,10 +73,7 @@ class SpringWebControllerLoader(private val project: Project) : SpringWebEndpoin
         module: Module,
         endpointType: EndpointType,
     ): List<EndpointElement> {
-        val prefixes = HandlerMethods.mappedType(controllerPsiClass) { it.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING) }
-            ?.let { requestMappingMah.getAnnotationMemberValues(it, TARGET_VALUE) }.orEmpty()
-            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
-            .ifEmpty { listOf("") }
+        val prefixes = HandlerMethods.requestMappingPrefixes(controllerPsiClass, requestMappingMah).ifEmpty { listOf("") }
 
         val result = mutableListOf<EndpointElement>()
 
@@ -103,9 +99,5 @@ class SpringWebControllerLoader(private val project: Project) : SpringWebEndpoin
             }
         }
         return result
-    }
-
-    companion object {
-        private val TARGET_VALUE = setOf("value")
     }
 }
