@@ -129,13 +129,27 @@ class MetaAnnotationsHolder private constructor(
         val useSiteFqn = useSite.qualifiedName
         if (useSiteFqn !in annotationByFqn) return emptySet()
         if (useSiteFqn == rootFqn) return getDeclaredAnnotationMemberValues(annotation, targetMethods)
-        val sources = MergedAnnotationAttributes(
-            rootFqn,
-            { it.qualifiedName in annotationByFqn },
-            lazy { MergedAnnotationAttributes.conventionMappingApplies(MergedAnnotationAttributes.moduleOf(useSite)) },
-        ).resolve(useSite, targetMethods) ?: return getDeclaredAnnotationMemberValues(annotation, targetMethods)
+        val sources = mergedAttributesOf(useSite).resolve(useSite, targetMethods)
+            ?: return getDeclaredAnnotationMemberValues(annotation, targetMethods)
         return sources.flatMapTo(linkedSetOf()) { getValues(expressionOf(it, annotation)) }
     }
+
+    fun nearestAnnotation(uAnnotated: UAnnotated): UAnnotation? =
+        uAnnotated.uAnnotations
+            .filter { contains(it) }
+            .minByOrNull { annotation -> annotation.javaPsi?.let(::metaDistanceOf) ?: Int.MAX_VALUE }
+
+    fun nearestAnnotation(owner: PsiModifierListOwner): PsiAnnotation? =
+        owner.annotations.filter { contains(it) }.minByOrNull(::metaDistanceOf)
+
+    private fun metaDistanceOf(useSite: PsiAnnotation): Int =
+        mergedAttributesOf(useSite).metaDistanceOf(useSite) ?: Int.MAX_VALUE
+
+    private fun mergedAttributesOf(useSite: PsiAnnotation) = MergedAnnotationAttributes(
+        rootFqn,
+        { it.qualifiedName in annotationByFqn },
+        lazy { MergedAnnotationAttributes.conventionMappingApplies(MergedAnnotationAttributes.moduleOf(useSite)) },
+    )
 
     private fun expressionOf(source: MergedAnnotationAttributes.Source, useSite: UAnnotation): UExpression? =
         when (source) {
