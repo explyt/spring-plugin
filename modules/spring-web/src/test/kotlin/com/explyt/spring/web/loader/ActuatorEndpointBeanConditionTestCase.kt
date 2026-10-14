@@ -14,6 +14,7 @@ import com.explyt.spring.test.ExplytBaseLightTestCase
 import com.explyt.spring.test.TestLibrary
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiMember
+import com.intellij.psi.PsiMethod
 import com.intellij.psi.search.GlobalSearchScope
 
 abstract class ActuatorEndpointBeanConditionTestCase : ExplytBaseLightTestCase() {
@@ -31,6 +32,7 @@ abstract class ActuatorEndpointBeanConditionTestCase : ExplytBaseLightTestCase()
     protected abstract fun addRestController()
     protected abstract fun addSupertypeFactoryEndpoint()
     protected abstract fun addDuplicateEndpointRegistrations()
+    protected abstract fun addPropertyGatedWebExtension()
 
     override fun setUp() {
         super.setUp()
@@ -162,6 +164,51 @@ abstract class ActuatorEndpointBeanConditionTestCase : ExplytBaseLightTestCase()
         assertEquals(2, projectEndpoints.size)
     }
 
+    fun testPropertyGatedWebExtensionWithoutPropertyLeavesTheEndpointOperation() {
+        addProperties(EXPOSE_ALL)
+        addPropertyGatedWebExtension()
+        assertBeanModelSays<ConditionVerdict.Active>(projectClass(EXT_ENDPOINT))
+        assertBeanModelSays<ConditionVerdict.Inactive>(projectClass(EXT_WEB_EXTENSION))
+
+        assertEquals(listOf(EXT_ENDPOINT), operationOwnersAt(EXT_PATH))
+        assertEquals(ConditionVerdict.Active, beanConditionOf(EXT_ENDPOINT))
+    }
+
+    fun testPropertyGatedWebExtensionWithFalsePropertyLeavesTheEndpointOperation() {
+        addProperties(EXPOSE_ALL, "$EXT_GATING_KEY=false")
+        addPropertyGatedWebExtension()
+        assertBeanModelSays<ConditionVerdict.Active>(projectClass(EXT_ENDPOINT))
+        assertBeanModelSays<ConditionVerdict.Inactive>(projectClass(EXT_WEB_EXTENSION))
+
+        assertEquals(listOf(EXT_ENDPOINT), operationOwnersAt(EXT_PATH))
+        assertEquals(ConditionVerdict.Active, beanConditionOf(EXT_ENDPOINT))
+    }
+
+    fun testPropertyGatedWebExtensionWithMatchingPropertyReplacesTheEndpointOperation() {
+        addProperties(EXPOSE_ALL, "$EXT_GATING_KEY=true")
+        addPropertyGatedWebExtension()
+        assertBeanModelSays<ConditionVerdict.Active>(projectClass(EXT_ENDPOINT))
+        assertBeanModelSays<ConditionVerdict.Active>(projectClass(EXT_WEB_EXTENSION))
+
+        assertEquals(listOf(EXT_WEB_EXTENSION), operationOwnersAt(EXT_PATH))
+        assertEquals(ConditionVerdict.Active, beanConditionOf(EXT_ENDPOINT))
+    }
+
+    fun testUnresolvablePlaceholderAppliesTheWebExtensionAndLeavesTheEndpointUndecided() {
+        addProperties(EXPOSE_ALL, "$EXT_GATING_KEY=\${EXT_ENABLED}")
+        addPropertyGatedWebExtension()
+        assertBeanModelSays<ConditionVerdict.Active>(projectClass(EXT_ENDPOINT))
+        assertBeanModelSays<ConditionVerdict.Undecided>(projectClass(EXT_WEB_EXTENSION))
+
+        assertEquals(listOf(EXT_WEB_EXTENSION), operationOwnersAt(EXT_PATH))
+        val verdict = beanConditionOf(EXT_ENDPOINT)
+        assertInstanceOf(verdict, ConditionVerdict.Undecided::class.java)
+        val evidence = (verdict as ConditionVerdict.Undecided).conditions.single()
+        assertEquals(CONDITIONAL_ON_PROPERTY, evidence.annotationFqn)
+        assertEquals(EXT_WEB_EXTENSION, evidence.carrierFqn)
+        assertEquals(ConditionReason.PROPERTY_UNRESOLVABLE, evidence.reason)
+    }
+
     private fun addProperties(vararg lines: String) {
         myFixture.addFileToProject("application.properties", lines.joinToString("\n"))
     }
@@ -196,6 +243,10 @@ abstract class ActuatorEndpointBeanConditionTestCase : ExplytBaseLightTestCase()
     private fun beanConditionOf(className: String): ConditionVerdict? =
         endpointsOf(className).map { it.beanCondition }.distinct().single()
 
+    private fun operationOwnersAt(path: String): List<String?> =
+        endpointsOfType(EndpointType.ACTUATOR).filter { it.path == path }
+            .map { (it.psiElement as? PsiMethod)?.containingClass?.qualifiedName }
+
     private fun inactiveEvidence(verdict: ConditionVerdict?): ConditionEvidence {
         assertInstanceOf(verdict, ConditionVerdict.Inactive::class.java)
         return (verdict as ConditionVerdict.Inactive).condition
@@ -214,5 +265,9 @@ abstract class ActuatorEndpointBeanConditionTestCase : ExplytBaseLightTestCase()
         const val SUPERTYPE_ENDPOINT = "com.app.EtlEndpoint"
         const val SUPERTYPE_CONFIG = "com.app.EtlEndpointConfig"
         const val DUPLICATE_ENDPOINT = "com.app.TwiceEndpoint"
+        const val EXT_GATING_KEY = "x.ext.enabled"
+        const val EXT_ENDPOINT = "com.app.ExtEtlEndpoint"
+        const val EXT_WEB_EXTENSION = "com.app.ExtEtlWebExtension"
+        const val EXT_PATH = "/actuator/extEtl"
     }
 }
