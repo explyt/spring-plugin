@@ -39,7 +39,10 @@ object BeanFactoryMethods {
         return methods.asSequence()
     }
 
-    fun overrideIn(configuration: PsiClass, factory: PsiMethod): PsiMethod? =
-        MethodSignatureUtil.findMethodBySuperMethod(configuration, factory, true)
-            ?.takeUnless { factory.manager.areElementsEquivalent(it, factory) }
+    fun overrideIn(configuration: PsiClass, factory: PsiMethod): PsiMethod? {
+        val manager = factory.manager
+        if (manager.areElementsEquivalent(factory.containingClass, configuration)) return null
+        return MethodSignatureUtil.findMethodBySuperMethod(configuration, factory, true)
+            ?.takeUnless { manager.areElementsEquivalent(it, factory) }
+    }
 }

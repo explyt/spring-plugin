@@ -69,11 +69,11 @@ class SpringSearchServiceFacade(private val project: Project) {
         }
     }
 
-    fun getComponentBeanPsiMethods(module: Module): Set<PsiMethod> {
+    fun getComponentBeanFactoryMethods(module: Module): Map<PsiMethod, PsiMethod> {
         return if (isExternalProjectExist(project)) {
-            nativeSearchService.getBeanPsiMethods()
+            nativeSearchService.getBeanPsiMethods().associateWith { it }
         } else {
-            springSearchService.getComponentBeanPsiMethods(module)
+            springSearchService.getComponentBeanFactoryMethods(module)
         }
     }
 

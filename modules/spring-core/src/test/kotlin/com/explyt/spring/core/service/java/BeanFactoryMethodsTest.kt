@@ -7,6 +7,7 @@ package com.explyt.spring.core.service.java
 
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.inspections.SpringBeanIncorrectAutowiringInspection
+import com.explyt.spring.core.service.HierarchySearchDecoy
 import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.service.beans.BeanModelSource
@@ -81,6 +82,70 @@ class BeanFactoryMethodsTest : ExplytJavaLightTestCase() {
     fun testCovariantOverrideStillAutowiresBySuperclassType() {
         configureCovariantOverride()
         assertAutowiringHighlights("Animal", "animal")
+    }
+
+    fun testEffectiveFactoryMapIsCachedWhilePsiIsUnchanged() {
+        configureCovariantOverride()
+        val facade = SpringSearchServiceFacade.getInstance(project)
+        val first = facade.getComponentBeanFactoryMethods(module)
+        assertAnimalTypedByCovariantOverride(first)
+        assertSame(
+            "Without a PSI change the effective factory map must come from the cached model",
+            first,
+            facade.getComponentBeanFactoryMethods(module)
+        )
+    }
+
+    fun testEffectiveFactoryMapFollowsAnAddedConfiguration() {
+        configureCovariantOverride()
+        val facade = SpringSearchServiceFacade.getInstance(project)
+        val before = facade.getComponentBeanFactoryMethods(module)
+        assertAnimalTypedByCovariantOverride(before)
+        assertTrue("Precondition: no cat factory yet", before.keys.none { it.name == "cat" })
+        myFixture.addFileToProject(
+            "com/explyt/demo/Extra.java",
+            """
+            package com.explyt.demo;
+            import org.springframework.context.annotation.Bean;
+            import org.springframework.context.annotation.Configuration;
+            class Cat {}
+            @Configuration(proxyBeanMethods = false)
+            public class Extra {
+                @Bean public Cat cat() { return new Cat(); }
+            }
+            """.trimIndent()
+        )
+        val after = facade.getComponentBeanFactoryMethods(module)
+        assertNotSame("An added configuration must recompute the effective factory map", before, after)
+        assertAnimalTypedByCovariantOverride(after)
+        val cat = after.entries.single { it.key.name == "cat" }
+        assertEquals("com.explyt.demo.Extra", cat.key.containingClass?.qualifiedName)
+        assertEquals("com.explyt.demo.Extra", cat.value.containingClass?.qualifiedName)
+    }
+
+    fun testOverrideInDoesNotSearchTheHierarchyOfTheDeclaringConfiguration() {
+        configure("@Bean public Foo foo() { return new Foo(); }")
+        val factory = psiClass("Child").findMethodsByName("foo", false).single()
+        assertTrue("Precondition: Child declares the @Bean factory", factory.hasAnnotation(SpringCoreClasses.BEAN))
+        val configuration = HierarchySearchDecoy(psiClass("Child"))
+        val declaredFactory = configuration.declare(factory)
+        assertSame("Precondition: the factory is declared in the configuration", configuration, declaredFactory.containingClass)
+        assertNull(BeanFactoryMethods.overrideIn(configuration, declaredFactory))
+    }
+
+    fun testOverrideInFindsTheCovariantOverrideOfAnInheritedFactory() {
+        configureCovariantOverride()
+        val inherited = psiClass("Base").findMethodsByName("animal", false).single()
+        val override = BeanFactoryMethods.overrideIn(psiClass("Child"), inherited)
+        assertEquals("com.explyt.demo.Child", override?.containingClass?.qualifiedName)
+        assertEquals("com.explyt.demo.Dog", override?.returnType?.canonicalText)
+    }
+
+    private fun assertAnimalTypedByCovariantOverride(factories: Map<PsiMethod, PsiMethod>) {
+        val animal = factories.entries.single { it.key.name == "animal" }
+        assertEquals("com.explyt.demo.Base", animal.key.containingClass?.qualifiedName)
+        assertEquals("com.explyt.demo.Child", animal.value.containingClass?.qualifiedName)
+        assertEquals("com.explyt.demo.Dog", animal.value.returnType?.canonicalText)
     }
 
     private fun configureCovariantOverride() {
