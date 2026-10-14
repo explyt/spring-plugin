@@ -4,12 +4,18 @@ Reports a <code>@Bean</code> method whose bean name is already declared by a dif
 of the same configuration class.
 <p>Spring Boot disallows bean definition overriding by default, so such a configuration fails at startup with
 <code>BeanDefinitionOverrideException</code>. Overloaded <code>@Bean</code> methods with the same method name are merged by
-Spring and are not reported. Nothing is reported when <code>spring.main.allow-bean-definition-overriding=true</code>
-is set in the module configuration.</p>
+Spring and are not reported.</p>
+<p>When <code>spring.main.allow-bean-definition-overriding=true</code> is set in the module configuration, nothing is
+reported before Spring Framework 7, for a lite class such as a <code>@Component</code> with <code>@Bean</code> methods, or for
+a <code>@Configuration(enforceUniqueMethods = false)</code> class, also when <code>enforceUniqueMethods</code> is set through
+a composed annotation. Spring Framework 7 fails at startup for any other <code>@Configuration</code> class whatever the
+property says, so the problem is always an error there, and it is reported as a warning when the property allows
+overriding but the Spring Framework version cannot be determined.</p>
 <p>Methods annotated with <code>@Profile</code> or another <code>@Conditional</code> annotation, such as
 <code>@ConditionalOnProperty</code>, are not reported: Spring evaluates their conditions before it registers the bean name,
 so only one of them may be active.</p>
 <p>When the value of <code>spring.main.allow-bean-definition-overriding</code> cannot be resolved, for example because it is
-a placeholder or depends on a profile, the problem is reported as a warning instead of an error.</p>
+a placeholder or depends on a profile, the problem is reported as a warning instead of an error, except for a
+<code>@Configuration</code> class on Spring Framework 7, which fails whatever the value is.</p>
 </body>
 </html>
