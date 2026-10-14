@@ -2,20 +2,34 @@
 <body>
 Reports a <code>@Bean</code> method whose bean name is already declared by a differently named <code>@Bean</code> method
 of the same configuration class.
-<p>Spring Boot disallows bean definition overriding by default, so such a configuration fails at startup with
-<code>BeanDefinitionOverrideException</code>. Overloaded <code>@Bean</code> methods with the same method name are merged by
-Spring and are not reported.</p>
-<p>When <code>spring.main.allow-bean-definition-overriding=true</code> is set in the module configuration, nothing is
-reported before Spring Framework 7, for a lite class such as a <code>@Component</code> with <code>@Bean</code> methods, or for
-a <code>@Configuration(enforceUniqueMethods = false)</code> class, also when <code>enforceUniqueMethods</code> is set through
-a composed annotation. Spring Framework 7 fails at startup for any other <code>@Configuration</code> class whatever the
-property says, so the problem is always an error there, and it is reported as a warning when the property allows
-overriding but the Spring Framework version cannot be determined.</p>
+<p>Spring Boot disallows bean definition overriding by default, so on Spring Framework 6.2.0 and later such a
+configuration fails at startup with <code>BeanDefinitionOverrideException</code>. Overloaded <code>@Bean</code> methods with
+the same method name are merged by Spring and are not reported.</p>
+<p>When the shared name is the primary bean name of both methods, that is the first name declared in
+<code>@Bean</code>, or the method name when none is declared, Spring Framework before 6.2.0 starts with such a
+configuration whatever <code>spring.main.allow-bean-definition-overriding</code> says and silently ignores one of the two
+methods, so the problem is reported there as a warning, for <code>@Configuration</code> and lite classes alike. Which
+method is kept cannot be told from the source order. When the Spring Framework version cannot be determined and
+overriding is not allowed, a collision of primary names is reported as a warning that names both outcomes.</p>
+<p>A name declared after the first one in <code>@Bean</code> is an alias. Unless bean definition overriding is allowed,
+an alias shared by both methods fails at startup on every Spring Framework version. A name that is the primary bean name
+of one method and an alias of the other fails at startup from Spring Framework 6.0; before 6.0 the outcome depends on
+the order Spring registers the two methods: it fails at startup or silently ignores one of them, so the problem is
+reported there as a warning, as it is when the Spring Framework version cannot be determined. Such alias collisions fail
+with <code>BeanDefinitionOverrideException</code> or <code>IllegalStateException</code>.</p>
+<p>When <code>spring.main.allow-bean-definition-overriding=true</code> is set in the module configuration, an alias
+collision is not reported, and neither is a collision of primary names on Spring Framework 6.2.x, for a lite class such
+as a <code>@Component</code> with <code>@Bean</code> methods, or for a <code>@Configuration(enforceUniqueMethods = false)</code>
+class, also when <code>enforceUniqueMethods</code> is set through a composed annotation. For a collision of primary names
+Spring Framework 7 fails at startup in any other <code>@Configuration</code> class whatever the property says, so the
+problem is always an error there, and it is reported as a warning when the property allows overriding but the Spring
+Framework version cannot be determined.</p>
 <p>Methods annotated with <code>@Profile</code> or another <code>@Conditional</code> annotation, such as
 <code>@ConditionalOnProperty</code>, are not reported: Spring evaluates their conditions before it registers the bean name,
 so only one of them may be active.</p>
 <p>When the value of <code>spring.main.allow-bean-definition-overriding</code> cannot be resolved, for example because it is
-a placeholder or depends on a profile, the problem is reported as a warning instead of an error, except for a
-<code>@Configuration</code> class on Spring Framework 7, which fails whatever the value is.</p>
+a placeholder or depends on a profile, an error is reported as a warning that says so, except for a collision of primary
+names in a <code>@Configuration</code> class on Spring Framework 7, which fails whatever the value is. A warning about a
+Spring Framework version before 6.2.0 or before 6.0, or a version that cannot be determined, is kept as it is.</p>
 </body>
 </html>

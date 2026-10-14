@@ -27,7 +27,7 @@ private const val SPRING_BOOT_KAFKA = "spring-kafka"
 private const val SPRING_BOOT_3_VERSION = "3.0"
 private const val SPRING_BOOT_3_4_VERSION = "3.4"
 private const val SPRING_BOOT_4_VERSION = "4.0"
-private val SPRING_CORE_MAJOR_VERSION_KEY = Key.create<CachedValue<Int?>>("explyt.spring.core.major.version")
+private val SPRING_CORE_VERSION_KEY = Key.create<CachedValue<String?>>("explyt.spring.core.version")
 
 object SpringBootUtil {
 
@@ -44,13 +44,17 @@ object SpringBootUtil {
     }
 
     @RequiresReadLock
-    fun getSpringCoreMajorVersion(module: Module): Int? =
-        CachedValuesManager.getManager(module.project).getCachedValue(module, SPRING_CORE_MAJOR_VERSION_KEY, {
-            val majorVersion = JavaLibraryUtil.getLibraryVersion(module, SPRING_CORE_MAVEN)
-                ?.substringBefore('.')
-                ?.toIntOrNull()
-            CachedValueProvider.Result.create(majorVersion, ProjectRootManager.getInstance(module.project))
+    fun getSpringCoreVersion(module: Module): String? =
+        CachedValuesManager.getManager(module.project).getCachedValue(module, SPRING_CORE_VERSION_KEY, {
+            CachedValueProvider.Result.create(
+                JavaLibraryUtil.getLibraryVersion(module, SPRING_CORE_MAVEN),
+                ProjectRootManager.getInstance(module.project)
+            )
         }, false)
+
+    @RequiresReadLock
+    fun getSpringCoreMajorVersion(module: Module): Int? =
+        getSpringCoreVersion(module)?.substringBefore('.')?.toIntOrNull()
 
     /**
      * Returns `true` when the detected Spring Boot version is 3.0 or later.
