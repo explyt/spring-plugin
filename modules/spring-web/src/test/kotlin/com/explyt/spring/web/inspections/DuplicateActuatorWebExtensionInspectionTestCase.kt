@@ -5,11 +5,13 @@
 
 package com.explyt.spring.web.inspections
 
+import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.service.conditional.ConditionVerdict
 import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.test.ExplytBaseLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.web.loader.ActuatorWebExtensions
 import com.explyt.spring.web.loader.EndpointAccess
 import com.explyt.spring.web.loader.EndpointElement
 import com.explyt.spring.web.loader.EndpointExposure
@@ -237,7 +239,9 @@ abstract class DuplicateActuatorWebExtensionInspectionTestCase : ExplytBaseLight
         addFixtures(endpoint("x", "XEndpoint"), extension("XFirstExtension", "XEndpoint"), extension("XSecondExtension", "XEndpoint"))
         assertPreconditions(X_PATH, EndpointExposure.UNKNOWN)
 
-        assertCollision(problemsIn(FIXTURES), HighlightSeverity.WARNING, FIRST, SECOND)
+        val problems = problemsIn(FIXTURES)
+        assertCollision(problems, HighlightSeverity.WARNING, FIRST, SECOND)
+        assertTrue(problems.all { it.description.contains("if the endpoint is exposed over HTTP and all these extensions are registered") })
     }
 
     fun testTestSourceExtensionDoesNotCollideWithAProductionExtension() {
@@ -254,6 +258,110 @@ abstract class DuplicateActuatorWebExtensionInspectionTestCase : ExplytBaseLight
 
         assertEquals(emptyList<String>(), problemsIn(TEST_FIXTURES).map { it.description })
         assertCollision(problemsIn(FIXTURES), HighlightSeverity.ERROR, Y_FIRST, Y_SECOND)
+    }
+
+    fun testDisabledEndpointDoesNotRescueTheCollision() {
+        addProperties(EXPOSE_ALL, "management.endpoint.x.enabled=false")
+        addFixtures(endpoint("x", "XEndpoint"), extension("XFirstExtension", "XEndpoint"), extension("XSecondExtension", "XEndpoint"))
+        assertPreconditions(X_PATH, EndpointExposure.EXPOSED)
+        assertEquals(listOf(EndpointAccess.NONE), actuatorEndpointsAt(X_PATH).map { it.access }.distinct())
+
+        assertCollision(problemsIn(FIXTURES), HighlightSeverity.ERROR, FIRST, SECOND)
+    }
+
+    fun testDisabledConditionFilteringKeepsExtensionBeansWithNullVerdicts() {
+        addProperties(EXPOSE_ALL)
+        addFixtures(
+            endpoint("x", "XEndpoint"),
+            extension("XFirstExtension", "XEndpoint", gated = true),
+            extension("XSecondExtension", "XEndpoint", gated = true)
+        )
+        val settings = SpringToolRunConfigurationsSettingsState.getInstance()
+        val wasEnabled = settings.isBeanFilterEnabled
+        try {
+            settings.isBeanFilterEnabled = false
+            ModificationTrackerManager.getInstance(project).invalidateAll()
+            assertPreconditions(X_PATH, EndpointExposure.EXPOSED)
+            val extensions = ActuatorWebExtensions.appliedTo(myFixture.findClass("com.app.XEndpoint"), module)
+            assertEquals(setOf(FIRST, SECOND), extensions.map { it.psiClass.qualifiedName }.toSet())
+            assertTrue(extensions.all { it.isBean && it.verdict == null })
+
+            assertCollision(problemsIn(FIXTURES), HighlightSeverity.ERROR, FIRST, SECOND)
+        } finally {
+            settings.isBeanFilterEnabled = wasEnabled
+            ModificationTrackerManager.getInstance(project).invalidateAll()
+        }
+    }
+
+    fun testTwoUndecidedExtensionsMakeTheCollisionAWarning() {
+        addProperties(EXPOSE_ALL, "$EXT_GATING_KEY=\${EXT_ENABLED}")
+        addFixtures(
+            endpoint("x", "XEndpoint"),
+            extension("XFirstExtension", "XEndpoint", gated = true),
+            extension("XSecondExtension", "XEndpoint", gated = true)
+        )
+        assertPreconditions(X_PATH, EndpointExposure.EXPOSED)
+        assertBeanModelSays<ConditionVerdict.Undecided>(FIRST)
+        assertBeanModelSays<ConditionVerdict.Undecided>(SECOND)
+
+        val problems = problemsIn(FIXTURES)
+        assertCollision(problems, HighlightSeverity.WARNING, FIRST, SECOND)
+        assertTrue(problems.all { it.description.contains("if the endpoint is exposed over HTTP and all these extensions are registered") })
+    }
+
+    fun testTwoProjectExtensionsOfABuiltInEndpointCollide() {
+        addProperties(EXPOSE_ALL)
+        val healthEndpoint = "org.springframework.boot.health.actuate.endpoint.HealthEndpoint"
+        addFixtures(extension("XFirstExtension", healthEndpoint), extension("XSecondExtension", healthEndpoint))
+        assertPreconditions(HEALTH_PATH, EndpointExposure.EXPOSED)
+
+        assertCollision(problemsIn(FIXTURES), HighlightSeverity.ERROR, FIRST, SECOND)
+    }
+
+    fun testTestSourceExtensionsCollideForATestSourceEndpoint() {
+        addTestSourceRoot()
+        addProperties(EXPOSE_ALL)
+        addFixtures(*collidingControl())
+        myFixture.addFileToProject(
+            TEST_FIXTURES,
+            header() + "\n\n" + listOf(
+                endpoint("x", "XEndpoint"),
+                extension("XFirstExtension", "XEndpoint"),
+                extension("XSecondExtension", "XEndpoint")
+            ).joinToString("\n\n")
+        )
+        assertTrue(
+            "precondition: the endpoint sits in test sources",
+            ProjectFileIndex.getInstance(project).isInTestSourceContent(myFixture.findClass("com.app.XEndpoint").containingFile.virtualFile)
+        )
+        assertPreconditions(X_PATH, EndpointExposure.EXPOSED)
+        assertPreconditions(Y_PATH, EndpointExposure.EXPOSED)
+
+        assertCollision(problemsIn(TEST_FIXTURES), HighlightSeverity.ERROR, FIRST, SECOND)
+        assertCollision(problemsIn(FIXTURES), HighlightSeverity.ERROR, Y_FIRST, Y_SECOND)
+    }
+
+    fun testAddingAComposedAnnotationInvalidatesTheCachedAnnotationNames() {
+        addProperties(EXPOSE_ALL)
+        addFixtures(
+            endpoint("x", "XEndpoint"),
+            extension("XFirstExtension", "XEndpoint"),
+            *collidingControl()
+        )
+        assertPreconditions(X_PATH, EndpointExposure.EXPOSED)
+        assertCollision(problemsIn(FIXTURES), HighlightSeverity.ERROR, Y_FIRST, Y_SECOND)
+
+        myFixture.addFileToProject(
+            "com/app/AddedExtension.$fileExtension",
+            header() + "\n\n" + composedAnnotation("MyExt", "XEndpoint") + "\n\n" + composedExtension("XComposedExtension", "MyExt")
+        )
+        ModificationTrackerManager.getInstance(project).invalidateAll()
+
+        assertCollision(
+            problemsIn("com/app/AddedExtension.$fileExtension"), HighlightSeverity.ERROR, COMPOSED,
+            anchors = mapOf(COMPOSED to "@MyExt"),
+            peers = listOf(COMPOSED, FIRST)
+        )
     }
 
     private val FIXTURES get() = "com/app/Fixtures.$fileExtension"
@@ -332,6 +440,7 @@ abstract class DuplicateActuatorWebExtensionInspectionTestCase : ExplytBaseLight
         severity: HighlightSeverity,
         vararg extensions: String,
         anchors: Map<String, String> = extensions.associateWith { DIRECT_ANCHOR },
+        peers: List<String> = extensions.toList(),
     ) {
         assertEquals(
             "one problem per colliding extension: ${problems.map { it.description }}",
@@ -343,7 +452,7 @@ abstract class DuplicateActuatorWebExtensionInspectionTestCase : ExplytBaseLight
             val owner = ownerOf(problem)!!
             assertEquals("severity on $owner", severity, problem.severity)
             assertTrue("anchored on the extension annotation of $owner: ${problem.text}", problem.text.startsWith(anchors.getValue(owner)))
-            val others = extensions.filter { it != owner }.sorted()
+            val others = peers.filter { it != owner }.sorted()
             val positions = others.map { problem.description.indexOf(it) }
             assertTrue("message on $owner names $others in order: ${problem.description}", positions.all { it >= 0 })
             assertEquals(positions.sorted(), positions)
