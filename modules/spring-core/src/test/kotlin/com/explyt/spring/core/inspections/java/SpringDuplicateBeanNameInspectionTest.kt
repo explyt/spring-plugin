@@ -908,6 +908,57 @@ class SpringDuplicateBeanNameSpring7InspectionTest : SpringDuplicateBeanNameJava
         assertEmpty(inheritedHighlights(LITE_CHILD_OF_CONFIGURATION_BASE))
     }
 
+    fun testFullSubclassOfLiteBaseReportsTheSpring7FailureTheBaseDoesNot() {
+        allowBeanDefinitionOverriding("true")
+
+        val problems = inheritedHighlights(
+            """
+            @Component
+            class Base {
+                @Bean Object a() { return new Object(); }
+                @Bean("a") Object b() { return new Object(); }
+            }
+
+            @Configuration
+            public class Config extends Base {}
+            """
+        )
+
+        assertEmpty(problems.filter { it.text != "Config" })
+        val subclassProblems = problems.filter { it.text == "Config" }
+        assertEquals(1, subclassProblems.size)
+        val problem = subclassProblems.single()
+        assertEquals("Config", problem.text)
+        assertEquals(HighlightSeverity.ERROR, problem.severity)
+        assertEquals(
+            SpringCoreBundle.message(
+                "explyt.spring.inspection.bean.name.duplicate.inherited",
+                "Base.b",
+                SpringCoreBundle.message(SPRING_7_MESSAGE, "a", "Base.a")
+            ),
+            problem.description
+        )
+    }
+
+    fun testLiteSubclassOfLiteBaseStaysSilentWhenOverridingIsAllowed() {
+        allowBeanDefinitionOverriding("true")
+
+        assertEmpty(
+            inheritedHighlights(
+                """
+                @Component
+                class Base {
+                    @Bean Object a() { return new Object(); }
+                    @Bean("a") Object b() { return new Object(); }
+                }
+
+                @Component
+                public class Config extends Base {}
+                """
+            )
+        )
+    }
+
     private fun assertSpring7Problem(problems: List<HighlightInfo>) {
         assertSingleProblem(problems, HighlightSeverity.ERROR, anchor = "b", beanName = "svc", firstMethod = "a")
         assertEquals(

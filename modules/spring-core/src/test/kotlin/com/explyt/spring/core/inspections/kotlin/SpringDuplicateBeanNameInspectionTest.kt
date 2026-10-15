@@ -902,6 +902,57 @@ class SpringDuplicateBeanNameSpring7InspectionTest : SpringDuplicateBeanNameKotl
         assertEmpty(inheritedHighlights(LITE_CHILD_OF_CONFIGURATION_BASE))
     }
 
+    fun testFullSubclassOfLiteBaseReportsTheSpring7FailureTheBaseDoesNot() {
+        allowBeanDefinitionOverriding("true")
+
+        val problems = inheritedHighlights(
+            """
+            @Component
+            open class Base {
+                @Bean open fun a(): Any = Any()
+                @Bean("a") open fun b(): Any = Any()
+            }
+
+            @Configuration
+            open class Config : Base()
+            """
+        )
+
+        assertEmpty(problems.filter { it.text != "Config" })
+        val subclassProblems = problems.filter { it.text == "Config" }
+        assertEquals(1, subclassProblems.size)
+        val problem = subclassProblems.single()
+        assertEquals("Config", problem.text)
+        assertEquals(HighlightSeverity.ERROR, problem.severity)
+        assertEquals(
+            SpringCoreBundle.message(
+                "explyt.spring.inspection.bean.name.duplicate.inherited",
+                "Base.b",
+                SpringCoreBundle.message(SPRING_7_MESSAGE, "a", "Base.a")
+            ),
+            problem.description
+        )
+    }
+
+    fun testLiteSubclassOfLiteBaseStaysSilentWhenOverridingIsAllowed() {
+        allowBeanDefinitionOverriding("true")
+
+        assertEmpty(
+            inheritedHighlights(
+                """
+                @Component
+                open class Base {
+                    @Bean open fun a(): Any = Any()
+                    @Bean("a") open fun b(): Any = Any()
+                }
+
+                @Component
+                open class Config : Base()
+                """
+            )
+        )
+    }
+
     private fun assertSpring7Problem(problems: List<HighlightInfo>) {
         assertSingleProblem(problems, HighlightSeverity.ERROR, anchor = "b", beanName = "svc", firstMethod = "a")
         assertEquals(
