@@ -13,6 +13,7 @@ import com.explyt.spring.core.service.conditional.ConditionPropertyValue
 import com.explyt.spring.core.service.conditional.PropertyConditionValues
 import com.explyt.spring.core.util.BeanFactoryMethods
 import com.explyt.spring.core.util.SpringBootUtil
+import com.explyt.spring.core.util.SpringCoreUtil.hasComponentAnnotation
 import com.explyt.spring.core.util.SpringCoreUtil.resolveBeanName
 import com.explyt.util.ExplytPsiUtil.getMetaAnnotation
 import com.intellij.codeInspection.InspectionManager
@@ -53,8 +54,15 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
                 firstDeclarations[name]?.takeIf { it.name != method.name }?.let { Collision(name, it, method) }
             }
             names.forEach { firstDeclarations.putIfAbsent(it, method) }
-            collision
+            collision?.takeUnless { it.isReportedByDeclaringComponent(psiClass) }
         }.toList()
+    }
+
+    private fun Collision.isReportedByDeclaringComponent(psiClass: PsiClass): Boolean {
+        val declaringClass = first.containingClass ?: return false
+        return !first.isDeclaredIn(psiClass)
+                && psiClass.manager.areElementsEquivalent(declaringClass, second.containingClass)
+                && declaringClass.hasComponentAnnotation()
     }
 
     private fun PsiMethod.isConditional(): Boolean = getMetaAnnotation(SpringCoreClasses.CONDITIONAL) != null
