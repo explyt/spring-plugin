@@ -926,14 +926,14 @@ class SpringDuplicateBeanNameSpring7InspectionTest : SpringDuplicateBeanNameJava
         assertSpring7Problem(highlights(FULL_CONFIGURATION))
     }
 
-    fun testComposedConfigurationWithoutUniqueMethodEnforcementSuppressesTheProblem() {
+    fun testComposedConfigurationWithoutUniqueMethodEnforcementWarnsThatSpringRegistersOnlyOneMethod() {
         allowBeanDefinitionOverriding("true")
 
         assertSpring7Problem(highlights(COMPOSED_CONFIGURATION))
         assertOnlyOneMethodRegisteredWarning(highlights(COMPOSED_CONFIGURATION_WITHOUT_UNIQUE_METHODS))
     }
 
-    fun testComposedConfigurationAliasDefaultWithoutUniqueMethodEnforcementSuppressesTheProblem() {
+    fun testComposedConfigurationAliasDefaultWithoutUniqueMethodEnforcementWarnsThatSpringRegistersOnlyOneMethod() {
         allowBeanDefinitionOverriding("true")
 
         assertSpring7Problem(highlights(aliasedComposedConfiguration("@MyConfig(unique = true)")))
@@ -997,7 +997,7 @@ class SpringDuplicateBeanNameSpring7InspectionTest : SpringDuplicateBeanNameJava
         )
     }
 
-    fun testAllowedOverridingSuppressesInheritedCollisionInLiteSubclassOfConfiguration() {
+    fun testAllowedOverridingWarnsInLiteSubclassOfConfigurationAndKeepsTheInheritedCollisionInTheFullSubclass() {
         allowBeanDefinitionOverriding("true")
 
         assertInheritedCollision(
@@ -1013,7 +1013,7 @@ class SpringDuplicateBeanNameSpring7InspectionTest : SpringDuplicateBeanNameJava
         )
     }
 
-    fun testFullSubclassOfLiteBaseReportsTheSpring7FailureTheBaseDoesNot() {
+    fun testFullSubclassOfLiteBaseKeepsTheSpring7FailureBesideTheWarningOfItsBase() {
         allowBeanDefinitionOverriding("true")
 
         val problems = inheritedHighlights(
