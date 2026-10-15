@@ -248,7 +248,7 @@ abstract class SpringDuplicateBeanNameJavaTestCase : ExplytBaseLightTestCase() {
         assertEquals(HighlightSeverity.ERROR, problem.severity)
         assertEquals(anchor, problem.text)
         assertEquals(
-            "Bean '$beanName' is also declared by '$firstMethod' in this class; " +
+            "Bean '$beanName' is also declared by '$firstMethod'; " +
                     "Spring Boot fails at startup unless bean definition overriding is allowed",
             problem.description
         )
