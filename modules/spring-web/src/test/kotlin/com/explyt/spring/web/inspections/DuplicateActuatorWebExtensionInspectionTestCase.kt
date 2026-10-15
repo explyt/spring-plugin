@@ -79,6 +79,22 @@ abstract class DuplicateActuatorWebExtensionInspectionTestCase : ExplytBaseLight
         assertCollision(problemsIn(FIXTURES), HighlightSeverity.ERROR, FIRST, SECOND)
     }
 
+    fun testTwoActiveExtensionsMakeTheCollisionAnErrorEvenBesideAnUndecidedOne() {
+        addProperties(EXPOSE_ALL, "$EXT_GATING_KEY=\${EXT_ENABLED}")
+        addFixtures(
+            endpoint("x", "XEndpoint"),
+            extension("XFirstExtension", "XEndpoint"),
+            extension("XSecondExtension", "XEndpoint"),
+            extension("XThirdExtension", "XEndpoint", gated = true)
+        )
+        assertPreconditions(X_PATH, EndpointExposure.EXPOSED)
+        assertBeanModelSays<ConditionVerdict.Active>(FIRST)
+        assertBeanModelSays<ConditionVerdict.Active>(SECOND)
+        assertBeanModelSays<ConditionVerdict.Undecided>(THIRD)
+
+        assertCollision(problemsIn(FIXTURES), HighlightSeverity.ERROR, FIRST, SECOND, THIRD)
+    }
+
     fun testUndecidedExtensionMakesTheCollisionAWarning() {
         addProperties(EXPOSE_ALL, "$EXT_GATING_KEY=\${EXT_ENABLED}")
         addFixtures(
@@ -348,6 +364,7 @@ abstract class DuplicateActuatorWebExtensionInspectionTestCase : ExplytBaseLight
         const val HEALTH_PATH = "/actuator/health"
         const val FIRST = "com.app.XFirstExtension"
         const val SECOND = "com.app.XSecondExtension"
+        const val THIRD = "com.app.XThirdExtension"
         const val SUB = "com.app.XSubExtension"
         const val COMPOSED = "com.app.XComposedExtension"
         const val TEST_EXTENSION = "com.app.XTestExtension"
