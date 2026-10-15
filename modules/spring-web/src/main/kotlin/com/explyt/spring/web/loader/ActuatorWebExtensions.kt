@@ -19,7 +19,6 @@ import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.psi.CommonClassNames
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiClass
-
 import com.intellij.psi.PsiModifier
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
@@ -62,6 +61,27 @@ object ActuatorWebExtensions {
             .filterNot { it.verdict is ConditionVerdict.Inactive }
     }
 
+    fun isDeclaredOn(extension: UClass, module: Module): Boolean {
+        val annotationNames = annotationNames(module)
+        return annotationNames.isNotEmpty() && extension.uAnnotations.any { it.qualifiedName in annotationNames }
+    }
+
+    private fun annotationNames(module: Module): Set<String> =
+        CachedValuesManager.getManager(module.project).getCachedValue(module) {
+            CachedValueProvider.Result(
+                webExtensionAnnotations(module).orEmpty().mapNotNullTo(mutableSetOf()) { it.qualifiedName },
+                ModificationTrackerManager.getInstance(module.project).getUastModelAndLibraryTracker()
+            )
+        }
+
+    private fun webExtensionAnnotations(module: Module): Collection<PsiClass>? {
+        val annotationScope = module.getModuleWithDependenciesAndLibrariesScope(false)
+            .union(module.getModuleRuntimeScope(false))
+        val annotation = JavaPsiFacade.getInstance(module.project)
+            .findClass(SpringCoreClasses.ACTUATOR_ENDPOINT_WEB_EXTENSION, annotationScope) ?: return null
+        return ActuatorEndpointKeys.annotationWithChildren(annotation, annotationScope)
+    }
+
     private fun byEndpoint(module: Module): Map<String, List<ActuatorWebExtension>> =
         CachedValuesManager.getManager(module.project).getCachedValue(module) {
             val trackers = ModificationTrackerManager.getInstance(module.project)
@@ -74,12 +94,8 @@ object ActuatorWebExtensions {
 
     private fun discover(module: Module): Map<String, List<ActuatorWebExtension>> {
         val project = module.project
-        val annotationScope = module.getModuleWithDependenciesAndLibrariesScope(false)
-            .union(module.getModuleRuntimeScope(false))
-        val annotation = JavaPsiFacade.getInstance(project)
-            .findClass(SpringCoreClasses.ACTUATOR_ENDPOINT_WEB_EXTENSION, annotationScope) ?: return emptyMap()
+        val webExtensionAnnotations = webExtensionAnnotations(module) ?: return emptyMap()
         val projectScope = GlobalSearchScope.moduleWithDependenciesScope(module)
-        val webExtensionAnnotations = ActuatorEndpointKeys.annotationWithChildren(annotation, annotationScope)
         val candidates = webExtensionAnnotations
             .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, projectScope).findAll() }
             .filterNot { it.isAnnotationType }

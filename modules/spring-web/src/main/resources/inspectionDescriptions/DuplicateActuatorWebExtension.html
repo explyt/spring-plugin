@@ -21,8 +21,9 @@ converted, so its extensions are not compared. <code>management.endpoint.&lt;id&
 and an extension in test sources of a production endpoint are ignored. A bean subclass of an extension bean is a
 second extension: the problem is reported on the extension annotation of the base class.</p>
 
-<p>The problem is an error when the endpoint is exposed and every extension bean is registered, and a warning when the
-exposure or a bean condition cannot be decided from the project configuration.</p>
+<p>The problem is an error when the endpoint is exposed and at least two of its extension beans are registered whatever
+their bean conditions decide, and a warning when the exposure cannot be decided from the project configuration or
+fewer than two extension beans are certain to be registered.</p>
 
 <p><b>Example:</b></p>
 <pre><code lang="java">

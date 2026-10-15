@@ -20,7 +20,6 @@ import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
-
 import org.jetbrains.uast.UClass
 
 class DuplicateActuatorWebExtensionInspection : SpringWebBaseUastLocalInspectionTool() {
@@ -32,6 +31,7 @@ class DuplicateActuatorWebExtensionInspection : SpringWebBaseUastLocalInspection
     ): Array<ProblemDescriptor>? {
         val psiClass = aClass.javaPsi
         val module = ModuleUtilCore.findModuleForPsiElement(psiClass) ?: return null
+        if (!ActuatorWebExtensions.isDeclaredOn(aClass, module)) return null
         if (WebApplicationStack.of(module) == null) return null
 
         val exposure by lazy { exposureRule(module) }
@@ -47,7 +47,7 @@ class DuplicateActuatorWebExtensionInspection : SpringWebBaseUastLocalInspection
             val others = extensions.mapNotNull { it.psiClass.qualifiedName }
                 .filter { it != psiClass.qualifiedName }
                 .sorted()
-            val certain = endpointExposure == EndpointExposure.EXPOSED && extensions.none(ActuatorWebExtension::isUndecided)
+            val certain = endpointExposure == EndpointExposure.EXPOSED && extensions.count { !it.isUndecided } >= 2
             manager.createProblemDescriptor(
                 anchor,
                 SpringWebBundle.message(

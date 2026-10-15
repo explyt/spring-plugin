@@ -11,7 +11,6 @@ import com.explyt.spring.core.completion.properties.DefinedConfigurationProperti
 import com.explyt.spring.core.properties.FoldedPropertyValue
 import com.explyt.spring.core.properties.references.ActuatorEndpoint
 import com.explyt.spring.core.properties.references.ActuatorEndpointKeys
-
 import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.core.service.PackageScanService
 import com.explyt.spring.core.service.SpringSearchService
@@ -35,19 +34,15 @@ import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectFileIndex
-
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiClassType
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiEnumConstant
 import com.intellij.psi.PsiMethod
-
 import com.intellij.psi.PsiParameter
 import com.intellij.psi.PsiReferenceExpression
-
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
-
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import org.jetbrains.uast.UAnnotation
