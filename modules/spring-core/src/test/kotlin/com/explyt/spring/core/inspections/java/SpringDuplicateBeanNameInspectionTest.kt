@@ -612,6 +612,32 @@ class SpringDuplicateBeanNameInspectionTest : SpringDuplicateBeanNameJavaTestCas
         )
     }
 
+    fun testCollisionInsideAConfigurationBaseIsNotRepeatedInItsSubclass() {
+        val problems = inheritedHighlights(
+            """
+            @Configuration
+            class Base {
+                @Bean Object a() { return new Object(); }
+                @Bean("a") Object b() { return new Object(); }
+            }
+
+            @Configuration
+            public class Config extends Base {
+            }
+            """
+        )
+
+        val baseProblems = problems.filter { it.text == "b" }
+        assertEquals("the configuration base still reports its own collision", 1, baseProblems.size)
+        assertProblem(baseProblems.single(), anchor = "b", beanName = "a", firstMethod = "a")
+        assertEquals(
+            "the subclass must not repeat the configuration base collision",
+            0,
+            problems.count { it.text == "Config" }
+        )
+        assertEquals("only the configuration base reports the collision", 1, problems.size)
+    }
+
     fun testSubclassOfConfigurationWithDifferentNamesIsNotReported() {
         assertEmpty(
             inheritedHighlights(
