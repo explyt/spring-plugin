@@ -110,6 +110,7 @@
 - fix: support spring boot4 test annotations MockitoSpyBean/MockitoBean (#418)
 - fix: Event publisher navigation not working for child class if EvenListener has parent class (#419)
 - fix: Stop Spring inspections from logging a `PluginException` caused by `IndexNotReadyException` while the IDE indexes: they stay inactive during indexing and run again once it finishes (#688)
+- fix: Offer and resolve bean names in Kotlin `@Qualifier` values on properties, fields and constructor or setter parameters, as in Java (#697)
 
 ### Spring Initializr
 - fix: Make `gradlew` and `mvnw` executable in a project generated through Spring Initializr, so the first `./gradlew` in a terminal no longer fails with "permission denied" (#60)
