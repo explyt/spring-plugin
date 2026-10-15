@@ -608,6 +608,44 @@ class SpringDuplicateBeanNameInspectionTest : SpringDuplicateBeanNameKotlinTestC
         )
     }
 
+    fun testCollisionFromDifferentAncestorsIsReportedOnTheSubclass() {
+        val problems = inheritedHighlights(
+            """
+            open class Grandparent {
+                @Bean open fun a(): Any = Any()
+            }
+
+            open class Base : Grandparent() {
+                @Bean("a") open fun b(): Any = Any()
+            }
+
+            @Configuration
+            open class Config : Base()
+            """
+        ).filter { it.text == "Config" }
+
+        val grandparent = myFixture.findClass("demo.Grandparent")
+        val base = myFixture.findClass("demo.Base")
+        assertEquals("Precondition: the two declarations belong to different ancestors", grandparent, base.superClass)
+        val grandparentMethods = grandparent.methods.filterNot { it.isConstructor }
+        assertEquals("Precondition: the grandparent declares one bean method", 1, grandparentMethods.size)
+        assertTrue(grandparentMethods.single().hasAnnotation(SpringCoreClasses.BEAN))
+        assertFalse("Precondition: the grandparent is not a component", SpringCoreUtil.run { grandparent.hasComponentAnnotation() })
+        assertFalse("Precondition: the parent is not a component", SpringCoreUtil.run { base.hasComponentAnnotation() })
+        assertEquals("one problem on the subclass name: $problems", 1, problems.size)
+        val problem = problems.single()
+        assertEquals(HighlightSeverity.ERROR, problem.severity)
+        assertEquals("Config", problem.text)
+        assertEquals(
+            SpringCoreBundle.message(
+                "explyt.spring.inspection.bean.name.duplicate.inherited",
+                "Grandparent.a",
+                SpringCoreBundle.message(STARTUP_FAILURE_MESSAGE, "a", "Base.b")
+            ),
+            problem.description
+        )
+    }
+
     fun testCollisionInsideAConfigurationBaseIsNotRepeatedInItsSubclass() {
         val problems = inheritedHighlights(
             """
