@@ -46,7 +46,6 @@ import com.intellij.psi.search.searches.AnnotatedElementsSearch
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import org.jetbrains.uast.UAnnotation
-
 import org.jetbrains.uast.UResolvable
 import org.jetbrains.uast.toUElementOfType
 
