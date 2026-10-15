@@ -169,6 +169,7 @@
 - fix: Inject the regular expression of a `@RequestMapping` path built by concatenation into the literal that actually contains it
 - fix: Keep an Actuator endpoint's write operation next to a web extension's write operation that differs only by whether it reads a request body, as Boot routes them by the consumed media types (#655)
 - fix: Read the endpoint a project Actuator web extension extends the way Boot discovers it: through a composed annotation, with an `@AliasFor` value or default taking precedence over the value fixed on the meta-annotation, and from an annotation declared on a superclass of the extension; a same-named attribute without `@AliasFor` counts only up to Spring Framework 6. An extension whose bean condition does not match no longer replaces the endpoint's operations, and one whose condition cannot be decided is applied while the endpoint's bean condition reads undecided, naming the extension (#655)
+- fix: Read a method's request mapping from the single annotation Spring registers: a composed mapping contributes its merged path, verbs and media types to the endpoint gutters, Run in Swagger, OpenAPI generation, the duplicate-endpoint inspection and the MCP contract, and of several mapping annotations on one method only the one Spring uses is kept (a direct `@RequestMapping`, else the first in source order), so the Endpoints window and the MCP tools no longer list the others (#672)
 
 ### Spring MCP
 
