@@ -355,6 +355,46 @@ class SpringDuplicateBeanNameInspectionTest : SpringDuplicateBeanNameJavaTestCas
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springBootAutoConfigure_3_4_0)
     override val springCoreVersion: String = "6.2.0"
 
+    fun testFullSubclassDoesNotRepeatThePrimaryNameWarningOfItsFullBase() {
+        allowBeanDefinitionOverriding("true")
+
+        assertOnlyOneMethodRegisteredWarning(
+            inheritedHighlights(
+                """
+                @Configuration
+                class Base {
+                    @Bean Object a() { return new Object(); }
+                    @Bean("a") Object b() { return new Object(); }
+                }
+
+                @Configuration
+                public class Config extends Base {}
+                """
+            ),
+            beanName = "a"
+        )
+    }
+
+    fun testFullSubclassDoesNotRepeatTheHedgedAliasWarningOfItsFullBase() {
+        allowBeanDefinitionOverriding("true")
+
+        assertMayRegisterOnlyOneMethodWarning(
+            inheritedHighlights(
+                """
+                @Configuration
+                class Base {
+                    @Bean("svc") Object y() { return new Object(); }
+                    @Bean({"a", "svc"}) Object x() { return new Object(); }
+                }
+
+                @Configuration
+                public class Config extends Base {}
+                """
+            ),
+            anchor = "x", otherMethod = "y"
+        )
+    }
+
     fun testExplicitNamesOnDifferentMethodsCollide() {
         val problem = highlights(
             """
@@ -1038,6 +1078,26 @@ class SpringDuplicateBeanNameSpring627InspectionTest : SpringDuplicateBeanNameJa
     override val libraries: Array<TestLibrary> =
         arrayOf(TestLibrary("org.springframework.boot:spring-boot-autoconfigure:3.5.7"))
     override val springCoreVersion: String = "6.2.12"
+
+    fun testFullSubclassDoesNotRepeatThePrimaryNameWarningOfItsFullBase() {
+        allowBeanDefinitionOverriding("true")
+
+        assertOnlyOneMethodRegisteredWarning(
+            inheritedHighlights(
+                """
+                @Configuration
+                class Base {
+                    @Bean Object a() { return new Object(); }
+                    @Bean("a") Object b() { return new Object(); }
+                }
+
+                @Configuration
+                public class Config extends Base {}
+                """
+            ),
+            beanName = "a"
+        )
+    }
 
     fun testAllowedOverridingInFullConfigurationWarnsThatSpringRegistersOnlyOneMethod() {
         allowBeanDefinitionOverriding("true")

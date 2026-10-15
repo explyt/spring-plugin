@@ -352,6 +352,46 @@ class SpringDuplicateBeanNameInspectionTest : SpringDuplicateBeanNameKotlinTestC
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springBootAutoConfigure_3_4_0)
     override val springCoreVersion: String = "6.2.0"
 
+    fun testFullSubclassDoesNotRepeatThePrimaryNameWarningOfItsFullBase() {
+        allowBeanDefinitionOverriding("true")
+
+        assertOnlyOneMethodRegisteredWarning(
+            inheritedHighlights(
+                """
+                @Configuration
+                open class Base {
+                    @Bean open fun a(): Any = Any()
+                    @Bean("a") open fun b(): Any = Any()
+                }
+
+                @Configuration
+                open class Config : Base()
+                """
+            ),
+            beanName = "a"
+        )
+    }
+
+    fun testFullSubclassDoesNotRepeatTheHedgedAliasWarningOfItsFullBase() {
+        allowBeanDefinitionOverriding("true")
+
+        assertMayRegisterOnlyOneMethodWarning(
+            inheritedHighlights(
+                """
+                @Configuration
+                open class Base {
+                    @Bean("svc") open fun y(): Any = Any()
+                    @Bean("a", "svc") open fun x(): Any = Any()
+                }
+
+                @Configuration
+                open class Config : Base()
+                """
+            ),
+            anchor = "x", otherMethod = "y"
+        )
+    }
+
     fun testExplicitNamesOnDifferentMethodsCollide() {
         val problem = highlights(
             """
@@ -1032,6 +1072,26 @@ class SpringDuplicateBeanNameSpring627InspectionTest : SpringDuplicateBeanNameKo
     override val libraries: Array<TestLibrary> =
         arrayOf(TestLibrary("org.springframework.boot:spring-boot-autoconfigure:3.5.7"))
     override val springCoreVersion: String = "6.2.12"
+
+    fun testFullSubclassDoesNotRepeatThePrimaryNameWarningOfItsFullBase() {
+        allowBeanDefinitionOverriding("true")
+
+        assertOnlyOneMethodRegisteredWarning(
+            inheritedHighlights(
+                """
+                @Configuration
+                open class Base {
+                    @Bean open fun a(): Any = Any()
+                    @Bean("a") open fun b(): Any = Any()
+                }
+
+                @Configuration
+                open class Config : Base()
+                """
+            ),
+            beanName = "a"
+        )
+    }
 
     fun testAllowedOverridingInFullConfigurationWarnsThatSpringRegistersOnlyOneFunction() {
         allowBeanDefinitionOverriding("true")
