@@ -112,6 +112,41 @@ private fun aliasedComposedConfiguration(useSite: String) = """
     }
 """
 
+private const val INHERITED_PRIMARY_NAME_COLLISION = """
+    class Base {
+        @Bean Object a() { return new Object(); }
+    }
+
+    @Configuration
+    public class Config extends Base {
+        @Bean("a") Object b() { return new Object(); }
+    }
+"""
+
+private const val LITE_CHILD_OF_CONFIGURATION_BASE = """
+    @Configuration
+    class Base {
+        @Bean Object a() { return new Object(); }
+    }
+
+    @Component
+    public class Config extends Base {
+        @Bean("a") Object b() { return new Object(); }
+    }
+"""
+
+private const val FULL_CHILD_OF_CONFIGURATION_BASE = """
+    @Configuration
+    class Base {
+        @Bean Object a() { return new Object(); }
+    }
+
+    @Configuration
+    public class Config extends Base {
+        @Bean("a") Object b() { return new Object(); }
+    }
+"""
+
 abstract class SpringDuplicateBeanNameJavaTestCase : ExplytBaseLightTestCase() {
 
     protected abstract val springCoreVersion: String?
@@ -126,7 +161,12 @@ abstract class SpringDuplicateBeanNameJavaTestCase : ExplytBaseLightTestCase() {
         ModificationTrackerManager.getInstance(project).invalidateAll()
     }
 
-    protected fun highlights(body: String): List<HighlightInfo> {
+    protected fun highlights(body: String): List<HighlightInfo> = highlightsOf(body) { assertBeanAnnotationResolves() }
+
+    protected fun inheritedHighlights(body: String): List<HighlightInfo> =
+        highlightsOf(body) { assertInheritedBeanAnnotationResolves() }
+
+    private fun highlightsOf(body: String, beanPrecondition: () -> Unit): List<HighlightInfo> {
         myFixture.configureByText(
             "Config.java",
             "package demo;\n\nimport java.lang.annotation.Retention;\n" +
@@ -152,7 +192,7 @@ abstract class SpringDuplicateBeanNameJavaTestCase : ExplytBaseLightTestCase() {
             "Precondition: the inspection is available for the file",
             SpringDuplicateBeanNameInspection().isAvailableForFile(myFixture.file)
         )
-        assertBeanAnnotationResolves()
+        beanPrecondition()
         return myFixture.doHighlighting().filter { it.inspectionToolId == INSPECTION_ID }
     }
 
@@ -171,6 +211,37 @@ abstract class SpringDuplicateBeanNameJavaTestCase : ExplytBaseLightTestCase() {
             "Precondition: every method of demo.Config must carry a resolved ${SpringCoreClasses.BEAN}",
             beanMethods.isNotEmpty() && beanMethods.all { it.hasAnnotation(SpringCoreClasses.BEAN) }
         )
+    }
+
+    private fun assertInheritedBeanAnnotationResolves() {
+        assertNotNull("Precondition: @Bean must come from the fixture library", myFixture.findClass(SpringCoreClasses.BEAN))
+        val base = myFixture.findClass("demo.Base")
+        assertEquals("Precondition: demo.Config extends demo.Base", base, myFixture.findClass("demo.Config").superClass)
+        assertTrue(
+            "Precondition: every method of demo.Base must carry a resolved ${SpringCoreClasses.BEAN}",
+            base.methods.isNotEmpty() && base.methods.all { it.hasAnnotation(SpringCoreClasses.BEAN) }
+        )
+        assertTrue(
+            "Precondition: every method of demo.Config must carry a resolved ${SpringCoreClasses.BEAN}",
+            myFixture.findClass("demo.Config").methods.all { it.hasAnnotation(SpringCoreClasses.BEAN) }
+        )
+    }
+
+    protected fun assertInheritedCollision(
+        problems: List<HighlightInfo>,
+        severity: HighlightSeverity,
+        messageKey: String,
+        anchor: String,
+        beanName: String,
+        otherMethod: String
+    ) {
+        assertSingleProblem(problems, severity, anchor, beanName, otherMethod)
+        val description = problems.single().description
+        assertFalse(
+            "the other method is inherited, so it is not declared 'in this class': $description",
+            description.contains("in this class")
+        )
+        assertEquals(SpringCoreBundle.message(messageKey, beanName, otherMethod), description)
     }
 
     protected fun assertProblem(problem: HighlightInfo, anchor: String, beanName: String, firstMethod: String) {
@@ -236,10 +307,12 @@ abstract class SpringDuplicateBeanNameJavaTestCase : ExplytBaseLightTestCase() {
         )
     }
 
-    private companion object {
+    protected companion object {
         const val INSPECTION_ID = "SpringDuplicateBeanName"
+        const val STARTUP_FAILURE_MESSAGE = "explyt.spring.inspection.bean.name.duplicate"
         const val IGNORED_METHOD_MESSAGE = "explyt.spring.inspection.bean.name.duplicate.ignored"
         const val REGISTRATION_ORDER_MESSAGE = "explyt.spring.inspection.bean.name.duplicate.alias.order"
+        const val SPRING_7_MESSAGE = "explyt.spring.inspection.bean.name.duplicate.overriding.spring7"
     }
 }
 
@@ -439,6 +512,123 @@ class SpringDuplicateBeanNameInspectionTest : SpringDuplicateBeanNameJavaTestCas
 
         assertProblem(problem, anchor = "b", beanName = "svc", firstMethod = "a")
     }
+
+    fun testInheritedMethodNameCollidesWithExplicitNameOfSubclass() {
+        assertInheritedCollision(
+            inheritedHighlights(INHERITED_PRIMARY_NAME_COLLISION),
+            HighlightSeverity.ERROR,
+            STARTUP_FAILURE_MESSAGE,
+            anchor = "b",
+            beanName = "a",
+            otherMethod = "Base.a"
+        )
+    }
+
+    fun testInheritedExplicitNameCollidesWithMethodNameOfSubclass() {
+        assertInheritedCollision(
+            inheritedHighlights(
+                """
+                class Base {
+                    @Bean("a") Object b() { return new Object(); }
+                }
+
+                @Configuration
+                public class Config extends Base {
+                    @Bean Object a() { return new Object(); }
+                }
+                """
+            ),
+            HighlightSeverity.ERROR,
+            STARTUP_FAILURE_MESSAGE,
+            anchor = "a",
+            beanName = "a",
+            otherMethod = "Base.b"
+        )
+    }
+
+    fun testInheritedAliasCollidesWithPrimaryNameOfSubclass() {
+        assertInheritedCollision(
+            inheritedHighlights(
+                """
+                class Base {
+                    @Bean({"a", "svc"}) Object x() { return new Object(); }
+                }
+
+                @Configuration
+                public class Config extends Base {
+                    @Bean("svc") Object y() { return new Object(); }
+                }
+                """
+            ),
+            HighlightSeverity.ERROR,
+            STARTUP_FAILURE_MESSAGE,
+            anchor = "y",
+            beanName = "svc",
+            otherMethod = "Base.x"
+        )
+    }
+
+    fun testCollisionBetweenTwoInheritedMethodsIsReportedOnTheSubclass() {
+        val problems = inheritedHighlights(
+            """
+            class Base {
+                @Bean Object a() { return new Object(); }
+                @Bean("a") Object b() { return new Object(); }
+            }
+
+            @Configuration
+            public class Config extends Base {
+            }
+            """
+        ).filter { it.text == "Config" }
+
+        assertEquals("one problem on the subclass name: $problems", 1, problems.size)
+        val problem = problems.single()
+        assertEquals(HighlightSeverity.ERROR, problem.severity)
+        assertTrue(
+            "the message names bean 'a' and both inherited methods: ${problem.description}",
+            listOf("'a'", "Base.a", "Base.b").all { problem.description.contains(it) }
+        )
+        assertFalse(
+            "both methods are inherited, so neither is declared 'in this class': ${problem.description}",
+            problem.description.contains("in this class")
+        )
+    }
+
+    fun testBeanMethodOverriddenInSubclassIsNotACollision() {
+        assertEmpty(
+            inheritedHighlights(
+                """
+                class Base {
+                    @Bean Object a() { return new Object(); }
+                }
+
+                @Configuration
+                public class Config extends Base {
+                    @Bean @Override Object a() { return new Object(); }
+                }
+                """
+            )
+        )
+    }
+
+    fun testSubclassOfConfigurationWithDifferentNamesIsNotReported() {
+        assertEmpty(
+            inheritedHighlights(
+                """
+                @Configuration
+                class Base {
+                    @Bean Object a() { return new Object(); }
+                }
+
+                @Configuration
+                public class Config extends Base {
+                    @Bean Object b() { return new Object(); }
+                }
+                """
+            )
+        )
+    }
 }
 
 class SpringDuplicateBeanNameBeforeSpring62InspectionTest : SpringDuplicateBeanNameJavaTestCase() {
@@ -497,6 +687,17 @@ class SpringDuplicateBeanNameBeforeSpring62InspectionTest : SpringDuplicateBeanN
 
     fun testCollisionOfTwoAliasesFailsAtStartup() {
         assertStartupFailure(highlights(TWO_ALIASES_COLLISION), anchor = "y", firstMethod = "x")
+    }
+
+    fun testInheritedPrimaryNameCollisionWarnsThatOneMethodIsIgnored() {
+        assertInheritedCollision(
+            inheritedHighlights(INHERITED_PRIMARY_NAME_COLLISION),
+            HighlightSeverity.WARNING,
+            IGNORED_METHOD_MESSAGE,
+            anchor = "b",
+            beanName = "a",
+            otherMethod = "Base.a"
+        )
     }
 }
 
@@ -613,6 +814,33 @@ class SpringDuplicateBeanNameSpring7InspectionTest : SpringDuplicateBeanNameJava
 
     fun testAliasCollisionWithMissingOverridingPropertyFailsAtStartupInFullConfiguration() {
         assertStartupFailure(highlights(ALIAS_COLLISION), anchor = "y", firstMethod = "x")
+    }
+
+    fun testAllowedOverridingKeepsInheritedCollisionInFullConfiguration() {
+        allowBeanDefinitionOverriding("true")
+
+        assertInheritedCollision(
+            inheritedHighlights(INHERITED_PRIMARY_NAME_COLLISION),
+            HighlightSeverity.ERROR,
+            SPRING_7_MESSAGE,
+            anchor = "b",
+            beanName = "a",
+            otherMethod = "Base.a"
+        )
+    }
+
+    fun testAllowedOverridingSuppressesInheritedCollisionInLiteSubclassOfConfiguration() {
+        allowBeanDefinitionOverriding("true")
+
+        assertInheritedCollision(
+            inheritedHighlights(FULL_CHILD_OF_CONFIGURATION_BASE),
+            HighlightSeverity.ERROR,
+            SPRING_7_MESSAGE,
+            anchor = "b",
+            beanName = "a",
+            otherMethod = "Base.a"
+        )
+        assertEmpty(inheritedHighlights(LITE_CHILD_OF_CONFIGURATION_BASE))
     }
 
     private fun assertSpring7Problem(problems: List<HighlightInfo>) {
