@@ -38,7 +38,7 @@ object HandlerMethods {
     private val MAPPING_METHOD_ATTRIBUTES = setOf("method")
     private val MAPPING_PRODUCES_ATTRIBUTES = setOf("produces")
     private val MAPPING_CONSUMES_ATTRIBUTES = setOf("consumes")
-    private val NO_MAPPING = MethodMapping(emptyList(), emptyList(), emptyList(), emptyList())
+    private val NO_MAPPING = MethodMapping(emptyList(), false, emptyList(), emptyList(), emptyList())
 
     enum class HierarchyOrder { INTERFACES_FIRST, SUPERCLASS_FIRST }
 
@@ -48,6 +48,7 @@ object HandlerMethods {
 
     data class MethodMapping(
         val paths: List<MappedPath>,
+        val pathsDeclared: Boolean,
         val methods: List<String>,
         val produces: List<String>,
         val consumes: List<String>,
@@ -88,10 +89,12 @@ object HandlerMethods {
         val annotation = requestMappingMah.nearestAnnotation(annotated) ?: return NO_MAPPING
         fun values(attributes: Set<String>) = requestMappingMah.getAnnotationMemberValues(annotation, attributes)
         val nameAnchor = annotation.uastAnchor?.sourcePsi ?: annotation.sourcePsi
+        val pathValues = values(MAPPING_PATH_ATTRIBUTES)
         return MethodMapping(
-            paths = values(MAPPING_PATH_ATTRIBUTES).mapNotNull { value ->
+            paths = pathValues.mapNotNull { value ->
                 value.evaluateString()?.let { MappedPath(it, anchorOf(value.sourcePsi, annotation.sourcePsi, nameAnchor)) }
             },
+            pathsDeclared = pathValues.isNotEmpty(),
             methods = values(MAPPING_METHOD_ATTRIBUTES).mapNotNull(::requestMethodName),
             produces = values(MAPPING_PRODUCES_ATTRIBUTES).mapNotNull { it.evaluateString() },
             consumes = values(MAPPING_CONSUMES_ATTRIBUTES).mapNotNull { it.evaluateString() },
@@ -104,11 +107,13 @@ object HandlerMethods {
     ): MethodMapping {
         val annotation = requestMappingMah.nearestAnnotation(member) ?: return NO_MAPPING
         fun values(attributes: Set<String>) = requestMappingMah.getAnnotationMemberValues(annotation, attributes)
+        val pathValues = values(MAPPING_PATH_ATTRIBUTES)
         return MethodMapping(
-            paths = values(MAPPING_PATH_ATTRIBUTES).mapNotNull { value ->
+            paths = pathValues.mapNotNull { value ->
                 AnnotationUtil.getStringAttributeValue(value)
                     ?.let { MappedPath(it, anchorOf(value, annotation, annotation.nameReferenceElement)) }
             },
+            pathsDeclared = pathValues.isNotEmpty(),
             methods = values(MAPPING_METHOD_ATTRIBUTES).map { it.text.split('.').last() },
             produces = values(MAPPING_PRODUCES_ATTRIBUTES).mapNotNull { AnnotationUtil.getStringAttributeValue(it) },
             consumes = values(MAPPING_CONSUMES_ATTRIBUTES).mapNotNull { AnnotationUtil.getStringAttributeValue(it) },

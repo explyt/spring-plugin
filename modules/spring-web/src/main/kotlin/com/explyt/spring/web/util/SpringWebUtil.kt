@@ -379,7 +379,8 @@ object SpringWebUtil {
      */
     fun requestMappingOf(member: PsiMember, requestMappingMah: MetaAnnotationsHolder): RequestMapping {
         val mapping = HandlerMethods.methodMapping(member, requestMappingMah)
-        return RequestMapping(mapping.paths.map { it.path }.ifEmpty { listOf("") }, mapping.methods)
+        val paths = if (mapping.pathsDeclared) mapping.paths.map { it.path } else listOf("")
+        return RequestMapping(paths, mapping.methods)
     }
 
     data class RequestMapping(val paths: List<String>, val methods: List<String>)
