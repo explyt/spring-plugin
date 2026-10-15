@@ -39,7 +39,7 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
         val psiClass = aClass.javaPsi
         val collisions = collisionsIn(psiClass).ifEmpty { return null }
         val module = ModuleUtilCore.findModuleForPsiElement(psiClass)
-        return collisions.mapNotNull { collision ->
+        return collisions.filterNot { it.isReportedByDeclaringComponent(psiClass, module) }.mapNotNull { collision ->
             overridingOf(aClass, module, collision).takeUnless { it == Overriding.ALLOWED }
                 ?.let { collision.toProblem(aClass, manager, isOnTheFly, it) }
         }.toTypedArray()
@@ -54,15 +54,17 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
                 firstDeclarations[name]?.takeIf { it.name != method.name }?.let { Collision(name, it, method) }
             }
             names.forEach { firstDeclarations.putIfAbsent(it, method) }
-            collision?.takeUnless { it.isReportedByDeclaringComponent(psiClass) }
+            collision
         }.toList()
     }
 
-    private fun Collision.isReportedByDeclaringComponent(psiClass: PsiClass): Boolean {
+    private fun Collision.isReportedByDeclaringComponent(psiClass: PsiClass, module: Module?): Boolean {
         val declaringClass = first.containingClass ?: return false
-        return !first.isDeclaredIn(psiClass)
-                && psiClass.manager.areElementsEquivalent(declaringClass, second.containingClass)
-                && declaringClass.hasComponentAnnotation()
+        if (first.isDeclaredIn(psiClass)) return false
+        if (!psiClass.manager.areElementsEquivalent(declaringClass, second.containingClass)) return false
+        if (!declaringClass.hasComponentAnnotation()) return false
+        val declaringUClass = declaringClass.toUElementOfType<UClass>() ?: return false
+        return overridingOf(declaringUClass, module, this) != Overriding.ALLOWED
     }
 
     private fun PsiMethod.isConditional(): Boolean = getMetaAnnotation(SpringCoreClasses.CONDITIONAL) != null
