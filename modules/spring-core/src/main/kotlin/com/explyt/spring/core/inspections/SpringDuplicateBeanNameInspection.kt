@@ -39,8 +39,9 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
         val psiClass = aClass.javaPsi
         val collisions = collisionsIn(psiClass).ifEmpty { return null }
         val module = ModuleUtilCore.findModuleForPsiElement(psiClass)
-        return collisions.filterNot { it.isReportedByDeclaringComponent(psiClass, module) }.mapNotNull { collision ->
-            overridingOf(aClass, module, collision).takeUnless { it == Overriding.ALLOWED }
+        return collisions.mapNotNull { collision ->
+            overridingOf(aClass, module, collision)
+                .takeUnless { it == Overriding.ALLOWED || collision.isReportedByDeclaringComponent(psiClass, module, it) }
                 ?.let { collision.toProblem(aClass, manager, isOnTheFly, it) }
         }.toTypedArray()
     }
@@ -58,13 +59,19 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
         }.toList()
     }
 
-    private fun Collision.isReportedByDeclaringComponent(psiClass: PsiClass, module: Module?): Boolean {
+    private fun Collision.isReportedByDeclaringComponent(
+        psiClass: PsiClass,
+        module: Module?,
+        overriding: Overriding
+    ): Boolean {
         val declaringClass = first.containingClass ?: return false
         if (first.isDeclaredIn(psiClass)) return false
         if (!psiClass.manager.areElementsEquivalent(declaringClass, second.containingClass)) return false
         if (!declaringClass.hasComponentAnnotation()) return false
         val declaringUClass = declaringClass.toUElementOfType<UClass>() ?: return false
-        return overridingOf(declaringUClass, module, this) != Overriding.ALLOWED
+        val declaringOverriding = overridingOf(declaringUClass, module, this)
+        return declaringOverriding != Overriding.ALLOWED &&
+                (!declaringOverriding.weak || declaringOverriding == overriding)
     }
 
     private fun PsiMethod.isConditional(): Boolean = getMetaAnnotation(SpringCoreClasses.CONDITIONAL) != null
@@ -91,12 +98,29 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
         }
         return when (val value = PropertyConditionValues(module).valueOf(ALLOW_OVERRIDING_KEY)) {
             is ConditionPropertyValue.Known ->
-                if (value.text.trim().equals("true", ignoreCase = true)) ignoredOverriding ?: Overriding.ALLOWED
+                if (value.text.trim().equals("true", ignoreCase = true))
+                    ignoredOverriding ?: collision.allowedOverridingOf(springVersion)
                 else disallowed
 
             ConditionPropertyValue.Missing -> disallowed
             ConditionPropertyValue.Unresolvable ->
                 if (disallowed == Overriding.DISALLOWED) Overriding.UNRESOLVED else disallowed
+        }
+    }
+
+    private fun Collision.allowedOverridingOf(springVersion: String?): Overriding = when (kind) {
+        CollisionKind.PRIMARY_NAMES -> Overriding.ALLOWED_ONE_DROPPED
+        CollisionKind.ALIASES -> Overriding.ALLOWED
+        CollisionKind.PRIMARY_NAME_AND_ALIAS -> {
+            val declarationOrderDecides = springVersion?.isBefore(SPRING_6_2_7) == false &&
+                    first.manager.areElementsEquivalent(first.containingClass, second.containingClass)
+            when {
+                !declarationOrderDecides -> Overriding.ALLOWED_MAY_DROP
+                listOf(first, second).minBy { it.textOffset }.primaryBeanName == beanName ->
+                    Overriding.ALLOWED_ONE_DROPPED
+
+                else -> Overriding.ALLOWED
+            }
         }
     }
 
@@ -143,6 +167,8 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
             Overriding.IGNORED_BEFORE_SPRING_6_2 -> IGNORED_METHOD_MESSAGE to ProblemHighlightType.WARNING
             Overriding.DISALLOWED_ON_UNKNOWN_SPRING -> UNKNOWN_SPRING_VERSION_MESSAGE to ProblemHighlightType.WARNING
             Overriding.DISALLOWED_IN_REGISTRATION_ORDER -> REGISTRATION_ORDER_MESSAGE to ProblemHighlightType.WARNING
+            Overriding.ALLOWED_ONE_DROPPED -> ALLOWED_OVERRIDING_MESSAGE to ProblemHighlightType.WEAK_WARNING
+            Overriding.ALLOWED_MAY_DROP -> ALLOWED_OVERRIDING_ORDER_MESSAGE to ProblemHighlightType.WEAK_WARNING
             else -> MESSAGE to ProblemHighlightType.GENERIC_ERROR_OR_WARNING
         }
         val description = if (declared != null) {
@@ -178,8 +204,10 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
         ALIASES
     }
 
-    private enum class Overriding {
+    private enum class Overriding(val weak: Boolean = false) {
         ALLOWED,
+        ALLOWED_ONE_DROPPED(weak = true),
+        ALLOWED_MAY_DROP(weak = true),
         DISALLOWED,
         DISALLOWED_ON_UNKNOWN_SPRING,
         DISALLOWED_IN_REGISTRATION_ORDER,
@@ -194,6 +222,7 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
         const val ENFORCE_UNIQUE_METHODS = "enforceUniqueMethods"
         const val SPRING_6_0 = "6.0.0"
         const val SPRING_6_2 = "6.2.0"
+        const val SPRING_6_2_7 = "6.2.7"
         const val SPRING_7 = 7
         const val MESSAGE = "explyt.spring.inspection.bean.name.duplicate"
         const val UNRESOLVED_OVERRIDING_MESSAGE = "explyt.spring.inspection.bean.name.duplicate.overriding.unresolved"
@@ -202,6 +231,9 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
         const val UNKNOWN_SPRING_VERSION_MESSAGE = "explyt.spring.inspection.bean.name.duplicate.version.unknown"
         const val REGISTRATION_ORDER_MESSAGE = "explyt.spring.inspection.bean.name.duplicate.alias.order"
         const val INHERITED_METHODS_MESSAGE = "explyt.spring.inspection.bean.name.duplicate.inherited"
+        const val ALLOWED_OVERRIDING_MESSAGE = "explyt.spring.inspection.bean.name.duplicate.overriding.allowed"
+        const val ALLOWED_OVERRIDING_ORDER_MESSAGE =
+            "explyt.spring.inspection.bean.name.duplicate.overriding.allowed.order"
         const val UNKNOWN_SPRING_OVERRIDING_MESSAGE =
             "explyt.spring.inspection.bean.name.duplicate.overriding.unknown.spring"
     }

@@ -287,6 +287,38 @@ abstract class SpringDuplicateBeanNameKotlinTestCase : ExplytBaseLightTestCase()
         assertEquals(SpringCoreBundle.message(REGISTRATION_ORDER_MESSAGE, "svc", firstMethod), description)
     }
 
+    protected fun assertOnlyOneMethodRegisteredWarning(
+        problems: List<HighlightInfo>,
+        anchor: String = "b",
+        beanName: String = "svc",
+        otherMethod: String = "a"
+    ) {
+        assertSingleProblem(problems, HighlightSeverity.WEAK_WARNING, anchor, beanName, otherMethod)
+        val description = problems.single().description
+        assertTrue(
+            "the message says that Spring never calls one of the functions: $description",
+            description.contains(DEFINITE_OVERRIDING_PHRASE)
+        )
+        assertFalse(
+            "the outcome is definite, so the message is not hedged: $description",
+            description.contains(HEDGED_OVERRIDING_PHRASE)
+        )
+    }
+
+    protected fun assertMayRegisterOnlyOneMethodWarning(
+        problems: List<HighlightInfo>,
+        anchor: String,
+        beanName: String = "svc",
+        otherMethod: String
+    ) {
+        assertSingleProblem(problems, HighlightSeverity.WEAK_WARNING, anchor, beanName, otherMethod)
+        val description = problems.single().description
+        assertTrue(
+            "the message says that Spring may register only one of the functions: $description",
+            description.contains(HEDGED_OVERRIDING_PHRASE)
+        )
+    }
+
     protected fun assertSingleProblem(
         problems: List<HighlightInfo>,
         severity: HighlightSeverity,
@@ -310,12 +342,55 @@ abstract class SpringDuplicateBeanNameKotlinTestCase : ExplytBaseLightTestCase()
         const val IGNORED_METHOD_MESSAGE = "explyt.spring.inspection.bean.name.duplicate.ignored"
         const val REGISTRATION_ORDER_MESSAGE = "explyt.spring.inspection.bean.name.duplicate.alias.order"
         const val SPRING_7_MESSAGE = "explyt.spring.inspection.bean.name.duplicate.overriding.spring7"
+        const val INHERITED_METHODS_MESSAGE = "explyt.spring.inspection.bean.name.duplicate.inherited"
+        const val DEFINITE_OVERRIDING_PHRASE = "never calls the other"
+        const val HEDGED_OVERRIDING_PHRASE = "may register only one"
     }
 }
 
 class SpringDuplicateBeanNameInspectionTest : SpringDuplicateBeanNameKotlinTestCase() {
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springBootAutoConfigure_3_4_0)
     override val springCoreVersion: String = "6.2.0"
+
+    fun testFullSubclassDoesNotRepeatThePrimaryNameWarningOfItsFullBase() {
+        allowBeanDefinitionOverriding("true")
+
+        assertOnlyOneMethodRegisteredWarning(
+            inheritedHighlights(
+                """
+                @Configuration
+                open class Base {
+                    @Bean open fun a(): Any = Any()
+                    @Bean("a") open fun b(): Any = Any()
+                }
+
+                @Configuration
+                open class Config : Base()
+                """
+            ),
+            beanName = "a"
+        )
+    }
+
+    fun testFullSubclassDoesNotRepeatTheHedgedAliasWarningOfItsFullBase() {
+        allowBeanDefinitionOverriding("true")
+
+        assertMayRegisterOnlyOneMethodWarning(
+            inheritedHighlights(
+                """
+                @Configuration
+                open class Base {
+                    @Bean("svc") open fun y(): Any = Any()
+                    @Bean("a", "svc") open fun x(): Any = Any()
+                }
+
+                @Configuration
+                open class Config : Base()
+                """
+            ),
+            anchor = "x", otherMethod = "y"
+        )
+    }
 
     fun testExplicitNamesOnDifferentMethodsCollide() {
         val problem = highlights(
@@ -480,10 +555,10 @@ class SpringDuplicateBeanNameInspectionTest : SpringDuplicateBeanNameKotlinTestC
         )
     }
 
-    fun testAllowedOverridingSuppressesTheProblem() {
+    fun testAllowedOverridingWarnsThatSpringRegistersOnlyOneMethod() {
         allowBeanDefinitionOverriding("true")
 
-        assertEmpty(highlights(FULL_CONFIGURATION))
+        assertOnlyOneMethodRegisteredWarning(highlights(FULL_CONFIGURATION))
     }
 
     fun testUnresolvableOverridingPropertyUsesWarning() {
@@ -508,6 +583,26 @@ class SpringDuplicateBeanNameInspectionTest : SpringDuplicateBeanNameKotlinTestC
         val problem = highlights(FULL_CONFIGURATION).single()
 
         assertProblem(problem, anchor = "b", beanName = "svc", firstMethod = "a")
+    }
+
+    fun testAllowedOverridingInLiteClassWarnsThatSpringRegistersOnlyOneFunction() {
+        allowBeanDefinitionOverriding("true")
+
+        assertOnlyOneMethodRegisteredWarning(highlights(LITE_CONFIGURATION))
+    }
+
+    fun testAliasCollisionWithAllowedOverridingBeforeSpring627WarnsThatSpringMayRegisterOnlyOneFunction() {
+        allowBeanDefinitionOverriding("true")
+
+        assertMayRegisterOnlyOneMethodWarning(highlights(ALIAS_COLLISION), anchor = "y", otherMethod = "x")
+    }
+
+    fun testAliasCollisionAfterThePrimaryNameWithAllowedOverridingBeforeSpring627WarnsThatSpringMayRegisterOnlyOneFunction() {
+        allowBeanDefinitionOverriding("true")
+
+        assertMayRegisterOnlyOneMethodWarning(
+            highlights(ALIAS_COLLISION_AFTER_PRIMARY_NAME), anchor = "x", otherMethod = "y"
+        )
     }
 
     fun testInheritedMethodNameCollidesWithExplicitNameOfSubclass() {
@@ -734,10 +829,10 @@ class SpringDuplicateBeanNameBeforeSpring62InspectionTest : SpringDuplicateBeanN
         assertStartupFailure(highlights(ALIAS_COLLISION), anchor = "y", firstMethod = "x")
     }
 
-    fun testAliasCollisionWithAllowedOverridingIsNotReported() {
+    fun testAliasCollisionWithAllowedOverridingWarnsThatSpringMayRegisterOnlyOneMethod() {
         allowBeanDefinitionOverriding("true")
 
-        assertEmpty(highlights(ALIAS_COLLISION))
+        assertMayRegisterOnlyOneMethodWarning(highlights(ALIAS_COLLISION), anchor = "y", otherMethod = "x")
     }
 
     fun testAliasCollisionDeclaredAfterThePrimaryNameFailsAtStartup() {
@@ -778,10 +873,10 @@ class SpringDuplicateBeanNameBeforeSpring6InspectionTest : SpringDuplicateBeanNa
         assertRegistrationOrderWarning(highlights(ALIAS_COLLISION_AFTER_PRIMARY_NAME), anchor = "x", firstMethod = "y")
     }
 
-    fun testAliasCollisionWithAllowedOverridingIsNotReported() {
+    fun testAliasCollisionWithAllowedOverridingWarnsThatSpringMayRegisterOnlyOneMethod() {
         allowBeanDefinitionOverriding("true")
 
-        assertEmpty(highlights(ALIAS_COLLISION))
+        assertMayRegisterOnlyOneMethodWarning(highlights(ALIAS_COLLISION), anchor = "y", otherMethod = "x")
     }
 
     fun testAliasCollisionWithUnresolvableOverridingPropertyWarnsThatTheOutcomeDependsOnRegistrationOrder() {
@@ -825,18 +920,18 @@ class SpringDuplicateBeanNameSpring7InspectionTest : SpringDuplicateBeanNameKotl
         assertSpring7Problem(highlights(FULL_CONFIGURATION))
     }
 
-    fun testComposedConfigurationWithoutUniqueMethodEnforcementSuppressesTheProblem() {
+    fun testComposedConfigurationWithoutUniqueMethodEnforcementWarnsThatSpringRegistersOnlyOneMethod() {
         allowBeanDefinitionOverriding("true")
 
         assertSpring7Problem(highlights(COMPOSED_CONFIGURATION))
-        assertEmpty(highlights(COMPOSED_CONFIGURATION_WITHOUT_UNIQUE_METHODS))
+        assertOnlyOneMethodRegisteredWarning(highlights(COMPOSED_CONFIGURATION_WITHOUT_UNIQUE_METHODS))
     }
 
-    fun testComposedConfigurationAliasDefaultWithoutUniqueMethodEnforcementSuppressesTheProblem() {
+    fun testComposedConfigurationAliasDefaultWithoutUniqueMethodEnforcementWarnsThatSpringRegistersOnlyOneMethod() {
         allowBeanDefinitionOverriding("true")
 
         assertSpring7Problem(highlights(aliasedComposedConfiguration("@MyConfig(unique = true)")))
-        assertEmpty(highlights(aliasedComposedConfiguration("@MyConfig")))
+        assertOnlyOneMethodRegisteredWarning(highlights(aliasedComposedConfiguration("@MyConfig")))
     }
 
     fun testDisallowedOverridingKeepsTheProblemInLiteClass() {
@@ -845,10 +940,10 @@ class SpringDuplicateBeanNameSpring7InspectionTest : SpringDuplicateBeanNameKotl
         assertProblem(highlights(LITE_CONFIGURATION).single(), anchor = "b", beanName = "svc", firstMethod = "a")
     }
 
-    fun testAllowedOverridingSuppressesTheProblemInLiteClass() {
+    fun testAllowedOverridingWarnsThatSpringRegistersOnlyOneMethodInLiteClass() {
         allowBeanDefinitionOverriding("true")
 
-        assertEmpty(highlights(LITE_CONFIGURATION))
+        assertOnlyOneMethodRegisteredWarning(highlights(LITE_CONFIGURATION))
     }
 
     fun testDisallowedOverridingKeepsTheProblemWithoutUniqueMethodEnforcement() {
@@ -859,10 +954,10 @@ class SpringDuplicateBeanNameSpring7InspectionTest : SpringDuplicateBeanNameKotl
         )
     }
 
-    fun testAllowedOverridingSuppressesTheProblemWithoutUniqueMethodEnforcement() {
+    fun testAllowedOverridingWarnsThatSpringRegistersOnlyOneMethodWithoutUniqueMethodEnforcement() {
         allowBeanDefinitionOverriding("true")
 
-        assertEmpty(highlights(CONFIGURATION_WITHOUT_UNIQUE_METHODS))
+        assertOnlyOneMethodRegisteredWarning(highlights(CONFIGURATION_WITHOUT_UNIQUE_METHODS))
     }
 
     fun testAliasCollisionWithAllowedOverridingIsNotReportedInFullConfiguration() {
@@ -873,6 +968,14 @@ class SpringDuplicateBeanNameSpring7InspectionTest : SpringDuplicateBeanNameKotl
 
     fun testAliasCollisionWithMissingOverridingPropertyFailsAtStartupInFullConfiguration() {
         assertStartupFailure(highlights(ALIAS_COLLISION), anchor = "y", firstMethod = "x")
+    }
+
+    fun testAliasCollisionDeclaredAfterThePrimaryNameWithAllowedOverridingWarnsThatSpringRegistersOnlyOneFunction() {
+        allowBeanDefinitionOverriding("true")
+
+        assertOnlyOneMethodRegisteredWarning(
+            highlights(ALIAS_COLLISION_AFTER_PRIMARY_NAME), anchor = "x", otherMethod = "y"
+        )
     }
 
     fun testAllowedOverridingKeepsInheritedCollisionInFullConfiguration() {
@@ -888,7 +991,7 @@ class SpringDuplicateBeanNameSpring7InspectionTest : SpringDuplicateBeanNameKotl
         )
     }
 
-    fun testAllowedOverridingSuppressesInheritedCollisionInLiteSubclassOfConfiguration() {
+    fun testAllowedOverridingWarnsInLiteSubclassOfConfigurationAndKeepsTheInheritedCollisionInTheFullSubclass() {
         allowBeanDefinitionOverriding("true")
 
         assertInheritedCollision(
@@ -899,10 +1002,12 @@ class SpringDuplicateBeanNameSpring7InspectionTest : SpringDuplicateBeanNameKotl
             beanName = "a",
             otherMethod = "Base.a"
         )
-        assertEmpty(inheritedHighlights(LITE_CHILD_OF_CONFIGURATION_BASE))
+        assertOnlyOneMethodRegisteredWarning(
+            inheritedHighlights(LITE_CHILD_OF_CONFIGURATION_BASE), beanName = "a", otherMethod = "Base.a"
+        )
     }
 
-    fun testFullSubclassOfLiteBaseReportsTheSpring7FailureTheBaseDoesNot() {
+    fun testFullSubclassOfLiteBaseKeepsTheSpring7FailureBesideTheWarningOfItsBase() {
         allowBeanDefinitionOverriding("true")
 
         val problems = inheritedHighlights(
@@ -918,7 +1023,7 @@ class SpringDuplicateBeanNameSpring7InspectionTest : SpringDuplicateBeanNameKotl
             """
         )
 
-        assertEmpty(problems.filter { it.text != "Config" })
+        assertOnlyOneMethodRegisteredWarning(problems.filter { it.text != "Config" }, beanName = "a")
         val subclassProblems = problems.filter { it.text == "Config" }
         assertEquals(1, subclassProblems.size)
         val problem = subclassProblems.single()
@@ -934,10 +1039,10 @@ class SpringDuplicateBeanNameSpring7InspectionTest : SpringDuplicateBeanNameKotl
         )
     }
 
-    fun testLiteSubclassOfLiteBaseStaysSilentWhenOverridingIsAllowed() {
+    fun testLiteSubclassOfLiteBaseDoesNotRepeatTheWarningOfItsBase() {
         allowBeanDefinitionOverriding("true")
 
-        assertEmpty(
+        assertOnlyOneMethodRegisteredWarning(
             inheritedHighlights(
                 """
                 @Component
@@ -949,7 +1054,8 @@ class SpringDuplicateBeanNameSpring7InspectionTest : SpringDuplicateBeanNameKotl
                 @Component
                 open class Config : Base()
                 """
-            )
+            ),
+            beanName = "a"
         )
     }
 
@@ -958,6 +1064,136 @@ class SpringDuplicateBeanNameSpring7InspectionTest : SpringDuplicateBeanNameKotl
         assertEquals(
             SpringCoreBundle.message("explyt.spring.inspection.bean.name.duplicate.overriding.spring7", "svc", "a"),
             problems.single().description
+        )
+    }
+}
+
+class SpringDuplicateBeanNameSpring627InspectionTest : SpringDuplicateBeanNameKotlinTestCase() {
+    override val libraries: Array<TestLibrary> =
+        arrayOf(TestLibrary("org.springframework.boot:spring-boot-autoconfigure:3.5.7"))
+    override val springCoreVersion: String = "6.2.12"
+
+    fun testFullSubclassDoesNotRepeatThePrimaryNameWarningOfItsFullBase() {
+        allowBeanDefinitionOverriding("true")
+
+        assertOnlyOneMethodRegisteredWarning(
+            inheritedHighlights(
+                """
+                @Configuration
+                open class Base {
+                    @Bean open fun a(): Any = Any()
+                    @Bean("a") open fun b(): Any = Any()
+                }
+
+                @Configuration
+                open class Config : Base()
+                """
+            ),
+            beanName = "a"
+        )
+    }
+
+    fun testAllowedOverridingInFullConfigurationWarnsThatSpringRegistersOnlyOneFunction() {
+        allowBeanDefinitionOverriding("true")
+
+        assertOnlyOneMethodRegisteredWarning(highlights(FULL_CONFIGURATION))
+    }
+
+    fun testAllowedOverridingInLiteClassWarnsThatSpringRegistersOnlyOneFunction() {
+        allowBeanDefinitionOverriding("true")
+
+        assertOnlyOneMethodRegisteredWarning(highlights(LITE_CONFIGURATION))
+    }
+
+    fun testFunctionNameCollisionWithAllowedOverridingWarnsThatSpringRegistersOnlyOneFunction() {
+        allowBeanDefinitionOverriding("true")
+
+        assertOnlyOneMethodRegisteredWarning(
+            highlights(METHOD_NAME_COLLISION), anchor = "other", otherMethod = "svc"
+        )
+    }
+
+    fun testAliasCollisionDeclaredAfterThePrimaryNameWithAllowedOverridingWarnsThatSpringRegistersOnlyOneFunction() {
+        allowBeanDefinitionOverriding("true")
+
+        assertOnlyOneMethodRegisteredWarning(
+            highlights(ALIAS_COLLISION_AFTER_PRIMARY_NAME), anchor = "x", otherMethod = "y"
+        )
+    }
+
+    fun testAliasCollisionDeclaredBeforeThePrimaryNameWithAllowedOverridingIsNotReported() {
+        allowBeanDefinitionOverriding("true")
+
+        assertEmpty(highlights(ALIAS_COLLISION))
+    }
+
+    fun testCollisionOfTwoAliasesWithAllowedOverridingIsNotReported() {
+        allowBeanDefinitionOverriding("true")
+
+        assertEmpty(highlights(TWO_ALIASES_COLLISION))
+    }
+
+    fun testCollisionOfTwoAliasesWithMissingOverridingPropertyFailsAtStartup() {
+        assertStartupFailure(highlights(TWO_ALIASES_COLLISION), anchor = "y", firstMethod = "x")
+    }
+
+    fun testInheritedPrimaryNameCollisionWithAllowedOverridingWarnsThatSpringRegistersOnlyOneFunction() {
+        allowBeanDefinitionOverriding("true")
+
+        assertOnlyOneMethodRegisteredWarning(
+            inheritedHighlights(INHERITED_PRIMARY_NAME_COLLISION), anchor = "b", beanName = "a", otherMethod = "Base.a"
+        )
+    }
+
+    fun testInheritedAliasCollisionWithAllowedOverridingWarnsThatSpringMayRegisterOnlyOneFunction() {
+        allowBeanDefinitionOverriding("true")
+
+        assertMayRegisterOnlyOneMethodWarning(
+            inheritedHighlights(
+                """
+                open class Base {
+                    @Bean("svc") open fun y(): Any = Any()
+                }
+
+                @Configuration
+                open class Config : Base() {
+                    @Bean("a", "svc") open fun x(): Any = Any()
+                }
+                """
+            ),
+            anchor = "x",
+            otherMethod = "Base.y"
+        )
+    }
+
+    fun testCollisionBetweenTwoInheritedFunctionsWithAllowedOverridingIsReportedOnTheSubclass() {
+        allowBeanDefinitionOverriding("true")
+
+        val problems = inheritedHighlights(
+            """
+            open class Base {
+                @Bean open fun a(): Any = Any()
+                @Bean("a") open fun b(): Any = Any()
+            }
+
+            @Configuration
+            open class Config : Base()
+            """
+        ).filter { it.text == "Config" }
+
+        assertFalse("Precondition: the base is not a component", SpringCoreUtil.run {
+            myFixture.findClass("demo.Base").hasComponentAnnotation()
+        })
+        assertEquals("one problem on the subclass name: $problems", 1, problems.size)
+        val problem = problems.single()
+        assertEquals(HighlightSeverity.WEAK_WARNING, problem.severity)
+        assertTrue(
+            "the message wraps the inherited collision of bean 'a': ${problem.description}",
+            problem.description.startsWith(SpringCoreBundle.message(INHERITED_METHODS_MESSAGE, "Base.b", ""))
+        )
+        assertTrue(
+            "the message names bean 'a', both inherited functions and the dropped function: ${problem.description}",
+            listOf("'a'", "Base.a", "Base.b", DEFINITE_OVERRIDING_PHRASE).all { problem.description.contains(it) }
         )
     }
 }
@@ -991,10 +1227,10 @@ class SpringDuplicateBeanNameUnknownSpringVersionInspectionTest : SpringDuplicat
         assertRegistrationOrderWarning(highlights(ALIAS_COLLISION), anchor = "y", firstMethod = "x")
     }
 
-    fun testAliasCollisionWithAllowedOverridingIsNotReportedInFullConfiguration() {
+    fun testAliasCollisionWithAllowedOverridingWarnsThatSpringMayRegisterOnlyOneMethod() {
         allowBeanDefinitionOverriding("true")
 
-        assertEmpty(highlights(ALIAS_COLLISION))
+        assertMayRegisterOnlyOneMethodWarning(highlights(ALIAS_COLLISION), anchor = "y", otherMethod = "x")
     }
 
     fun testCollisionOfTwoAliasesFailsAtStartup() {
@@ -1009,10 +1245,10 @@ class SpringDuplicateBeanNameUnknownSpringVersionInspectionTest : SpringDuplicat
         )
     }
 
-    fun testAllowedOverridingSuppressesTheProblemInLiteClass() {
+    fun testAllowedOverridingWarnsThatSpringRegistersOnlyOneMethodInLiteClass() {
         allowBeanDefinitionOverriding("true")
 
-        assertEmpty(highlights(LITE_CONFIGURATION))
+        assertOnlyOneMethodRegisteredWarning(highlights(LITE_CONFIGURATION))
     }
 
     private fun assertUnknownVersionWarning(problems: List<HighlightInfo>) {
