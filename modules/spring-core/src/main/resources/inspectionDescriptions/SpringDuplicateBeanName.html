@@ -1,7 +1,13 @@
 <html>
 <body>
 Reports a <code>@Bean</code> method whose bean name is already declared by a differently named <code>@Bean</code> method
-of the same configuration class.
+of the same configuration class, including <code>@Bean</code> methods it inherits from its superclasses and
+interfaces. When both methods are inherited, the problem is reported on the name of the class that inherits them, since
+Spring fails while registering that class, unless both are declared by one superclass that is itself a Spring component,
+such as a <code>@Configuration</code> class, and the problem is already reported on that superclass. A superclass on
+which the problem is not reported, for example a <code>@Component</code> with <code>@Bean</code> methods when bean
+definition overriding is allowed on Spring Framework 6.2 and later, does not hide the problem of a subclass that fails,
+such as a <code>@Configuration</code> subclass on Spring 7.
 <p>Spring Boot disallows bean definition overriding by default, so on Spring Framework 6.2.0 and later such a
 configuration fails at startup with <code>BeanDefinitionOverrideException</code>. Overloaded <code>@Bean</code> methods with
 the same method name are merged by Spring and are not reported.</p>
