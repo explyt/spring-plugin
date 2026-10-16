@@ -6,7 +6,12 @@
 package com.explyt.spring.core.reference.java
 
 import com.explyt.spring.core.references.CompleteBeanReference
+import com.explyt.spring.core.service.PackageScanService
+import com.explyt.spring.core.service.ProfileActivation
+import com.explyt.spring.core.service.ProfilesService
+import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.service.SpringSearchServiceFacade
+import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
 import com.intellij.codeInsight.lookup.LookupElement
@@ -59,6 +64,100 @@ class QualifierBeanReferenceTest : ExplytJavaLightTestCase() {
         assertEquals(TextRange(1, host.textLength - 1), reference.rangeInElement)
         assertEquals("ani\\nmal", reference.value)
         assertResolvesTo(bean, reference)
+    }
+
+    fun testCompletionKeepsProfileInactiveImplementationAndDropsConditionInactiveOne() {
+        configurePetImplementations()
+        configureConsumer("@Autowired @Qualifier(\"<caret>\") Pet injected;")
+        assertEquals(setOf("dog", "cat"), qualifierReference().variantNames())
+    }
+
+    fun testCompletionDropsImportedImplementationExcludedByConditionDespiteItsProfile() {
+        configurePetImplementations()
+        myFixture.addFileToProject(
+            "com/explyt/demo/Parrot.java",
+            """
+            package com.explyt.demo;
+            @org.springframework.stereotype.Component
+            @org.springframework.context.annotation.Profile("dev")
+            @org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name = "feature.bird", havingValue = "true")
+            public class Parrot implements Pet {}
+            """.trimIndent()
+        )
+        myFixture.addFileToProject(
+            "com/explyt/demo/ParrotImporter.java",
+            """
+            package com.explyt.demo;
+            @org.springframework.context.annotation.Configuration
+            @org.springframework.context.annotation.Import(Parrot.class)
+            public class ParrotImporter {}
+            """.trimIndent()
+        )
+        assertParrotImportedAndExcluded()
+        configureConsumer("@Autowired @Qualifier(\"<caret>\") Pet injected;")
+        assertEquals(setOf("dog", "cat"), qualifierReference().variantNames())
+    }
+
+    private fun assertParrotImportedAndExcluded() {
+        ModificationTrackerManager.getInstance(project).invalidateAll()
+        assertTrue(
+            "Precondition: Parrot is reached through @Import",
+            "com.explyt.demo.Parrot" in PackageScanService.getInstance(project).getAllPackages().importQualified
+        )
+        assertEquals(
+            "Precondition: Parrot is inactive by its profile",
+            ProfileActivation.INACTIVE,
+            SpringSearchService.getInstance(project).profileActivation(myFixture.findClass("com.explyt.demo.Parrot"))
+        )
+        val excluded = SpringSearchServiceFacade.getInstance(project).getExcludedBeansClasses(module)
+            .mapNotNullTo(mutableSetOf()) { it.psiClass.qualifiedName }
+        assertTrue("Precondition: Parrot is excluded, got $excluded", "com.explyt.demo.Parrot" in excluded)
+    }
+
+    private fun configurePetImplementations() {
+        myFixture.addFileToProject("application.properties", "spring.profiles.active=prod\nfeature.bird=false")
+        myFixture.addFileToProject(
+            "com/explyt/demo/App.java",
+            "package com.explyt.demo; @org.springframework.boot.autoconfigure.SpringBootApplication public class App {}"
+        )
+        myFixture.addFileToProject("com/explyt/demo/Pet.java", "package com.explyt.demo; public interface Pet {}")
+        myFixture.addFileToProject(
+            "com/explyt/demo/Dog.java",
+            "package com.explyt.demo; @org.springframework.stereotype.Component public class Dog implements Pet {}"
+        )
+        myFixture.addFileToProject(
+            "com/explyt/demo/Cat.java",
+            """
+            package com.explyt.demo;
+            @org.springframework.stereotype.Component
+            @org.springframework.context.annotation.Profile("dev")
+            public class Cat implements Pet {}
+            """.trimIndent()
+        )
+        myFixture.addFileToProject(
+            "com/explyt/demo/Bird.java",
+            """
+            package com.explyt.demo;
+            @org.springframework.stereotype.Component
+            @org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name = "feature.bird", havingValue = "true")
+            public class Bird implements Pet {}
+            """.trimIndent()
+        )
+        ModificationTrackerManager.getInstance(project).invalidateAll()
+        val profiles = ProfilesService.getInstance(project)
+        assertTrue("Precondition: prod is active", profiles.compute("prod"))
+        assertFalse("Precondition: dev is not active", profiles.compute("dev"))
+        assertEquals(
+            "Precondition: Cat is inactive by its profile",
+            ProfileActivation.INACTIVE,
+            SpringSearchService.getInstance(project).profileActivation(myFixture.findClass("com.explyt.demo.Cat"))
+        )
+        val facade = SpringSearchServiceFacade.getInstance(project)
+        val active = facade.getAllActiveBeans(module).mapNotNullTo(mutableSetOf()) { it.psiClass.qualifiedName }
+        val excluded = facade.getExcludedBeansClasses(module).mapNotNullTo(mutableSetOf()) { it.psiClass.qualifiedName }
+        assertTrue("Precondition: Dog is active, got $active", "com.explyt.demo.Dog" in active)
+        assertTrue("Precondition: Cat and Bird are excluded, got $excluded", excluded.containsAll(PET_EXCLUDED))
+        assertTrue("Precondition: Cat and Bird are not active, got $active", PET_EXCLUDED.none { it in active })
     }
 
     private fun configureBeans(animalName: String = "animal"): PsiMethod {
@@ -138,5 +237,9 @@ class QualifierBeanReferenceTest : ExplytJavaLightTestCase() {
             "Qualifier must resolve to Beans.animal, got $actual",
             actual != null && psiManager.areElementsEquivalent(expected, actual)
         )
+    }
+
+    private companion object {
+        val PET_EXCLUDED = setOf("com.explyt.demo.Cat", "com.explyt.demo.Bird")
     }
 }
