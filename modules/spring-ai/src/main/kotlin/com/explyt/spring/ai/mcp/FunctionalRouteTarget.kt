@@ -51,7 +51,7 @@ internal sealed class FunctionalRouteTarget(val call: UCallExpression, val facto
 
     val route: String?
         get() {
-            val method = requestMethods?.let(McpHttpMethods::listed)?.singleOrNull() ?: return null
+            val method = requestMethods?.let(McpHttpMethods::routeVerb) ?: return null
             val path = paths.firstOrNull() ?: return null
             return "$method $path"
         }
