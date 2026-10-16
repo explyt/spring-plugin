@@ -49,7 +49,9 @@ class CoRouterEndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor()
         val psiClass = method.javaPsi.containingClass ?: return null
         if (!psiClass.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT)) return null
 
-        val requestMethods = RouterDslRoutes.requestMethodsOf(uCallExpression) ?: return null
+        val requestMethods = RouterDslRoutes.requestMethodsOf(uCallExpression)
+            ?.let { SpringWebUtil.getServedRequestMethods(uCallExpression, it) }
+            ?: return null
 
         val fullPath = SpringWebUtil.getPathsFromCallExpression(uCallExpression).firstOrNull() ?: return null
         if (fullPath.isEmpty()) return null
