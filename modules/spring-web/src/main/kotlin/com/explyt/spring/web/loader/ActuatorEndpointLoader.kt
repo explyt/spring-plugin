@@ -11,7 +11,6 @@ import com.explyt.spring.core.completion.properties.DefinedConfigurationProperti
 import com.explyt.spring.core.properties.FoldedPropertyValue
 import com.explyt.spring.core.properties.references.ActuatorEndpoint
 import com.explyt.spring.core.properties.references.ActuatorEndpointKeys
-import com.explyt.spring.core.service.AliasUtils
 import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.core.service.PackageScanService
 import com.explyt.spring.core.service.SpringSearchService
@@ -35,23 +34,18 @@ import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectFileIndex
-import com.intellij.psi.CommonClassNames
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiClassType
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiEnumConstant
 import com.intellij.psi.PsiMethod
-import com.intellij.psi.PsiModifier
 import com.intellij.psi.PsiParameter
 import com.intellij.psi.PsiReferenceExpression
-import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
-import com.intellij.psi.search.searches.ClassInheritorsSearch
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import org.jetbrains.uast.UAnnotation
-import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UResolvable
 import org.jetbrains.uast.toUElementOfType
 
@@ -128,80 +122,17 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
         val access = ActuatorAccess.of(module, definitions)
         val requestMappingMah by lazy { MetaAnnotationsHolder.of(module, SpringWebClasses.REQUEST_MAPPING) }
         val customMediaTypes = declaresEndpointMediaTypesBean(module)
-        val webExtensions = webExtensionsByEndpoint(module)
-        val beanConditions = BeanConditions(
-            module, endpoints.mapTo(mutableSetOf()) { it.psiClass } + webExtensions.values.flatten()
-        )
+        val beanConditions = BeanConditions(module, endpoints.mapTo(mutableSetOf()) { it.psiClass })
 
         return endpoints.flatMap {
-            val endpointInTests = isInTestSources(it.psiClass)
-            val extensions = webExtensions[it.psiClass.qualifiedName].orEmpty()
-                .filter { extension -> endpointInTests || !isInTestSources(extension) }
-                .filterNot(beanConditions::isInactive)
+            val extensions = ActuatorWebExtensions.appliedTo(it.psiClass, module)
             val gates = Gates(
                 exposure.exposureOf(it.id), access.accessOf(it), application, customMediaTypes,
                 beanConditions.ofEndpoint(it.psiClass, extensions)
             )
-            endpointElements(it, basePath, propertyValue, gates, extensions) { requestMappingMah }
-        }
-    }
-
-    private fun webExtensionsByEndpoint(module: Module): Map<String, List<PsiClass>> {
-        val annotationScope = module.getModuleWithDependenciesAndLibrariesScope(false)
-            .union(module.getModuleRuntimeScope(false))
-        val annotation = JavaPsiFacade.getInstance(project)
-            .findClass(SpringCoreClasses.ACTUATOR_ENDPOINT_WEB_EXTENSION, annotationScope) ?: return emptyMap()
-        val projectScope = GlobalSearchScope.moduleWithDependenciesScope(module)
-        val webExtensionAnnotations = ActuatorEndpointKeys.annotationWithChildren(annotation, annotationScope)
-        val extensionAnnotations = WebExtensionAnnotations(
-            webExtensionAnnotations.mapNotNullTo(mutableSetOf()) { it.qualifiedName },
-            lazy { MetaAnnotationsHolder.of(module, SpringCoreClasses.ACTUATOR_ENDPOINT_EXTENSION) },
-        )
-        return webExtensionAnnotations
-            .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, projectScope).findAll() }
-            .filterNot { it.isAnnotationType }
-            .flatMap { listOf(it) + ClassInheritorsSearch.search(it, projectScope, true, true, false).findAll() }
-            .distinct()
-            .filter { it.isConcrete }
-            .mapNotNull { extension ->
-                ProgressManager.checkCanceled()
-                extensionAnnotations.extendedEndpointName(extension)?.let { it to extension }
+            endpointElements(it, basePath, propertyValue, gates, extensions.map { extension -> extension.psiClass }) {
+                requestMappingMah
             }
-            .groupBy({ it.first }, { it.second })
-    }
-
-    private val PsiClass.isConcrete: Boolean
-        get() = !isInterface && !hasModifierProperty(PsiModifier.ABSTRACT)
-
-    private fun isInTestSources(psiClass: PsiClass): Boolean {
-        val file = psiClass.containingFile?.virtualFile ?: return false
-        return ProjectFileIndex.getInstance(project).isInTestSourceContent(file)
-    }
-
-    private class WebExtensionAnnotations(
-        private val qualifiedNames: Set<String>,
-        endpointExtensionAttributes: Lazy<MetaAnnotationsHolder>,
-    ) {
-        private val endpointExtensionAttributes by endpointExtensionAttributes
-
-        fun extendedEndpointName(extension: PsiClass): String? {
-            val annotation = typeHierarchyOf(extension).firstNotNullOfOrNull { type ->
-                type.toUElementOfType<UClass>()?.uAnnotations?.firstOrNull { it.qualifiedName in qualifiedNames }
-            } ?: return null
-            return endpointExtensionAttributes.getAnnotationMemberValues(annotation, setOf(ENDPOINT_ATTRIBUTE))
-                .firstNotNullOfOrNull { AliasUtils.getPsiClasses(it).firstOrNull() }
-                ?.qualifiedName
-        }
-
-        private fun typeHierarchyOf(psiClass: PsiClass): Set<PsiClass> {
-            val hierarchy = LinkedHashSet<PsiClass>()
-            fun visit(type: PsiClass) {
-                if (type.qualifiedName == CommonClassNames.JAVA_LANG_OBJECT || !hierarchy.add(type)) return
-                type.interfaces.forEach(::visit)
-                type.superClass?.let(::visit)
-            }
-            visit(psiClass)
-            return hierarchy
         }
     }
 
@@ -211,15 +142,13 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
             if (projectClasses.isEmpty()) return@lazy emptyMap()
             val verdictsByClass = SpringSearchService.getInstance(project).conditionVerdicts(module).entries
                 .groupBy({ it.key.psiClass }, { it.value })
-            projectClasses.mapNotNull { psiClass -> verdictsByClass[psiClass]?.let { psiClass to it.mostActive() } }
+            projectClasses.mapNotNull { psiClass -> verdictsByClass[psiClass]?.mostActive()?.let { psiClass to it } }
                 .toMap()
         }
 
-        fun isInactive(beanClass: PsiClass): Boolean = verdictsByClass[beanClass] is ConditionVerdict.Inactive
-
-        fun ofEndpoint(endpointClass: PsiClass, appliedExtensions: List<PsiClass>): ConditionVerdict? {
+        fun ofEndpoint(endpointClass: PsiClass, appliedExtensions: List<ActuatorWebExtension>): ConditionVerdict? {
             val endpointVerdict = verdictsByClass[endpointClass]
-            val undecidedExtensions = appliedExtensions.mapNotNull { verdictsByClass[it] as? ConditionVerdict.Undecided }
+            val undecidedExtensions = appliedExtensions.mapNotNull { it.verdict as? ConditionVerdict.Undecided }
             if (undecidedExtensions.isEmpty()) return endpointVerdict
             return (listOfNotNull(endpointVerdict) + undecidedExtensions).asSequence().combined()
         }
@@ -228,10 +157,6 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
             val file = psiClass.containingFile?.virtualFile ?: return false
             return ProjectFileIndex.getInstance(project).isInSourceContent(file)
         }
-
-        private fun List<ConditionVerdict>.mostActive(): ConditionVerdict =
-            if (ConditionVerdict.Active in this) ConditionVerdict.Active
-            else filterIsInstance<ConditionVerdict.Undecided>().ifEmpty { this }.asSequence().combined()
     }
 
     /**
@@ -441,7 +366,6 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
 private const val DEFAULT_BASE_PATH = "/actuator"
 private const val BASE_PATH_KEY = "management.endpoints.web.base-path"
 private const val PATH_MAPPING_KEY = "management.endpoints.web.path-mapping"
-private const val ENDPOINT_ATTRIBUTE = "endpoint"
 private val PATH_VARIABLE = Regex("""(\{\*?).+?}""")
 
 private const val READ_METHOD = "GET"
