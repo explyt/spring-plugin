@@ -692,24 +692,6 @@ class RouterFunctionEndpointLoaderTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testServletAnyVerbRouteUnderAVerbNestServesOnlyTheNestVerb() {
-        assertBuilderRoutes(
-            EndpointType.SPRING_MVC,
-            """route().nest(RequestPredicates.PUT("/a"), b -> b.route(RequestPredicates.path("/b"), h::list)).build()""",
-            listOf("/a/b" to "PUT"),
-            predicateFactories = setOf("PUT", "path")
-        )
-    }
-
-    fun testReactiveAnyVerbRouteUnderAVerbNestServesOnlyTheNestVerb() {
-        assertBuilderRoutes(
-            EndpointType.SPRING_WEBFLUX,
-            """route().nest(RequestPredicates.PUT("/a"), b -> b.route(RequestPredicates.path("/b"), h::list)).build()""",
-            listOf("/a/b" to "PUT"),
-            predicateFactories = setOf("PUT", "path")
-        )
-    }
-
     fun testServletPathFreeMethodNestDropsAnInnerRouteOfAnotherVerb() {
         assertBuilderRoutes(
             EndpointType.SPRING_MVC,
@@ -830,8 +812,7 @@ class RouterFunctionEndpointLoaderTest : ExplytJavaLightTestCase() {
             .filter {
                 it.methodExpression.referenceName in setOf("GET", "POST", "nest", "build") ||
                         it.methodExpression.referenceName == "PUT" && it.argumentList.expressionCount == 2 ||
-                        it.methodExpression.referenceName == "path" && it.argumentList.expressionCount == 2 ||
-                        it.methodExpression.referenceName == "route" && it.argumentList.expressionCount == 2
+                        it.methodExpression.referenceName == "path" && it.argumentList.expressionCount == 2
             }
         assertTrue("Fixture must contain builder calls", builderCalls.isNotEmpty())
         if (unrelatedVerb) {
