@@ -756,6 +756,62 @@ class RouterFunctionEndpointLoaderTest : ExplytJavaLightTestCase() {
         )
     }
 
+    fun testServletNestOfTwoDisjointVerbPredicatesDropsEveryInnerRoute() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_MVC,
+            """route().GET("/s", h::x).nest(RequestPredicates.PUT("/a").and(RequestPredicates.POST("/b")), b -> b.GET("/c", h::list).POST("/d", h::list)).build()""",
+            listOf("/s" to "GET"),
+            predicateFactories = setOf("PUT", "POST")
+        )
+    }
+
+    fun testServletUnresolvableMethodAndVerbPredicateNestKeepsOnlyTheKnownVerb() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_MVC,
+            """route().nest(RequestPredicates.method(m).and(RequestPredicates.PUT("/a")), b -> b.POST("/b", h::list).PUT("/c", h::list)).build()""",
+            listOf("/a/c" to "PUT"),
+            prelude = """org.springframework.http.HttpMethod m = org.springframework.http.HttpMethod.valueOf(System.getenv("M"));""",
+            predicateFactories = setOf("method", "PUT")
+        )
+    }
+
+    fun testServletMethodsNestWithOneUnresolvableVerbKeepsTheInnerRoute() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_MVC,
+            """route().nest(RequestPredicates.methods(org.springframework.http.HttpMethod.PUT, m), b -> b.POST("/b", h::list)).build()""",
+            listOf("/b" to "POST"),
+            prelude = """org.springframework.http.HttpMethod m = org.springframework.http.HttpMethod.valueOf(System.getenv("M"));""",
+            predicateFactories = setOf("methods")
+        )
+    }
+
+    fun testServletMethodNestOfAComputedVerbKeepsTheInnerRoute() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_MVC,
+            """route().nest(RequestPredicates.method(org.springframework.http.HttpMethod.valueOf("PUT")), b -> b.POST("/b", h::list)).build()""",
+            listOf("/b" to "POST"),
+            predicateFactories = setOf("method")
+        )
+    }
+
+    fun testReactivePathFreeMethodNestDropsAnInnerRouteOfAnotherVerb() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_WEBFLUX,
+            """route().GET("/s", h::x).nest(RequestPredicates.method(org.springframework.http.HttpMethod.PUT), b -> b.POST("/b", h::list).PUT("/c", h::list)).build()""",
+            listOf("/c" to "PUT", "/s" to "GET"),
+            predicateFactories = setOf("method")
+        )
+    }
+
+    fun testServletBuilderPathInsideAVerbNestKeepsTheVerbRestriction() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_MVC,
+            """route().nest(RequestPredicates.PUT("/a"), b -> b.path("/b", c -> c.POST("/c", h::list).PUT("/d", h::list))).build()""",
+            listOf("/a/b/d" to "PUT"),
+            predicateFactories = setOf("PUT")
+        )
+    }
+
     private fun assertBuilderRoutes(
         type: EndpointType,
         route: String,

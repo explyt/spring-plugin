@@ -963,6 +963,60 @@ class CoRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
         assertEquals(listOf("/b" to "POST"), webFluxEndpoints())
     }
 
+    fun testNestOfTwoDisjointVerbPredicatesDropsEveryInnerRoute() {
+        addRouterConfig(
+            """
+            (PUT("/a") and POST("/b")).nest {
+                GET("/c", handler::handle)
+                POST("/d", handler::handle)
+            }
+            GET("/s", handler::handle)
+            """
+        )
+        assertCallsResolveTo("PUT", CO_ROUTER_DSL)
+        assertCallsResolveTo("POST", CO_ROUTER_DSL)
+        assertEquals(listOf("/s" to "GET"), webFluxEndpoints())
+    }
+
+    fun testMethodsNestWithOneUnresolvableVerbKeepsTheInnerRoute() {
+        addRouterConfig(
+            """
+            val m = HttpMethod.valueOf(readLine() ?: "PUT")
+            RequestPredicates.methods(HttpMethod.PUT, m).nest { POST("/b", handler::handle) }
+            """,
+            imports = METHOD_PREDICATE_IMPORTS
+        )
+        assertCallsResolveTo("methods", REQUEST_PREDICATES, argumentCount = 2)
+        assertEquals(listOf("/b" to "POST"), webFluxEndpoints())
+    }
+
+    fun testStringNestInsideAVerbNestKeepsTheVerbRestriction() {
+        addRouterConfig(
+            """
+            PUT("/a").nest {
+                "/b".nest {
+                    POST("/c", handler::handle)
+                    PUT("/d", handler::handle)
+                }
+            }
+            """
+        )
+        assertCallsResolveTo("PUT", CO_ROUTER_DSL)
+        assertEquals(listOf("/a/b/d" to "PUT"), webFluxEndpoints())
+    }
+
+    fun testUndecidableNestInsideAVerbNestDropsTheInnerRoute() {
+        addRouterConfig(
+            """
+            val prefix = readLine() ?: "/b"
+            PUT("/a").nest { prefix.nest { PUT("/c", handler::handle) } }
+            GET("/s", handler::handle)
+            """
+        )
+        assertCallsResolveTo("PUT", CO_ROUTER_DSL)
+        assertEquals(listOf("/s" to "GET"), webFluxEndpoints())
+    }
+
     private fun addCombinationRouterConfig(prefixCount: Int, pathCount: Int) {
         addRouterConfig(
             routes = """

@@ -303,6 +303,30 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
         assertEquals(listOf("OrderService.list"), targetsOf(head))
     }
 
+    fun testJavaBuilderRouteOfAnotherVerbUnderAVerbNestNamesNoRoute() = runBlockingReleasingWriteIntent<Unit> {
+        val source = ORDER_ROUTES_SOURCE.replace(
+            ".GET(\"/java/orders\", handler::list)",
+            ".nest(org.springframework.web.reactive.function.server.RequestPredicates.PUT(\"/a\"), b -> b.POST(\"/b\", handler::list))"
+        )
+        val requests = ORDER_TEST_SOURCE.replace("get().uri(\"/java/orders\")", "post().uri(\"/a/b\")")
+        addSource(MAIN_ROOT, ORDER_ROUTES_FILE, source)
+        addSource(TEST_ROOT, ORDER_TEST_FILE, requests, isTestSource = true)
+        assertTrue("Precondition: the builder walker models this router", orderRoutesWalk().modelled)
+        assertRouteNotModelled("/a/b", "POST")
+
+        val head = traceAt(ORDER_ROUTES_FILE, source, "b.POST(\"/b\", handler::list)", includeTests = true)["chain"][0]
+
+        assertEquals("OrderHandler.list", nameOf(head))
+        assertFalse("A route Spring never serves is not named, got ${head["route"]}", head.has("route"))
+        assertNoRequestMatched(head)
+    }
+
+
+    private fun assertNoRequestMatched(head: JsonNode) {
+        val toRoute = head["testUrlReferences"]?.filter { it["endpointPath"].asText() == "/a/b" }.orEmpty()
+        assertTrue("No request is matched to a route Spring never serves, got $toRoute", toRoute.isEmpty())
+    }
+
     private suspend fun assertCatalogNestTrace(
         registration: String,
         path: String,
