@@ -277,10 +277,10 @@ class PackageScanService(private val project: Project) {
     companion object {
         fun getInstance(project: Project): PackageScanService = project.service()
 
-        fun normalizePackage(packageName: String): String {
-            if (packageName.endsWith(".")) return packageName
-            if (packageName.endsWith("*")) return normalizePackage(packageName.substring(0, packageName.length - 2))
-            return "$packageName."
+        fun normalizePackage(packageName: String): String = when {
+            packageName.isEmpty() || packageName.endsWith(".") -> packageName
+            packageName.endsWith("*") -> normalizePackage(packageName.substring(0, packageName.length - 2))
+            else -> "$packageName."
         }
 
         fun getPackages(uAnnotation: UAnnotation, metaAnnotationsHolder: MetaAnnotationsHolder): Set<String> {
