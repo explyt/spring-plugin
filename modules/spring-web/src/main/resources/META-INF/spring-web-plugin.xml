@@ -149,6 +149,17 @@
                          implementationClass="com.explyt.spring.web.inspections.ControllerBeanNameAsPathInspection"/>
 
         <localInspection language="UAST"
+                         shortName="DuplicateActuatorWebExtension"
+                         groupBundle="messages.SpringWebBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.web.notifications"
+                         bundle="messages.SpringWebBundle"
+                         key="explyt.spring.web.inspection.actuator.duplicateWebExtension"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="com.explyt.spring.web.inspections.DuplicateActuatorWebExtensionInspection"/>
+
+        <localInspection language="UAST"
                          shortName="JavaWebClientMethodWrongType"
                          groupBundle="messages.SpringWebBundle"
                          groupPath="Explyt Spring"
