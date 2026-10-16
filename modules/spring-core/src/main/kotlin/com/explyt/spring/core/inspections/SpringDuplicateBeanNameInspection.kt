@@ -13,6 +13,7 @@ import com.explyt.spring.core.service.conditional.ConditionPropertyValue
 import com.explyt.spring.core.service.conditional.PropertyConditionValues
 import com.explyt.spring.core.util.BeanFactoryMethods
 import com.explyt.spring.core.util.SpringBootUtil
+import com.explyt.spring.core.util.SpringCoreUtil.hasComponentAnnotation
 import com.explyt.spring.core.util.SpringCoreUtil.resolveBeanName
 import com.explyt.util.ExplytPsiUtil.getMetaAnnotation
 import com.intellij.codeInspection.InspectionManager
@@ -38,9 +39,9 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
         val psiClass = aClass.javaPsi
         val collisions = collisionsIn(psiClass).ifEmpty { return null }
         val module = ModuleUtilCore.findModuleForPsiElement(psiClass)
-        return collisions.mapNotNull { collision ->
+        return collisions.filterNot { it.isReportedByDeclaringComponent(psiClass, module) }.mapNotNull { collision ->
             overridingOf(aClass, module, collision).takeUnless { it == Overriding.ALLOWED }
-                ?.let { collision.toProblem(manager, isOnTheFly, it) }
+                ?.let { collision.toProblem(aClass, manager, isOnTheFly, it) }
         }.toTypedArray()
     }
 
@@ -53,8 +54,17 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
                 firstDeclarations[name]?.takeIf { it.name != method.name }?.let { Collision(name, it, method) }
             }
             names.forEach { firstDeclarations.putIfAbsent(it, method) }
-            collision?.takeIf { psiClass.manager.areElementsEquivalent(method.containingClass, psiClass) }
+            collision
         }.toList()
+    }
+
+    private fun Collision.isReportedByDeclaringComponent(psiClass: PsiClass, module: Module?): Boolean {
+        val declaringClass = first.containingClass ?: return false
+        if (first.isDeclaredIn(psiClass)) return false
+        if (!psiClass.manager.areElementsEquivalent(declaringClass, second.containingClass)) return false
+        if (!declaringClass.hasComponentAnnotation()) return false
+        val declaringUClass = declaringClass.toUElementOfType<UClass>() ?: return false
+        return overridingOf(declaringUClass, module, this) != Overriding.ALLOWED
     }
 
     private fun PsiMethod.isConditional(): Boolean = getMetaAnnotation(SpringCoreClasses.CONDITIONAL) != null
@@ -118,11 +128,14 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
     }
 
     private fun Collision.toProblem(
+        aClass: UClass,
         manager: InspectionManager,
         isOnTheFly: Boolean,
         overriding: Overriding
     ): ProblemDescriptor? {
-        val anchor = second.toUElementOfType<UMethod>()?.uastAnchor?.sourcePsi ?: return null
+        val psiClass = aClass.javaPsi
+        val declared = listOf(second, first).firstOrNull { it.isDeclaredIn(psiClass) }
+        val anchor = (declared?.toUElementOfType<UMethod>() ?: aClass).uastAnchor?.sourcePsi ?: return null
         val (messageKey, highlightType) = when (overriding) {
             Overriding.UNRESOLVED -> UNRESOLVED_OVERRIDING_MESSAGE to ProblemHighlightType.WARNING
             Overriding.IGNORED_ON_UNKNOWN_SPRING -> UNKNOWN_SPRING_OVERRIDING_MESSAGE to ProblemHighlightType.WARNING
@@ -132,14 +145,30 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
             Overriding.DISALLOWED_IN_REGISTRATION_ORDER -> REGISTRATION_ORDER_MESSAGE to ProblemHighlightType.WARNING
             else -> MESSAGE to ProblemHighlightType.GENERIC_ERROR_OR_WARNING
         }
+        val description = if (declared != null) {
+            val other = if (declared == second) first else second
+            SpringCoreBundle.message(messageKey, beanName, other.labelIn(psiClass))
+        } else {
+            SpringCoreBundle.message(
+                INHERITED_METHODS_MESSAGE,
+                second.labelIn(psiClass),
+                SpringCoreBundle.message(messageKey, beanName, first.labelIn(psiClass))
+            )
+        }
         return manager.createProblemDescriptor(
             anchor,
-            SpringCoreBundle.message(messageKey, beanName, first.name),
+            description,
             isOnTheFly,
             emptyArray(),
             highlightType
         )
     }
+
+    private fun PsiMethod.isDeclaredIn(psiClass: PsiClass): Boolean =
+        psiClass.manager.areElementsEquivalent(containingClass, psiClass)
+
+    private fun PsiMethod.labelIn(psiClass: PsiClass): String =
+        if (isDeclaredIn(psiClass)) name else listOfNotNull(containingClass?.name, name).joinToString(".")
 
     private data class Collision(val beanName: String, val first: PsiMethod, val second: PsiMethod)
 
@@ -172,6 +201,7 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
         const val IGNORED_METHOD_MESSAGE = "explyt.spring.inspection.bean.name.duplicate.ignored"
         const val UNKNOWN_SPRING_VERSION_MESSAGE = "explyt.spring.inspection.bean.name.duplicate.version.unknown"
         const val REGISTRATION_ORDER_MESSAGE = "explyt.spring.inspection.bean.name.duplicate.alias.order"
+        const val INHERITED_METHODS_MESSAGE = "explyt.spring.inspection.bean.name.duplicate.inherited"
         const val UNKNOWN_SPRING_OVERRIDING_MESSAGE =
             "explyt.spring.inspection.bean.name.duplicate.overriding.unknown.spring"
     }
