@@ -353,6 +353,56 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
         assertEquals("PUT /a/b", head["route"]?.asText())
     }
 
+    fun testCoRouterRouteServedForSeveralVerbsNamesThemInDeclarationOrder() = runBlockingReleasingWriteIntent<Unit> {
+        val source = addCatalogRouteServedForSeveralVerbs()
+
+        val head = traceAt(CATALOG_FILE, source, "path(\"/b\", handler::list)")["chain"][0]
+
+        assertEquals("CatalogHandler.list", nameOf(head))
+        assertEquals("PUT|POST /a/b", head["route"]?.asText())
+    }
+
+    fun testCoRouterRouteServedForSeveralVerbsListsOnlyRequestsOfThoseVerbs() = runBlockingReleasingWriteIntent<Unit> {
+        val source = addCatalogRouteServedForSeveralVerbs()
+        val requests = CATALOG_TEST_SOURCE
+            .replace("get().uri(\"/co/items\")", "put().uri(\"/a/b\")")
+            .replace("get().uri(\"/co/items/one\")", "post().uri(\"/a/b\")")
+            .replace("delete().uri(\"/co/items\")", "get().uri(\"/a/b\")")
+        addSource(TEST_ROOT, CATALOG_TEST_FILE, requests, isTestSource = true)
+
+        val head = traceAt(CATALOG_FILE, source, "path(\"/b\", handler::list)", includeTests = true)["chain"][0]
+
+        assertEquals("CatalogHandler.list", nameOf(head))
+        val references = head["testUrlReferences"]
+        assertNotNull("A route served for several verbs carries testUrlReferences", references)
+        assertEquals(listOf("/a/b"), references.map { it["endpointPath"].asText() })
+        assertEquals(listOf("$TEST_ROOT/$CATALOG_TEST_FILE"), references.map { it["filePath"].asText() })
+        assertEquals(
+            listOf(lineOf(requests, "put().uri(\"/a/b\")"), lineOf(requests, "post().uri(\"/a/b\")")),
+            references.single()["lines"].map { it.asInt() }.sorted()
+        )
+    }
+
+    private suspend fun addCatalogRouteServedForSeveralVerbs(): String {
+        val source = CATALOG_SOURCE.replace(
+            "GET(\"/co/items\", handler::list)",
+            """
+            org.springframework.web.reactive.function.server.RequestPredicates.methods(
+                org.springframework.http.HttpMethod.PUT, org.springframework.http.HttpMethod.POST
+            ).and(org.springframework.web.reactive.function.server.RequestPredicates.path("/a")).nest {
+                path("/b", handler::list)
+            }
+            """.trimIndent()
+        )
+        addSource(MAIN_ROOT, CATALOG_FILE, source)
+        val endpoints = mapper.readTree(
+            toolset.findEndpoint(urlPattern = "/a/b", projectPath = project.basePath!!)
+        )["endpoints"].filter { it["fullPath"].asText() == "/a/b" }
+        assertEquals("Precondition: exactly one route is modelled at /a/b", 1, endpoints.size)
+        assertEquals(listOf("PUT", "POST"), endpoints.single()["httpMethods"].map { it.asText() })
+        return source
+    }
+
     private fun assertNoRequestMatched(head: JsonNode) {
         val toRoute = head["testUrlReferences"]?.filter { it["endpointPath"].asText() == "/a/b" }.orEmpty()
         assertTrue("No request is matched to a route Spring never serves, got $toRoute", toRoute.isEmpty())
