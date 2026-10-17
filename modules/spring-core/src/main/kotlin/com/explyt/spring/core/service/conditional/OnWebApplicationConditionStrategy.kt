@@ -5,7 +5,6 @@
 
 package com.explyt.spring.core.service.conditional
 
-
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.core.service.PsiBean
@@ -19,7 +18,7 @@ import org.jetbrains.uast.UExpression
 /**
  * see org.springframework.boot.autoconfigure.condition.OnWebApplicationCondition
  */
-class OnWebApplicationConditionStrategy(module: Module) :
+internal class OnWebApplicationConditionStrategy(module: Module) :
     WebApplicationTypeConditionStrategy(module, SpringCoreClasses.CONDITIONAL_ON_WEB_APPLICATION) {
 
     override fun unmetRequirement(
@@ -42,7 +41,7 @@ class OnWebApplicationConditionStrategy(module: Module) :
     }
 }
 
-class OnNotWebApplicationConditionStrategy(module: Module) :
+internal class OnNotWebApplicationConditionStrategy(module: Module) :
     WebApplicationTypeConditionStrategy(module, SpringCoreClasses.CONDITIONAL_ON_NOT_WEB_APPLICATION) {
 
     override fun unmetRequirement(
@@ -50,7 +49,7 @@ class OnNotWebApplicationConditionStrategy(module: Module) :
     ): String? = if (web.matches(WebType.ANY)) "the application runs as a web application" else null
 }
 
-abstract class WebApplicationTypeConditionStrategy(protected val module: Module, private val annotationFqn: String) :
+internal abstract class WebApplicationTypeConditionStrategy(protected val module: Module, private val annotationFqn: String) :
     AnnotationConditionStrategy(
         listOf(SpringSearchService.getInstance(module.project).getMetaAnnotations(module, annotationFqn)),
         setOf(ConditionAssumption.COMPILE_CLASSPATH_IS_RUNTIME)
@@ -75,7 +74,7 @@ abstract class WebApplicationTypeConditionStrategy(protected val module: Module,
     }
 }
 
-class WebApplication(module: Module) {
+internal class WebApplication(module: Module) {
     val type: BootWebApplicationType = BootWebApplicationType.cachedOf(module)
     private val runtimeClasspath by lazy { RuntimeClasspath(module) }
 
@@ -99,6 +98,6 @@ class WebApplication(module: Module) {
     }
 }
 
-enum class WebType {
+internal enum class WebType {
     ANY, SERVLET, REACTIVE
 }

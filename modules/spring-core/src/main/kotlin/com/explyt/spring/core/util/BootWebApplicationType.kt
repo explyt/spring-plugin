@@ -69,14 +69,12 @@ enum class BootWebApplicationType {
         private const val REACTOR_MONO = "reactor.core.publisher.Mono"
 
         private val SERVLET_INDICATORS = listOf(SERVLET_API, CONFIGURABLE_WEB_CONTEXT)
-
         private val WEBMVC_INDICATORS = listOf(SERVLET_API, DISPATCHER_SERVLET, CONFIGURABLE_WEB_CONTEXT)
         private val WEBFLUX_INDICATORS = listOf(REACTOR_MONO, DISPATCHER_HANDLER)
     }
-
 }
 
-class RuntimeClasspath(module: Module) {
+internal class RuntimeClasspath(module: Module) {
     private val facade = JavaPsiFacade.getInstance(module.project)
     private val scope = module.getModuleRuntimeScope(false)
     private val known = HashMap<String, Boolean>()
