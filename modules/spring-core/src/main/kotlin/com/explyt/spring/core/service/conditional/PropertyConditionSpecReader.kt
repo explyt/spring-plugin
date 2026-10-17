@@ -8,11 +8,11 @@ package com.explyt.spring.core.service.conditional
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.intellij.codeInsight.AnnotationUtil
-import com.intellij.psi.JavaPsiFacade
+
 import com.intellij.psi.PsiAnnotation
 import com.intellij.psi.PsiAnnotationMemberValue
 import com.intellij.psi.PsiArrayInitializerMemberValue
-import com.intellij.psi.PsiExpression
+
 import com.intellij.psi.PsiMember
 import org.jetbrains.uast.UAnnotation
 import org.jetbrains.uast.toUElementOfType
@@ -47,15 +47,17 @@ class PropertyConditionSpecReader(private val propertyAnnotations: MetaAnnotatio
     private fun metaAnnotationSpecs(annotation: PsiAnnotation, visited: Set<String>): List<PropertyConditionSpec> =
         annotation.resolveAnnotationType()?.annotations.orEmpty().flatMap { specsOf(it, visited) }
 
-    @Suppress("DEPRECATION")
     private fun propertySpec(annotation: PsiAnnotation) = PropertyConditionSpec.of(
-        prefix = strings(propertyAnnotations.getAnnotationMemberValues(annotation, setOf(PREFIX))).firstOrNull(),
-        names = strings(propertyAnnotations.getAnnotationMemberValues(annotation, setOf(NAME, VALUE))),
-        havingValue = strings(propertyAnnotations.getAnnotationMemberValues(annotation, setOf(HAVING_VALUE))).firstOrNull(),
-        matchIfMissing = propertyAnnotations.getAnnotationMemberValues(annotation, setOf(MATCH_IF_MISSING))
-            .firstNotNullOfOrNull { booleanConstant(it) } ?: false,
+        prefix = mergedStrings(annotation, PREFIX).firstOrNull(),
+        names = mergedStrings(annotation, NAME, VALUE),
+        havingValue = mergedStrings(annotation, HAVING_VALUE).firstOrNull(),
+        matchIfMissing = propertyAnnotations.mergedValuesOf(annotation, setOf(MATCH_IF_MISSING))
+            .firstNotNullOfOrNull { it.booleanValue } ?: false,
         unreadableNames = hasUnreadableSourceValue(annotation, setOf(PREFIX, NAME, VALUE))
     )
+
+    private fun mergedStrings(annotation: PsiAnnotation, vararg attributes: String): List<String> =
+        propertyAnnotations.mergedValuesOf(annotation, attributes.toSet()).mapNotNull { it.stringValue }.distinct()
 
     private fun hasUnreadableSourceValue(annotation: PsiAnnotation, attributes: Set<String>): Boolean {
         val source = annotation.toUElementOfType<UAnnotation>() ?: return false
@@ -74,11 +76,6 @@ class PropertyConditionSpecReader(private val propertyAnnotations: MetaAnnotatio
         matchIfMissing = AnnotationUtil.getBooleanAttributeValue(annotation, MATCH_IF_MISSING) ?: false
     )
 
-    private fun booleanConstant(value: PsiAnnotationMemberValue): Boolean? {
-        val expression = value as? PsiExpression ?: return null
-        return JavaPsiFacade.getInstance(value.project).constantEvaluationHelper
-            .computeConstantExpression(expression) as? Boolean
-    }
 
     private fun repeated(container: PsiAnnotation): List<PsiAnnotation> {
         val nested = container.findAttributeValue(VALUE)?.let { flatten(it) }

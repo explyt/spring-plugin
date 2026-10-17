@@ -11,8 +11,8 @@ import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.core.service.PsiBean
 import com.explyt.spring.core.service.SpringSearchService
 import com.intellij.openapi.module.Module
-import com.intellij.psi.PsiAnnotationMemberValue
 import com.intellij.psi.PsiMember
+import org.jetbrains.uast.UExpression
 
 /**
  * see org.springframework.boot.autoconfigure.condition.OnWebApplicationCondition
@@ -31,10 +31,8 @@ class OnWebApplicationConditionStrategy(val module: Module) : AnnotationConditio
     override fun unmetRequirement(
         holder: MetaAnnotationsHolder, carrier: PsiMember, activeBeans: Collection<PsiBean>
     ): String? {
-        val webType = holder.getAnnotationMemberValues(carrier, setOf("type"))
-            .asSequence()
-            .mapNotNull { getWebType(it) }
-            .firstOrNull() ?: WebType.ANY
+        val webType = holder.mergedValuesOf(carrier, setOf("type"))
+            .firstNotNullOfOrNull { webTypeOf(it) } ?: WebType.ANY
         val hasReactive = { LibraryClassCache.searchForLibraryClass(module, REACTIVE_WEB_APPLICATION_CLASS) != null }
         val hasServlet = { LibraryClassCache.searchForLibraryClass(module, SERVLET_WEB_APPLICATION_CLASS) != null }
         val matches = when (webType) {
@@ -45,13 +43,14 @@ class OnWebApplicationConditionStrategy(val module: Module) : AnnotationConditio
         return if (matches) null else "no ${webType.name.lowercase()} web application classes on the classpath"
     }
 
-    private fun getWebType(it: PsiAnnotationMemberValue): WebType? {
-        val lowercaseTypeString = it.text?.lowercase()
-        return if (lowercaseTypeString?.contains(WebType.REACTIVE.name.lowercase()) == true) {
-            WebType.REACTIVE
-        } else if (lowercaseTypeString?.contains(WebType.SERVLET.name.lowercase()) == true) {
-            WebType.SERVLET
-        } else null
+    private fun webTypeOf(value: UExpression): WebType? {
+        value.enumConstantName?.let { name -> return SPECIFIC_WEB_TYPES.firstOrNull { it.name == name } }
+        val text = value.sourcePsi?.text?.lowercase() ?: return null
+        return SPECIFIC_WEB_TYPES.firstOrNull { it.name.lowercase() in text }
+    }
+
+    private companion object {
+        val SPECIFIC_WEB_TYPES = listOf(WebType.REACTIVE, WebType.SERVLET)
     }
 }
 
