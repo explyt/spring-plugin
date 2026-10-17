@@ -22,6 +22,7 @@ val allCompileProjects = listOf(
     "spring-cloud",
     "spring-initializr",
     "spring-integration",
+    "spring-mybatis",
     "spring-messaging",
     "spring-aop",
     "jpa",
