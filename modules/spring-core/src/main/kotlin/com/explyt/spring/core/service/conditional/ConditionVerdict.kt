@@ -46,6 +46,20 @@ fun Sequence<ConditionVerdict>.combined(): ConditionVerdict {
     return if (undecided.isEmpty()) ConditionVerdict.Active else ConditionVerdict.Undecided(undecided)
 }
 
+fun Sequence<ConditionVerdict>.anyActive(): ConditionVerdict {
+    val inactive = mutableListOf<ConditionVerdict.Inactive>()
+    val undecided = mutableListOf<ConditionEvidence>()
+    for (verdict in this) {
+        when (verdict) {
+            ConditionVerdict.Active -> return verdict
+            is ConditionVerdict.Inactive -> inactive += verdict
+            is ConditionVerdict.Undecided -> undecided += verdict.conditions
+        }
+    }
+    return if (undecided.isEmpty()) inactive.firstOrNull() ?: ConditionVerdict.Active
+    else ConditionVerdict.Undecided(undecided)
+}
+
 val PsiMember.conditionCarrierFqn: String
     get() = if (this is PsiClass) qualifiedName ?: name.orEmpty()
     else "${containingClass?.qualifiedName}#$name"
