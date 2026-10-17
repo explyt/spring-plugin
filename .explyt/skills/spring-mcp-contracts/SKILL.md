@@ -38,6 +38,8 @@ Tool names, response fields and API names in this skill are **examples from the 
 - Keep a fix to a shared non-MCP helper (for example `SpringWebUtil`, an endpoint loader, `EndpointPathPatterns` once a non-MCP caller uses it) out of the MCP commit. Lines without MCP Server skip MCP commits whole during backports, so the helper fix would silently stay off them. Land it as its own PR from `main` and stack the MCP PR on it.
 - Keep existing response shapes byte-identical for the common case: a new field that only some answers need is nullable and serialized `NON_NULL`, or is present in every answer with a documented `null`. Never rename or retype a field silently; a changed meaning of an existing field (for example a line number) is a breaking change named in CHANGELOG and the PR.
 - Report a guess and a declared fact in different fields (for example `assumedPrefix` versus `basePath`). Never let a guess reuse a field whose value the configuration states.
+- Keep every tool name within 40 characters in the `explyt_<verb>_spring_<subject>` shape: clients expose `<server prefix><name>` capped at 64 characters and mangle longer names. A rename adds no alias and updates every description that names the tool.
+- Treat a concrete tool description as a falsifiable contract: rewrite it and re-read the code it describes in the same pass. Point every noun at the field or branch producing it, check which fallback each "or"/"else" of a stated derivation actually takes, never promise a capability the data source cannot carry (for example aliases in a mode that does not export them), and keep input vocabulary (parameter values) apart from response vocabulary (field values).
 
 ## Process
 
@@ -100,4 +102,4 @@ Report changed paths, the demonstrated red failure, green commands with exit cod
 - [ ] A call trace holds project methods only, marks external leaves, reports call-site lines and source names, and searches tests for traced project methods only.
 - [ ] Every independent production change has its own failing red phase; no mutation stayed green.
 - [ ] A shared non-MCP helper change ships in its own PR from `main`, with the MCP PR stacked on it.
-- [ ] Changelog, wiki and tool descriptions match the actual fields and limitations, and imply no runtime guarantee.
+- [ ] Changelog, wiki and tool descriptions match the actual fields and limitations, and imply no runtime guarantee; every tool name stays within 40 characters.
