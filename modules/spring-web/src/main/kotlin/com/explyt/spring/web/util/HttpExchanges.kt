@@ -49,7 +49,7 @@ object HttpExchanges {
         val annotated = owner.toUElement() as? UAnnotated ?: return declaredExchangeOf(owner, exchangeMah)
         val attributes = comparedAttributesOf(owner, exchangeMah)
         if (!conflictsFail(owner)) {
-            return exchangeMah.nearestAnnotation(annotated)
+            return firstDirectlyDeclared(annotated, exchangeMah)
                 ?.let { mergedExchangeOf(it, attributes, exchangeMah) }
                 ?.let { Mapped(listOf(it.url), it.methods) }
                 ?: declaredExchangeOf(owner, exchangeMah)
@@ -63,6 +63,11 @@ object HttpExchanges {
             readable.size == 1 && null !in exchanges -> readable.single().let { Mapped(listOf(it.url), it.methods) }
             else -> declaredExchangeOf(owner, exchangeMah)
         }
+    }
+
+    private fun firstDirectlyDeclared(annotated: UAnnotated, exchangeMah: MetaAnnotationsHolder): UAnnotation? {
+        val exchanges = annotated.uAnnotations.filter { exchangeMah.contains(it) }
+        return exchanges.firstOrNull { it.qualifiedName == exchangeMah.getRootClassQualified() } ?: exchanges.firstOrNull()
     }
 
     private fun conflictsFail(owner: PsiMember): Boolean {
