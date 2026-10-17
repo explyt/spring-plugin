@@ -5,9 +5,11 @@
 
 package com.explyt.spring.data.inspection.java
 
+import com.explyt.spring.data.SpringDataBundle
 import com.explyt.spring.data.inspection.SpringDataEnableInspection
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.intellij.codeInsight.daemon.impl.HighlightInfo
 import com.intellij.openapi.util.registry.Registry
 
 class SpringDataEnableInspectionTest : ExplytJavaLightTestCase() {
@@ -72,6 +74,46 @@ class SpringDataEnableInspectionTest : ExplytJavaLightTestCase() {
             """.trimIndent()
         )
         myFixture.testHighlighting("TestRepository.java")
+    }
+
+    fun testRepositoryInNamedPackageIsScannedByDefaultPackageApplication() {
+        myFixture.addFileToProject(
+            "DemoApplication.java",
+            """
+            @org.springframework.boot.autoconfigure.SpringBootApplication
+            public class DemoApplication {}
+            """.trimIndent()
+        )
+
+        assertEmpty(packageProblemsOfRepositoryIn("com.x"))
+    }
+
+    fun testRepositoryOutsideNamedPackageApplicationIsReported() {
+        myFixture.addFileToProject(
+            "com/app/AppApplication.java",
+            """
+            package com.app;
+
+            @org.springframework.boot.autoconfigure.SpringBootApplication
+            public class AppApplication {}
+            """.trimIndent()
+        )
+
+        assertSize(1, packageProblemsOfRepositoryIn("com.x"))
+    }
+
+    private fun packageProblemsOfRepositoryIn(packageName: String): List<HighlightInfo> {
+        val repository = myFixture.addFileToProject(
+            "${packageName.replace('.', '/')}/PersonRepository.java",
+            """
+            package $packageName;
+
+            public interface PersonRepository extends org.springframework.data.repository.Repository<Object, Long> {}
+            """.trimIndent()
+        )
+        myFixture.configureFromExistingVirtualFile(repository.virtualFile)
+        val message = SpringDataBundle.message("explyt.spring.data.inspection.enable.package")
+        return myFixture.doHighlighting().filter { it.description == message }
     }
 
     /*  Access to tree elements not allowed for '/src/com/app/Application.java'.
