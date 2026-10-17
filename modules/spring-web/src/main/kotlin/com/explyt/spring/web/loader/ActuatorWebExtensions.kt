@@ -43,10 +43,8 @@ class ActuatorWebExtension(
 )
 
 /**
- * The project web extensions of a module's Actuator endpoints. Boot collects extensions from
- * `beanNamesForAnnotationIncludingAncestors(EndpointExtension)`, so a class that is not a bean extends nothing; the
- * static bean model misses some beans, such as those in the default package, so [ActuatorWebExtension.isBean] is
- * reported rather than applied.
+ * The project web extensions of a module's Actuator endpoints. Only beans are applied, as Boot collects extensions
+ * from `beanNamesForAnnotationIncludingAncestors(EndpointExtension)`.
  */
 object ActuatorWebExtensions {
 
@@ -57,6 +55,7 @@ object ActuatorWebExtensions {
     fun appliedTo(endpointClass: PsiClass, module: Module): List<ActuatorWebExtension> {
         val endpointInTests = isInTestSources(endpointClass)
         return byEndpoint(module)[endpointClass.qualifiedName].orEmpty()
+            .filter { it.isBean }
             .filter { endpointInTests || !isInTestSources(it.psiClass) }
             .filterNot { it.verdict is ConditionVerdict.Inactive }
     }
