@@ -260,15 +260,11 @@ class BeanListingPageTest : ExplytJavaLightTestCase() {
         copyDemoApplication()
         val page = listing(DEMO_APPLICATION, "CONTROLLER", origin = "LIBRARY")
         val beans = rows(page)
-        val active = beans.takeWhile { it["condition"]?.get("state")?.asText() != "INACTIVE" }
-        val inactive = beans.drop(active.size)
-        assertEquals(setOf("basicErrorController", "graphQlRSocketController"),
-            active.map { it["beanName"].asText() }.toSet())
-        assertEquals(setOf("basicErrorController", "graphQlRSocketController"),
-            inactive.map { it["beanName"].asText() }.toSet())
-        assertTrue("inactive library rows follow the active ones: $beans",
-            inactive.all { it["condition"]["state"].asText() == "INACTIVE" })
-        assertEquals(active.size + inactive.size, page["totalCount"].asInt())
+        assertEquals("no scan reaches the library controllers, so only their auto-configuration factories remain: $beans",
+            listOf("basicErrorController", "graphQlRSocketController"), beans.map { it["beanName"].asText() })
+        assertTrue("both factories are inactive without servlet API and GraphQL: $beans",
+            beans.all { it["condition"]?.get("state")?.asText() == "INACTIVE" })
+        assertEquals(2, page["totalCount"].asInt())
         assertTrue(beans.all { it["origin"].asText() == "LIBRARY" })
         assertFalse(page.has("unknownOriginCount"))
         assertFalse("listed inactive library rows are not counted again: $page", page.has("inactiveLibraryCount"))
