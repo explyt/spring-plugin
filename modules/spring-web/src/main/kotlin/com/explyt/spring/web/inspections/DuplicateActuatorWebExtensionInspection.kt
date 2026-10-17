@@ -36,7 +36,7 @@ class DuplicateActuatorWebExtensionInspection : SpringWebBaseUastLocalInspection
 
         val exposure by lazy { exposureRule(module) }
         return endpointsOf(module).mapNotNull { endpoint ->
-            val extensions = ActuatorWebExtensions.appliedTo(endpoint.psiClass, module).filter { it.isBean }
+            val extensions = ActuatorWebExtensions.appliedTo(endpoint.psiClass, module)
             if (extensions.size < 2) return@mapNotNull null
             val carried = extensions.firstOrNull { psiClass.isEquivalentTo(it.carrier) } ?: return@mapNotNull null
             val anchor = aClass.uAnnotations.firstOrNull { it.qualifiedName == carried.annotationName }?.sourcePsi
