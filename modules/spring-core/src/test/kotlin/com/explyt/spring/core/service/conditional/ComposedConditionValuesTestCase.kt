@@ -343,7 +343,8 @@ abstract class ComposedConditionValuesTestCase : BeanConditionTestCase() {
     private fun assertServletApplication() {
         val scope = GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module)
         val facade = JavaPsiFacade.getInstance(project)
-        assertNotNull("Precondition: servlet web classes are on the classpath", facade.findClass(SERVLET_MARKER, scope))
+        assertNotNull("Precondition: servlet API is on the classpath", facade.findClass(SERVLET_API, scope))
+        assertNotNull("Precondition: configurable servlet context is on the classpath", facade.findClass(SERVLET_MARKER, scope))
         assertNull("Precondition: reactive web classes are absent", facade.findClass(REACTIVE_MARKER, scope))
     }
 
@@ -373,7 +374,8 @@ abstract class ComposedConditionValuesTestCase : BeanConditionTestCase() {
         const val SERVLET = "SERVLET"
         const val REACTIVE = "REACTIVE"
         const val ALIAS_FOR = "org.springframework.core.annotation.AliasFor"
-        const val SERVLET_MARKER = "org.springframework.web.context.support.GenericWebApplicationContext"
+        const val SERVLET_API = "jakarta.servlet.Servlet"
+        const val SERVLET_MARKER = "org.springframework.web.context.ConfigurableWebApplicationContext"
         const val REACTIVE_MARKER = "org.springframework.web.reactive.HandlerResult"
         const val CONDITIONAL_ON_MISSING_BEAN = "org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean"
         const val CONDITIONAL_ON_WEB_APPLICATION =
