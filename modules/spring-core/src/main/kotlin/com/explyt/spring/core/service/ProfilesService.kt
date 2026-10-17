@@ -90,6 +90,9 @@ class ProfilesService(private val project: Project) {
         return if (undecided) ProfileActivation.UNDECIDED else ProfileActivation.INACTIVE
     }
 
+    fun profileExpressionsOf(member: PsiMember, annotations: MetaAnnotationsHolder): List<String> =
+        profileValuesOf(member, annotations).filterNotNull()
+
     private fun profileValuesOf(member: PsiMember, annotations: MetaAnnotationsHolder): List<String?> {
         val annotated = member.toUElement() as? UAnnotated ?: return listOf(null)
         return annotated.uAnnotations
