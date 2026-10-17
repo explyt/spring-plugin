@@ -6,6 +6,7 @@
 package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
+import com.explyt.spring.core.service.ProfileActivation
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.service.beans.BeanConditionRecord
 import com.explyt.spring.core.service.conditional.ConditionReason
@@ -60,6 +61,59 @@ class SpringBootApplicationMcpToolsetActuatorBeanConditionTest : ExplytKotlinLig
         assertEquals(PS_ETL, condition["carrier"]?.asText())
         assertTrue("detail names the gating key, got $condition", condition["detail"]?.asText().orEmpty().contains(GATING_KEY))
         assertFalse("reasons belong to UNDECIDED only, got $condition", condition.has("reasons"))
+    }
+
+    fun testProfileInactiveEndpointNamesTheProfileAsItsBeanCondition() = runBlockingReleasingWriteIntent<Unit> {
+        addProperties(EXPOSE_ALL, "spring.profiles.active=prod")
+        addDevOnlyEndpoint()
+        assertEquals(
+            "precondition: $DEV_ONLY is inactive by its profile",
+            ProfileActivation.INACTIVE,
+            SpringSearchService.getInstance(project).profileActivation(myFixture.findClass(DEV_ONLY))
+        )
+        assertEndpointModelSays<ConditionVerdict.Inactive>(DEV_ONLY)
+
+        val devOnly = exactMatch(DEV_ONLY_PATH)
+
+        assertEquals("EXPOSED", devOnly["exposed"]?.asText())
+        val condition = beanConditionOf(devOnly)
+        assertEquals("INACTIVE", condition["state"]?.asText())
+        assertEquals(PROFILE, condition["annotation"]?.asText())
+        assertEquals(DEV_ONLY, condition["carrier"]?.asText())
+        assertTrue("detail names the profile, got $condition", condition["detail"]?.asText().orEmpty().contains("'dev'"))
+        assertFalse("reasons belong to UNDECIDED only, got $condition", condition.has("reasons"))
+    }
+
+    fun testProfileActiveEndpointHasNoBeanCondition() = runBlockingReleasingWriteIntent<Unit> {
+        addProperties(EXPOSE_ALL, "spring.profiles.active=dev")
+        addDevOnlyEndpoint()
+        assertEndpointModelSays<ConditionVerdict.Active>(DEV_ONLY)
+
+        val devOnly = exactMatch(DEV_ONLY_PATH)
+
+        assertFalse("an active endpoint carries no beanCondition, got $devOnly", devOnly.has("beanCondition"))
+    }
+
+    private fun addDevOnlyEndpoint() {
+        myFixture.addFileToProject(
+            "com/app/DevOnlyEndpoint.kt", """
+            package com.app
+
+            import org.springframework.boot.actuate.endpoint.annotation.Endpoint
+            import org.springframework.boot.actuate.endpoint.annotation.ReadOperation
+            import org.springframework.context.annotation.Profile
+            import org.springframework.stereotype.Component
+
+            @Component
+            @Endpoint(id = "devOnly")
+            @Profile("dev")
+            class DevOnlyEndpoint {
+                @ReadOperation
+                fun status() = "idle"
+            }
+            """.trimIndent()
+        )
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
     }
 
     fun testPropertyGatedEndpointWithMatchingPropertyHasNoBeanCondition() = runBlockingReleasingWriteIntent<Unit> {
@@ -514,6 +568,9 @@ class SpringBootApplicationMcpToolsetActuatorBeanConditionTest : ExplytKotlinLig
     private companion object {
         const val CONDITIONAL_ON_PROPERTY = "org.springframework.boot.autoconfigure.condition.ConditionalOnProperty"
         const val GATING_KEY = "clickhouse.enabled"
+        const val PROFILE = "org.springframework.context.annotation.Profile"
+        const val DEV_ONLY = "com.app.DevOnlyEndpoint"
+        const val DEV_ONLY_PATH = "/actuator/devOnly"
         const val EXPOSE_ALL = "management.endpoints.web.exposure.include=*"
         const val PS_ETL = "com.app.PsEtlEndpoint"
         const val PS_ETL_PATH = "/actuator/psEtl"

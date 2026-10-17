@@ -7,6 +7,7 @@ package com.explyt.spring.ai.mcp.beans
 
 import com.explyt.spring.ai.mcp.BoundedPageWriter
 import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
+import com.explyt.spring.core.service.ProfileActivation
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.service.beans.NativeBeanSnapshotReader
 import com.explyt.spring.core.service.beans.ScopedBeanInjectionResolver
@@ -465,8 +466,29 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
         assertTrue("detail must name the property, got $condition", "etl.enabled" in condition["detail"].asText())
     }
 
-    fun testProfileInactiveBeanIsFilteredBeforeTheVerdictAndStaysUnlisted() = runBlockingReleasingWriteIntent {
+    fun testProfileInactiveBeanIsAnInactiveCandidateNamingTheProfile() = runBlockingReleasingWriteIntent {
         addProperties("spring.profiles.active=prod")
+        addDevOnlyService()
+
+        val root = call(beanName = "devOnlyService")
+
+        assertEquals("NONE", root["outcome"].asText())
+        assertEquals(0, root["totalCount"].asInt())
+        assertProfileInactiveCandidate(singleInactiveCandidateOf(root))
+    }
+
+    fun testTypeLookupListsTheProfileInactiveBeanAsAnInactiveCandidate() = runBlockingReleasingWriteIntent {
+        addProperties("spring.profiles.active=prod")
+        addDevOnlyService()
+
+        val root = call(typeFqn = DEV_ONLY_SERVICE)
+
+        assertEquals("NONE", root["outcome"].asText())
+        assertEquals(0, root["totalCount"].asInt())
+        assertProfileInactiveCandidate(singleInactiveCandidateOf(root))
+    }
+
+    private fun addDevOnlyService() {
         addJava(
             "DevOnlyService",
             """
@@ -480,14 +502,23 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
             public class DevOnlyService {}
             """
         )
-        val verdict = verdictOf("com.explyt.demo.DevOnlyService")
-        assertNull("Precondition: a profile-inactive bean never reaches the verdicts, got $verdict", verdict)
+        val service = myFixture.findClass(DEV_ONLY_SERVICE)
+        assertNotNull("Precondition: @Profile resolves to the Spring annotation", service.getAnnotation(PROFILE))
+        assertEquals(
+            "Precondition: DevOnlyService is inactive by its profile",
+            ProfileActivation.INACTIVE,
+            SpringSearchService.getInstance(project).profileActivation(service)
+        )
+    }
 
-        val root = call(beanName = "devOnlyService")
-
-        assertEquals("NONE", root["outcome"].asText())
-        assertEquals("COMPLETE", root["matchCompleteness"].asText())
-        assertTrue("profile-inactive beans are not listed yet, got $root", inactiveCandidatesOf(root).isEmpty())
+    private fun assertProfileInactiveCandidate(inactive: JsonNode) {
+        assertEquals("devOnlyService", inactive["name"].asText())
+        assertEquals(DEV_ONLY_SERVICE, inactive["type"].asText())
+        val condition = conditionOf(inactive)
+        assertEquals("INACTIVE", condition["state"].asText())
+        assertEquals(PROFILE, condition["annotation"].asText())
+        assertEquals(DEV_ONLY_SERVICE, condition["carrier"].asText())
+        assertTrue("detail must name the profile, got $condition", "dev" in condition["detail"].asText())
     }
 
     fun testManyInactiveCandidatesAreSampledWithinTheDefaultBudget() = runBlockingReleasingWriteIntent {
@@ -973,6 +1004,8 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
         const val SYNC_ADMIN_CONTROLLER = "com.explyt.demo.SyncAdminController"
         const val CUSTOM_SERVICE = "com.explyt.demo.CustomService"
         const val PROFILED_SERVICE = "com.explyt.demo.ProfiledService"
+        const val DEV_ONLY_SERVICE = "com.explyt.demo.DevOnlyService"
+        const val PROFILE = "org.springframework.context.annotation.Profile"
         const val FOO = "com.explyt.demo.Foo"
         const val ACTIVE_FOO = "com.explyt.demo.ActiveFoo"
         const val INACTIVE_FOO = "com.explyt.demo.InactiveFoo"
