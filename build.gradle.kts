@@ -3,7 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 
 buildscript {
@@ -53,8 +55,10 @@ subprojects {
     tasks.withType<KotlinJvmCompile>().configureEach {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_25)
+            apiVersion.set(KotlinVersion.KOTLIN_2_4)
+            languageVersion.set(KotlinVersion.KOTLIN_2_4)
+            jvmDefault.set(JvmDefaultMode.NO_COMPATIBILITY)
             freeCompilerArgs.addAll(listOf(
-                "-Xjvm-default=all",
                 "-Xjsr305=strict",
                 "-opt-in=org.jetbrains.kotlin.K1Deprecation"
             ))
