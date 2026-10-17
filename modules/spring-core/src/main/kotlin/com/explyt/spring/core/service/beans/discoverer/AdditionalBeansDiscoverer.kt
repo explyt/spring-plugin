@@ -10,6 +10,7 @@ import com.explyt.spring.core.service.PsiBean
 import com.explyt.spring.core.service.RootDataHolder
 import com.intellij.openapi.extensions.ProjectExtensionPointName
 import com.intellij.openapi.module.Module
+import com.intellij.psi.PsiClass
 
 abstract class AdditionalBeansDiscoverer {
 
@@ -29,6 +30,8 @@ abstract class AdditionalBeansDiscoverer {
     }
 
     open fun getExtraComponents(module: Module): Collection<PsiBean> = emptyList()
+
+    open fun ownsComponent(module: Module, psiClass: PsiClass): Boolean = false
 
     open fun additionalFilterBeans(module: Module, bean: PsiBean, rootDataHolder: RootDataHolder): Boolean {
         if (rootDataHolder.isEmpty()) return true

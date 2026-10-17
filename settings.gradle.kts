@@ -26,7 +26,7 @@ pluginManagement {
 }
 
 plugins {
-    id("org.gradle.toolchains.foojay-resolver-convention") version "0.7.0"
+    id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
     id("org.jetbrains.intellij.platform.settings") version "2.18.1"
 }
 
@@ -55,6 +55,7 @@ includeProject("spring-web")
 includeProject("spring-cloud")
 includeProject("spring-initializr")
 includeProject("spring-integration")
+includeProject("spring-mybatis")
 includeProject("spring-messaging")
 includeProject("spring-aop")
 includeProject("jpa")

@@ -36,11 +36,26 @@ data class TestLibrary(val mavenCoordinates: String, val includeTransitiveDepend
         val springBootAutoConfigure_2_7_18: TestLibrary = TestLibrary("org.springframework.boot:spring-boot-autoconfigure:2.7.18")
         val springBootAutoConfigure_3_1_1: TestLibrary = TestLibrary("org.springframework.boot:spring-boot-autoconfigure:3.1.1")
         val springBootAutoConfigure_3_4_0: TestLibrary = TestLibrary("org.springframework.boot:spring-boot-autoconfigure:3.4.0")
+        val springBootAutoConfigure_3_5_0: TestLibrary = TestLibrary("org.springframework.boot:spring-boot-autoconfigure:3.5.0")
         val springBootAutoConfigure_4_1_0: TestLibrary = TestLibrary("org.springframework.boot:spring-boot-autoconfigure:4.1.0")
         val springBootActuatorAutoConfigure_4_1_0: TestLibrary =
             TestLibrary("org.springframework.boot:spring-boot-actuator-autoconfigure:4.1.0")
         val springBootHealth_4_1_0: TestLibrary = TestLibrary("org.springframework.boot:spring-boot-health:4.1.0")
         val springBootWebFlux_4_1_1: TestLibrary = TestLibrary("org.springframework.boot:spring-boot-webflux:4.1.1")
+
+        /** Boot 4 moved `IntegrationAutoConfiguration` out of `spring-boot-autoconfigure` into this jar. */
+        val springBootIntegration_4_1_0: TestLibrary = TestLibrary("org.springframework.boot:spring-boot-integration:4.1.0")
+        val springIntegrationCore_6_5_0: TestLibrary =
+            TestLibrary("org.springframework.integration:spring-integration-core:6.5.0")
+        val springIntegrationCore_7_1_0: TestLibrary =
+            TestLibrary("org.springframework.integration:spring-integration-core:7.1.0")
+        val mybatis_3_5_19: TestLibrary = TestLibrary("org.mybatis:mybatis:3.5.19")
+        val mybatisSpring_3_0_5: TestLibrary = TestLibrary("org.mybatis:mybatis-spring:3.0.5")
+        val mybatisSpring_4_1_0: TestLibrary = TestLibrary("org.mybatis:mybatis-spring:4.1.0")
+        val mybatisSpringBootAutoConfigure_3_0_5: TestLibrary =
+            TestLibrary("org.mybatis.spring.boot:mybatis-spring-boot-autoconfigure:3.0.5")
+        val mybatisSpringBootAutoConfigure_4_1_0: TestLibrary =
+            TestLibrary("org.mybatis.spring.boot:mybatis-spring-boot-autoconfigure:4.1.0")
         val springBootTestAutoConfigure_3_1_1: TestLibrary =
             TestLibrary("org.springframework.boot:spring-boot-test-autoconfigure:3.1.1")
         val springDataJpa_3_1_0 = TestLibrary("org.springframework.data:spring-data-jpa:3.1.0", true)
