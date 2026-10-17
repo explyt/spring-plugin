@@ -32,6 +32,14 @@ abstract class ComposedHttpExchangeFixture(
 
     data class ExchangeRow(val path: String, val methods: List<String>)
 
+    fun assertExchangeAttributeExists(attribute: String) {
+        val annotation = facade().findClass(
+            SpringWebClasses.HTTP_EXCHANGE, GlobalSearchScope.allScope(codeInsightFixture.project)
+        )
+        assertNotNull("Precondition: @HttpExchange resolves", annotation)
+        assertEquals("Precondition: @HttpExchange declares $attribute", 1, annotation!!.findMethodsByName(attribute, false).size)
+    }
+
     abstract fun identifierOf(method: PsiMethod): PsiElement
 
     fun rows(clientName: String, methodName: String): List<ExchangeRow> {

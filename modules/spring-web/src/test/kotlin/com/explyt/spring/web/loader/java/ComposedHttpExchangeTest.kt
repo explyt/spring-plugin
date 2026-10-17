@@ -14,7 +14,24 @@ import com.intellij.psi.PsiMethod
 
 class ComposedHttpExchangeTest : ComposedHttpExchangeJavaTestCase(6) {
 
-    override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springContext_6_0_7, TestLibrary.springWeb_6_0_7)
+    override val libraries: Array<TestLibrary> = arrayOf(
+        TestLibrary("org.springframework:spring-context:6.2.12"),
+        TestLibrary("org.springframework:spring-web:6.2.12"),
+    )
+
+    fun testExchangesDifferingOnlyInHeadersServeNothing() {
+        fixture.assertExchangeAttributeExists("headers")
+        assertEquals(emptyList<ExchangeRow>(), fixture.rows(ITEMS, "headersDiffer"))
+    }
+
+    fun testEndpointActionsGutterSkipsExchangesDifferingOnlyInHeaders() =
+        assertEquals(emptyList<ExchangeRow>(), fixture.gutterRows(ITEMS, "headersDiffer"))
+
+    fun testExchangesDifferingOnlyInAcceptOrderServeNothing() =
+        assertEquals(emptyList<ExchangeRow>(), fixture.rows(ITEMS, "acceptOrderDiffers"))
+
+    fun testExchangesEqualIncludingHeadersServeOneRow() =
+        assertEquals(listOf(ExchangeRow("/a", GET)), fixture.rows(ITEMS, "equalHeaders"))
 
     fun testBareComposedExchangeServesItsAliasDefaultUrl() =
         assertEquals(listOf(ExchangeRow("/items", GET)), fixture.rows(ITEMS, "bare"))
@@ -75,6 +92,11 @@ class ComposedHttpExchangeSpring7Test : ComposedHttpExchangeJavaTestCase(7) {
         TestLibrary("org.springframework:spring-web:7.0.9"),
     )
 
+    fun testExchangesDifferingOnlyInVersionServeNothing() {
+        fixture.assertExchangeAttributeExists("version")
+        assertEquals(emptyList<ExchangeRow>(), fixture.rows("VersionClient", "versionDiffers"))
+    }
+
     fun testBareComposedExchangeServesItsAliasDefaultUrlInSpring7() =
         assertEquals(listOf(ExchangeRow("/items", GET)), fixture.rows(ITEMS, "bare"))
 
@@ -102,6 +124,21 @@ abstract class ComposedHttpExchangeJavaTestCase(private val springMajor: Int) : 
     }
 
     private fun addSources() {
+        if (springMajor == 7) {
+            myFixture.addFileToProject(
+                "com/example/VersionClient.java", """
+                package com.example;
+                import org.springframework.web.service.annotation.GetExchange;
+                import org.springframework.web.service.annotation.HttpExchange;
+
+                public interface VersionClient {
+                    @GetExchange(url = "/a", version = "1")
+                    @HttpExchange(url = "/a", method = "GET", version = "2")
+                    String versionDiffers();
+                }
+                """.trimIndent()
+            )
+        }
         myFixture.addFileToProject(
             "com/example/ComposedExchanges.java", """
             package com.example;
@@ -112,6 +149,12 @@ abstract class ComposedHttpExchangeJavaTestCase(private val springMajor: Int) : 
             import java.lang.annotation.Retention;
             import java.lang.annotation.RetentionPolicy;
             import java.lang.annotation.Target;
+
+            @Retention(RetentionPolicy.RUNTIME)
+            @Target(ElementType.METHOD)
+            @HttpExchange(url = "/a", method = "GET", headers = "X=1")
+            @interface ApiHeaders {
+            }
 
             @Retention(RetentionPolicy.RUNTIME)
             @Target({ElementType.METHOD, ElementType.ANNOTATION_TYPE})
@@ -170,6 +213,18 @@ abstract class ComposedHttpExchangeJavaTestCase(private val springMajor: Int) : 
             import org.springframework.web.service.annotation.HttpExchange;
 
             public interface ItemClient {
+                @ApiHeaders
+                @HttpExchange(url = "/a", method = "GET")
+                String headersDiffer();
+
+                @GetExchange(url = "/a", accept = {"text/plain", "application/json"})
+                @HttpExchange(url = "/a", method = "GET", accept = {"application/json", "text/plain"})
+                String acceptOrderDiffers();
+
+                @ApiHeaders
+                @HttpExchange(url = "/a", method = "GET", headers = "X=1")
+                String equalHeaders();
+
                 @ApiGet
                 String bare();
 
