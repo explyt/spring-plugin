@@ -429,6 +429,9 @@ class SpringSearchService(private val project: Project) {
 
     fun searchArrayComponentPsiClassesByBeanMethods(module: Module): Set<PsiBean> {
         return getComponentBeanFactories(module).asSequence()
+            .filter { (factory, effectiveFactory) ->
+                factory.returnType is PsiArrayType || effectiveFactory.returnType is PsiArrayType
+            }
             .flatMap { (factory, effectiveFactory) ->
                 methodBeansOf(factory, effectiveFactory) { it.resolvedDeepPsiClass }
             }

@@ -33,6 +33,7 @@ import com.explyt.util.ExplytPsiUtil.getMetaAnnotation
 import com.explyt.util.ExplytPsiUtil.isEqualOrInheritor
 import com.explyt.util.ExplytPsiUtil.isGeneric
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
+import com.explyt.util.ExplytPsiUtil.isObject
 import com.explyt.util.ExplytPsiUtil.isRegistrar
 import com.explyt.util.ExplytPsiUtil.resolvedDeepPsiClass
 import com.explyt.util.ExplytPsiUtil.resolvedPsiClass
@@ -336,6 +337,7 @@ class NativeSearchService(private val project: Project) {
 
     private fun findInArray(beanPsiType: PsiType, module: Module?): List<PsiBean> {
         module ?: return emptyList()
+        if (beanPsiType !is PsiArrayType && !beanPsiType.isObject) return emptyList()
         return SpringSearchService.getInstance(project).searchArrayComponentPsiClassesByBeanMethods(module)
             .filter { bean ->
                 listOfNotNull(bean.psiMember, bean.factoryMethod).any {
