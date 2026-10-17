@@ -4,4 +4,9 @@
   -->
 
 <idea-plugin>
+
+    <extensions defaultExtensionNs="com.explyt.spring.core">
+        <additionalBeansDiscoverer
+                implementation="com.explyt.spring.mybatis.service.beans.discoverer.SpringMybatisAdditionalBeansDiscoverer"/>
+    </extensions>
 </idea-plugin>
