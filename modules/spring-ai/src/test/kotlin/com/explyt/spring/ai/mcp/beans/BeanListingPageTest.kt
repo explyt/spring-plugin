@@ -78,7 +78,7 @@ class BeanListingPageTest : ExplytJavaLightTestCase() {
     }
 
     fun testLibraryBeanIsMarkedLibrary() = runBlockingReleasingWriteIntent<Unit> {
-        copyDemoApplication()
+        copyDemoApplicationScanningLibraryControllers()
         assertTrue(
             "Precondition: $LIBRARY_CONTROLLER comes from a library jar",
             JavaPsiFacade.getInstance(project).findClass(LIBRARY_CONTROLLER, GlobalSearchScope.allScope(project))
@@ -93,7 +93,7 @@ class BeanListingPageTest : ExplytJavaLightTestCase() {
     }
 
     fun testOriginFilterProject() = runBlockingReleasingWriteIntent<Unit> {
-        copyDemoApplication()
+        copyDemoApplicationScanningLibraryControllers()
         val everything = listing(DEMO_APPLICATION, "CONTROLLER", limit = 50, maxChars = 16000)
         assertTrue(
             "Precondition: the fixture has library controllers to filter out, got $everything",
@@ -177,7 +177,7 @@ class BeanListingPageTest : ExplytJavaLightTestCase() {
     }
 
     fun testOrderProjectFirst() = runBlockingReleasingWriteIntent<Unit> {
-        copyDemoApplication()
+        copyDemoApplicationScanningLibraryControllers()
 
         val beans = rows(listing(DEMO_APPLICATION, "CONTROLLER", limit = 50, maxChars = 16000))
         assertTrue(
@@ -260,15 +260,11 @@ class BeanListingPageTest : ExplytJavaLightTestCase() {
         copyDemoApplication()
         val page = listing(DEMO_APPLICATION, "CONTROLLER", origin = "LIBRARY")
         val beans = rows(page)
-        val active = beans.takeWhile { it["condition"]?.get("state")?.asText() != "INACTIVE" }
-        val inactive = beans.drop(active.size)
-        assertEquals(setOf("basicErrorController", "graphQlRSocketController"),
-            active.map { it["beanName"].asText() }.toSet())
-        assertEquals(setOf("basicErrorController", "graphQlRSocketController"),
-            inactive.map { it["beanName"].asText() }.toSet())
-        assertTrue("inactive library rows follow the active ones: $beans",
-            inactive.all { it["condition"]["state"].asText() == "INACTIVE" })
-        assertEquals(active.size + inactive.size, page["totalCount"].asInt())
+        assertEquals("no scan reaches the library controllers, so only their auto-configuration factories remain: $beans",
+            listOf("basicErrorController", "graphQlRSocketController"), beans.map { it["beanName"].asText() })
+        assertTrue("both factories are inactive without servlet API and GraphQL: $beans",
+            beans.all { it["condition"]?.get("state")?.asText() == "INACTIVE" })
+        assertEquals(2, page["totalCount"].asInt())
         assertTrue(beans.all { it["origin"].asText() == "LIBRARY" })
         assertFalse(page.has("unknownOriginCount"))
         assertFalse("listed inactive library rows are not counted again: $page", page.has("inactiveLibraryCount"))
@@ -310,6 +306,21 @@ class BeanListingPageTest : ExplytJavaLightTestCase() {
 
     private fun wrappedLength(json: String): Int =
         mapper.writeValueAsString(mapper.createArrayNode().add(json)).length
+
+    private fun copyDemoApplicationScanningLibraryControllers() {
+        copyDemoApplication()
+        myFixture.addClass(
+            """
+            package com.example.app;
+
+            @org.springframework.context.annotation.Configuration
+            @org.springframework.context.annotation.ComponentScan(basePackages = {
+                "com.example.app", "org.springframework.boot.autoconfigure.web.servlet.error"
+            })
+            public class LibraryControllerScan {}
+            """.trimIndent()
+        )
+    }
 
     private fun copyDemoApplication() {
         myFixture.copyDirectoryToProject("springBootApp", "")
