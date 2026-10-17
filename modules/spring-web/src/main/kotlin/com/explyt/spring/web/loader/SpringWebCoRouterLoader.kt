@@ -52,7 +52,9 @@ class SpringWebCoRouterLoader : EndpointHandler {
                     val lambdaExpression = node.valueArguments.firstOrNull() as? ULambdaExpression
                     lambdaExpression?.body?.accept(object : AbstractUastVisitor() {
                         override fun visitCallExpression(node: UCallExpression): Boolean {
-                            RouterDslRoutes.requestMethodsOf(node)?.let { requestMethods ->
+                            RouterDslRoutes.requestMethodsOf(node)
+                                ?.let { SpringWebUtil.getServedRequestMethods(node, it) }
+                                ?.let { requestMethods ->
                                 endpoints += createEndpointElements(node, requestMethods, psiClass, endpointType)
                             }
                             return super.visitCallExpression(node)
