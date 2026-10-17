@@ -6,6 +6,8 @@
 package com.explyt.spring.core.service.conditional
 
 import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
+import com.explyt.spring.core.service.ProfileActivation
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.intellij.psi.PsiMember
@@ -261,16 +263,230 @@ abstract class BeanConditionVerdictTestCase : BeanConditionTestCase() {
         assertNull(verdictOf(member))
     }
 
-    fun testInactiveProfileMemberHasNoVerdict() {
-        addProperties("spring.profiles.active=dev")
-        val config = addGapConfiguration("InactiveProfileConfig", "@Profile(\"prod\")", "@Profile(\"prod\")")
-        assertAnnotatedBy(config, SpringCoreClasses.PROFILE)
-        assertPropertyDefined("spring.profiles.active")
-        assertEquals(com.explyt.spring.core.service.ProfileActivation.INACTIVE, SpringSearchService.getInstance(project).profileActivation(config))
+    fun testProfileInactiveComponentIsExcludedWithAProfileVerdict() {
+        addProperties("spring.profiles.active=prod")
+        val component = addProfiledComponent("DevOnlyService", "dev")
+        assertProfileInactive(component)
 
-        assertNull(verdictOf(config))
-        assertFalse("com.app.InactiveProfileConfig" in activeBeans())
-        assertFalse("com.app.InactiveProfileConfig" in excludedBeans())
+        val evidence = inactiveEvidence(verdictOf(component))
+
+        assertEquals(SpringCoreClasses.PROFILE, evidence.annotationFqn)
+        assertEquals("com.app.DevOnlyService", evidence.carrierFqn)
+        assertEquals(ConditionReason.NOT_MATCHED, evidence.reason)
+        assertDetailMentions(evidence, "dev")
+        assertTrue("com.app.DevOnlyService" in excludedBeans())
+        assertFalse("com.app.DevOnlyService" in activeBeans())
+    }
+
+    fun testFactoryMethodOfAProfileInactiveConfigurationNamesTheConfigurationAsCarrier() {
+        addProperties("spring.profiles.active=prod")
+        addDevTool()
+        addGapSource(
+            "DevToolsConfig",
+            "@Configuration @Profile(\"dev\") public class DevToolsConfig { @Bean public DevTool devTool() { return new DevTool(); } }",
+            "@Configuration @Profile(\"dev\") class DevToolsConfig { @Bean fun devTool(): DevTool = DevTool() }"
+        )
+        val config = beanClass("com.app.DevToolsConfig")
+        val method = beanMethod("com.app.DevToolsConfig", "devTool")
+        assertProfileInactive(config)
+        assertFalse(
+            "Precondition: the bean method carries no @Profile of its own",
+            method.modifierList.hasAnnotation(SpringCoreClasses.PROFILE)
+        )
+
+        val evidence = inactiveEvidence(verdictOf(method))
+
+        assertEquals(SpringCoreClasses.PROFILE, evidence.annotationFqn)
+        assertEquals("com.app.DevToolsConfig", evidence.carrierFqn)
+        assertEquals(ConditionReason.NOT_MATCHED, evidence.reason)
+        assertDetailMentions(evidence, "dev")
+        assertTrue("com.app.DevToolsConfig#devTool" in excludedBeans())
+        assertFalse("com.app.DevToolsConfig#devTool" in activeBeans())
+    }
+
+    fun testProfileInactiveFactoryMethodOfAnActiveConfigurationNamesTheMethodAsCarrier() {
+        addProperties("spring.profiles.active=prod")
+        addDevTool()
+        addProfiledFactoryHost()
+        val method = beanMethod(PROFILED_FACTORY_HOST, "devTool")
+        assertTrue("Precondition: the hosting configuration is active", PROFILED_FACTORY_HOST in activeBeans())
+        assertProfileInactive(method)
+
+        val evidence = inactiveEvidence(verdictOf(method))
+
+        assertEquals(SpringCoreClasses.PROFILE, evidence.annotationFqn)
+        assertEquals("$PROFILED_FACTORY_HOST#devTool", evidence.carrierFqn)
+        assertEquals(ConditionReason.NOT_MATCHED, evidence.reason)
+        assertDetailMentions(evidence, "dev")
+        assertTrue("$PROFILED_FACTORY_HOST#devTool" in excludedBeans())
+    }
+
+    fun testProfileInactiveMembersStayOutOfTheActiveSet() {
+        addProperties("spring.profiles.active=prod")
+        fixtures.addPlainComponent()
+        val component = addProfiledComponent("DevOnlyService", "dev")
+        addDevTool()
+        addProfiledFactoryHost()
+        assertProfileInactive(component)
+        assertProfileInactive(beanMethod(PROFILED_FACTORY_HOST, "devTool"))
+
+        assertEquals(setOf(APPLICATION, "com.app.PlainService", PROFILED_FACTORY_HOST), activeBeans())
+    }
+
+    fun testProfileVerdictIsRecordedWhenConditionEvaluationIsDisabled() {
+        addProperties("spring.profiles.active=prod")
+        fixtures.addPlainComponent()
+        val component = addProfiledComponent("DevOnlyService", "dev")
+        assertProfileInactive(component)
+        val settings = SpringToolRunConfigurationsSettingsState.getInstance()
+        val enabled = settings.isBeanFilterEnabled
+        settings.isBeanFilterEnabled = false
+        try {
+            assertTrue("Precondition: the unprofiled control is still discovered", "com.app.PlainService" in activeBeans())
+
+            val evidence = inactiveEvidence(verdictOf(component))
+
+            assertEquals(SpringCoreClasses.PROFILE, evidence.annotationFqn)
+            assertEquals("com.app.DevOnlyService", evidence.carrierFqn)
+            assertEquals(ConditionReason.NOT_MATCHED, evidence.reason)
+            assertTrue("com.app.DevOnlyService" in excludedBeans())
+            assertFalse("com.app.DevOnlyService" in activeBeans())
+        } finally {
+            settings.isBeanFilterEnabled = enabled
+            ModificationTrackerManager.getInstance(project).invalidateAll()
+        }
+    }
+
+    fun testOwnProfileOfAFactoryMethodInsideAProfileInactiveConfigurationYieldsToTheConfiguration() {
+        addProperties("spring.profiles.active=prod")
+        addDevTool()
+        addGapSource(
+            "DevToolsConfig",
+            "@Configuration @Profile(\"dev\") public class DevToolsConfig { @Bean @Profile(\"test\") public DevTool devTool() { return new DevTool(); } }",
+            "@Configuration @Profile(\"dev\") class DevToolsConfig { @Bean @Profile(\"test\") fun devTool(): DevTool = DevTool() }"
+        )
+        val method = beanMethod("com.app.DevToolsConfig", "devTool")
+        assertProfileInactive(beanClass("com.app.DevToolsConfig"))
+        assertProfileInactive(method)
+
+        val evidence = inactiveEvidence(verdictOf(method))
+
+        assertEquals(SpringCoreClasses.PROFILE, evidence.annotationFqn)
+        assertEquals("com.app.DevToolsConfig", evidence.carrierFqn)
+        assertDetailMentions(evidence, "'dev'")
+        assertFalse("Detail '${evidence.detail}' must not name the method's own profile", "test" in evidence.detail.orEmpty())
+        assertTrue("com.app.DevToolsConfig#devTool" in excludedBeans())
+    }
+
+    fun testProfileInactiveExtraComponentIsExcludedWithAProfileVerdict() {
+        addProperties("spring.profiles.active=prod")
+        addGapSource(
+            "DevExtraComponent",
+            "@Profile(\"dev\") public class DevExtraComponent {}",
+            "@Profile(\"dev\") class DevExtraComponent"
+        )
+        addGapSource("PlainExtraComponent", "public class PlainExtraComponent {}", "class PlainExtraComponent")
+        val devExtra = beanClass("com.app.DevExtraComponent")
+        val plainExtra = beanClass("com.app.PlainExtraComponent")
+        assertProfileInactive(devExtra)
+        registerExtraComponents(
+            listOf(
+                com.explyt.spring.core.service.PsiBean("devExtraComponent", devExtra, null, devExtra),
+                com.explyt.spring.core.service.PsiBean("plainExtraComponent", plainExtra, null, plainExtra)
+            )
+        )
+        assertTrue("Precondition: the unprofiled extra component is active", "com.app.PlainExtraComponent" in activeBeans())
+
+        val evidence = inactiveEvidence(verdictOf(devExtra))
+
+        assertEquals(SpringCoreClasses.PROFILE, evidence.annotationFqn)
+        assertEquals("com.app.DevExtraComponent", evidence.carrierFqn)
+        assertEquals(ConditionReason.NOT_MATCHED, evidence.reason)
+        assertTrue("com.app.DevExtraComponent" in excludedBeans())
+        assertFalse("com.app.DevExtraComponent" in activeBeans())
+    }
+
+    fun testImportedClassExcludedByAConditionKeepsTheConditionalVerdictOverItsProfile() {
+        addProperties("spring.profiles.active=prod", "parrot.enabled=false")
+        addGapSource(
+            "Parrot",
+            "@org.springframework.stereotype.Component @Profile(\"dev\") " +
+                "@ConditionalOnProperty(name = \"parrot.enabled\", havingValue = \"true\") public class Parrot {}",
+            "@org.springframework.stereotype.Component @Profile(\"dev\") " +
+                "@ConditionalOnProperty(name = [\"parrot.enabled\"], havingValue = \"true\") class Parrot"
+        )
+        addGapSource(
+            "ParrotImporter",
+            "@Configuration @Import(Parrot.class) public class ParrotImporter {}",
+            "@Configuration @Import(Parrot::class) class ParrotImporter"
+        )
+        val parrot = beanClass("com.app.Parrot")
+        assertProfileInactive(parrot)
+        assertAnnotatedBy(parrot, CONDITIONAL_ON_PROPERTY)
+        assertPropertyDefined("parrot.enabled")
+        assertTrue("Precondition: ParrotImporter is an active configuration", "com.app.ParrotImporter" in activeBeans())
+        assertTrue(
+            "Precondition: Parrot is reached through @Import",
+            "com.app.Parrot" in com.explyt.spring.core.service.PackageScanService.getInstance(project).getAllPackages().importQualified
+        )
+        assertTrue("Precondition: Parrot is excluded", "com.app.Parrot" in excludedBeans())
+
+        val evidence = inactiveEvidence(verdictOf(parrot))
+
+        assertEquals(CONDITIONAL_ON_PROPERTY, evidence.annotationFqn)
+        assertEquals("com.app.Parrot", evidence.carrierFqn)
+        assertDetailMentions(evidence, "parrot.enabled")
+    }
+
+    fun testProfileVerdictDetailJoinsEveryProfileOfTheCarrier() {
+        addProperties("spring.profiles.active=prod")
+        addGapSource(
+            "DevOrLocalService",
+            "@org.springframework.stereotype.Component @Profile({\"dev\", \"local\"}) public class DevOrLocalService {}",
+            "@org.springframework.stereotype.Component @Profile(\"dev\", \"local\") class DevOrLocalService"
+        )
+        val component = beanClass("com.app.DevOrLocalService")
+        assertProfileInactive(component)
+
+        val evidence = inactiveEvidence(verdictOf(component))
+
+        assertEquals("no active profile matches 'dev' or 'local'", evidence.detail)
+    }
+
+    private fun registerExtraComponents(beans: List<com.explyt.spring.core.service.PsiBean>) {
+        val point = com.explyt.spring.core.service.beans.discoverer.AdditionalBeansDiscoverer.EP_NAME.getPoint(project)
+        point.registerExtension(object : com.explyt.spring.core.service.beans.discoverer.AdditionalBeansDiscoverer() {
+            override fun discoverBeans(module: com.intellij.openapi.module.Module): Collection<com.explyt.spring.core.service.PsiBean> = emptyList()
+            override fun getExtraComponents(module: com.intellij.openapi.module.Module): Collection<com.explyt.spring.core.service.PsiBean> = beans
+        }, testRootDisposable)
+        ModificationTrackerManager.getInstance(project).invalidateAll()
+    }
+
+    private fun addProfiledComponent(name: String, profile: String): com.intellij.psi.PsiClass {
+        addGapSource(
+            name,
+            "@org.springframework.stereotype.Component @Profile(\"$profile\") public class $name {}",
+            "@org.springframework.stereotype.Component @Profile(\"$profile\") class $name"
+        )
+        return beanClass("com.app.$name")
+    }
+
+    private fun addDevTool() = addGapSource("DevTool", "public class DevTool {}", "class DevTool")
+
+    private fun addProfiledFactoryHost() = addGapSource(
+        "ProfiledFactoryHost",
+        "@Configuration public class ProfiledFactoryHost { @Bean @Profile(\"dev\") public DevTool devTool() { return new DevTool(); } }",
+        "@Configuration class ProfiledFactoryHost { @Bean @Profile(\"dev\") fun devTool(): DevTool = DevTool() }"
+    )
+
+    private fun assertProfileInactive(member: PsiMember) {
+        assertAnnotatedBy(member, SpringCoreClasses.PROFILE)
+        assertPropertyDefined("spring.profiles.active")
+        assertEquals(
+            "Precondition: ${member.name} must be inactive by its profile",
+            ProfileActivation.INACTIVE,
+            SpringSearchService.getInstance(project).profileActivation(member)
+        )
     }
 
     fun testUnreadablePropertyNamesHavePropertyReason() {
@@ -553,5 +769,9 @@ abstract class BeanConditionVerdictTestCase : BeanConditionTestCase() {
         for (fragment in fragments) {
             assertTrue("Detail '$detail' must mention '$fragment'", fragment in detail!!)
         }
+    }
+
+    private companion object {
+        const val PROFILED_FACTORY_HOST = "com.app.ProfiledFactoryHost"
     }
 }

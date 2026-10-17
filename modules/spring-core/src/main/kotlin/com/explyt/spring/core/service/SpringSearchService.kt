@@ -154,11 +154,48 @@ class SpringSearchService(private val project: Project) {
         synchronized(getMutexString(MutexType.CONDITIONAL_ON, module)) {
             return cachedValuesManager.getCachedValue(module) {
                 CachedValueProvider.Result(
-                    filterByConditionals(module, searchAllBeanLight(module)),
+                    filterByConditionals(module, searchAllBeanLight(module)).withProfileInactive(module),
                     ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
                 )
             }
         }
+    }
+
+    private fun FoundBeans.withProfileInactive(module: Module): FoundBeans {
+        val conditionallyExcluded = excluded.mapTo(mutableSetOf()) { it.psiMember }
+        val profileInactive = profileInactiveCarriers(module)
+            .filterKeys { it !in active && it.psiMember !in conditionallyExcluded }
+        if (profileInactive.isEmpty()) return this
+        val profileVerdicts = profileInactive.values.toSet().associateWith { profileVerdictOf(it, module) }
+        return FoundBeans(
+            active,
+            excluded + profileInactive.keys,
+            verdicts + profileInactive.mapValues { (_, carrier) -> profileVerdicts.getValue(carrier) }
+        )
+    }
+
+    private fun profileInactiveCarriers(module: Module): Map<PsiBean, PsiMember> {
+        val factories = beanFactories(module)
+        val factoryBeans = factories.profileInactive.asSequence()
+            .filter { (factory, _) -> factory !in factories.active }
+            .flatMap { (factory, inactive) ->
+                methodBeansOf(factory, inactive.effectiveFactory) { it.resolvedPsiClass }.map { it to inactive.carrier }
+            }
+            .filter { (bean, _) -> SpringCoreUtil.isSpringBeanCandidateClass(bean.psiClass) }
+        return componentBeanSplit(module).profileInactive + factoryBeans
+    }
+
+    private fun profileVerdictOf(carrier: PsiMember, module: Module): ConditionVerdict.Inactive {
+        val expressions = ProfilesService.getInstance(project)
+            .profileExpressionsOf(carrier, getMetaAnnotations(module, SpringCoreClasses.PROFILE))
+        return ConditionVerdict.Inactive(
+            ConditionEvidence(
+                annotationFqn = SpringCoreClasses.PROFILE,
+                carrierFqn = carrier.conditionCarrierFqn,
+                detail = "no active profile matches " + expressions.joinToString(" or ") { "'$it'" },
+                reason = ConditionReason.NOT_MATCHED
+            )
+        )
     }
 
     @Deprecated("Used only in SpringBeanLineMarkerProvider. Use SpringSearchServiceFacade")
@@ -242,7 +279,9 @@ class SpringSearchService(private val project: Project) {
     }
 
     @Deprecated("Don use directly. Use SpringSearchServiceFacade")
-    fun getBeanPsiClassesAnnotatedByComponent(module: Module): Set<PsiBean> {
+    fun getBeanPsiClassesAnnotatedByComponent(module: Module): Set<PsiBean> = componentBeanSplit(module).active
+
+    private fun componentBeanSplit(module: Module): ProfileSplit {
         try {
             synchronized(getMutexString(MutexType.SEARCH, module)) {
                 return cachedValuesManager.getCachedValue(module) {
@@ -260,13 +299,13 @@ class SpringSearchService(private val project: Project) {
 
 
                     CachedValueProvider.Result(
-                        moduleWithDependenciesBeans + moduleLibraryBeans + importedPsiBeans,
+                        moduleWithDependenciesBeans + moduleLibraryBeans + ProfileSplit(importedPsiBeans),
                         ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
                     )
                 }
             }
         } catch (e: AlreadyDisposedException) {
-            return emptySet()
+            return ProfileSplit.EMPTY
         }
     }
 
@@ -286,7 +325,7 @@ class SpringSearchService(private val project: Project) {
                 val dependentBeans = filterBeansByPackage(
                     searchBeanPsiClassesByAnnotations(module, annotationPsiClasses, scope),
                     modulePackagesHolder, module
-                )
+                ).active
 
                 CachedValueProvider.Result(
                     filterByConditionals(module, dependentBeans).active,
@@ -328,12 +367,12 @@ class SpringSearchService(private val project: Project) {
     }
 
     private fun filterBeansByPackage(
-        beanComponents: Set<PsiBean>, rootDataHolder: RootDataHolder, module: Module
-    ): Set<PsiBean> {
+        beanComponents: ProfileSplit, rootDataHolder: RootDataHolder, module: Module
+    ): ProfileSplit {
         if (rootDataHolder.isEmpty()) return beanComponents
         val packages = rootDataHolder.getPackages(module)
-        if (packages.isEmpty()) return emptySet()
-        return beanComponents.filterTo(mutableSetOf()) { checkBeanByPackage(packages, rootDataHolder, it) }
+        if (packages.isEmpty()) return ProfileSplit.EMPTY
+        return beanComponents.filter { checkBeanByPackage(packages, rootDataHolder, it) }
     }
 
     private fun checkBeanByPackage(packages: Set<String>, rootDataHolder: RootDataHolder, bean: PsiBean): Boolean {
@@ -350,23 +389,87 @@ class SpringSearchService(private val project: Project) {
     @Deprecated("Don use directly. Use SpringSearchServiceFacade")
     fun getComponentBeanFactoryMethods(module: Module): Map<PsiMethod, PsiMethod> = getComponentBeanFactories(module)
 
-    private fun getComponentBeanFactories(module: Module): Map<PsiMethod, PsiMethod> {
+    private fun getComponentBeanFactories(module: Module): Map<PsiMethod, PsiMethod> = beanFactories(module).active
+
+    private fun beanFactories(module: Module): BeanFactories {
         return cachedValuesManager.getCachedValue(module) {
             val factories = LinkedHashMap<PsiMethod, PsiMethod>()
-            getBeanPsiClassesAnnotatedByComponent(module)
+            val profileInactive = LinkedHashMap<PsiMethod, ProfileInactiveFactory>()
+            val components = componentBeanSplit(module)
+            components.active
                 .asSequence()
                 .map { it.psiClass }
                 .filter { it.isValid }
                 .forEach { configuration ->
-                    getMethodBeans(configuration)
-                        .filter { isActive(it) }
-                        .forEach { factory -> factories.getOrPut(factory) { effectiveFactory(configuration, factory) } }
+                    getMethodBeans(configuration).forEach { factory ->
+                        when (profileGateOf(factory)) {
+                            ProfileGate.ACTIVE -> factories.getOrPut(factory) { effectiveFactory(configuration, factory) }
+                            ProfileGate.INACTIVE -> profileInactive.getOrPut(factory) {
+                                ProfileInactiveFactory(effectiveFactory(configuration, factory), factory)
+                            }
+
+                            ProfileGate.HIDDEN -> Unit
+                        }
+                    }
+                }
+            components.profileInactive
+                .filterKeys { it.psiClass.isValid }
+                .forEach { (bean, carrier) ->
+                    getMethodBeans(bean.psiClass).forEach { factory ->
+                        profileInactive.getOrPut(factory) {
+                            ProfileInactiveFactory(effectiveFactory(bean.psiClass, factory), carrier)
+                        }
+                    }
                 }
             CachedValueProvider.Result(
-                factories,
+                BeanFactories(factories, profileInactive),
                 ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
             )
         }
+    }
+
+    private class BeanFactories(
+        val active: Map<PsiMethod, PsiMethod>,
+        val profileInactive: Map<PsiMethod, ProfileInactiveFactory>
+    )
+
+    private class ProfileInactiveFactory(val effectiveFactory: PsiMethod, val carrier: PsiMember)
+
+    private class ProfileSplit(
+        val active: Set<PsiBean>,
+        val profileInactive: Map<PsiBean, PsiMember> = emptyMap()
+    ) {
+        operator fun plus(other: ProfileSplit) =
+            ProfileSplit(active + other.active, profileInactive + other.profileInactive)
+
+        fun filter(predicate: (PsiBean) -> Boolean) =
+            ProfileSplit(active.filterTo(mutableSetOf(), predicate), profileInactive.filterKeys(predicate))
+
+        companion object {
+            val EMPTY = ProfileSplit(emptySet())
+        }
+    }
+
+    private enum class ProfileGate { ACTIVE, INACTIVE, HIDDEN }
+
+    private fun profileGateOf(psiMember: PsiMember): ProfileGate = when {
+        isActive(psiMember) -> ProfileGate.ACTIVE
+        profileModule(psiMember) != null -> ProfileGate.INACTIVE
+        else -> ProfileGate.HIDDEN
+    }
+
+    private fun Sequence<PsiBean>.splitByProfile(carrierOf: (PsiBean) -> PsiMember): ProfileSplit {
+        val active = mutableSetOf<PsiBean>()
+        val profileInactive = mutableMapOf<PsiBean, PsiMember>()
+        forEach { bean ->
+            val carrier = carrierOf(bean)
+            when (profileGateOf(carrier)) {
+                ProfileGate.ACTIVE -> active += bean
+                ProfileGate.INACTIVE -> profileInactive[bean] = carrier
+                ProfileGate.HIDDEN -> Unit
+            }
+        }
+        return ProfileSplit(active, profileInactive)
     }
 
     private fun effectiveFactory(configuration: PsiClass, factory: PsiMethod): PsiMethod =
@@ -453,7 +556,7 @@ class SpringSearchService(private val project: Project) {
 
     private fun searchBeanPsiClassesByAnnotations(
         module: Module, annotationPsiClasses: Collection<PsiClass>, scope: SearchScope
-    ): Set<PsiBean> {
+    ): ProfileSplit {
         try {
             return annotationPsiClasses.asSequence()
                 .filter { isSearchableAnnotationType(it) }
@@ -461,9 +564,8 @@ class SpringSearchService(private val project: Project) {
                 .filter { it.isValid }
                 .filter { SpringCoreUtil.isSpringBeanCandidateClass(it) }
                 .filter { SpringCoreUtil.isCandidateComponent(it) }
-                .filter { isActive(it) }
                 .map { PsiBean(it.resolveBeanName(module), it, it.getQualifierAnnotation(), it) }
-                .toSet()
+                .splitByProfile { it.psiClass }
         } catch (e: RuntimeExceptionWithAttachments) {
             // PSI/document/stub can be transiently out of sync during editing ("file text mismatch").
             // Abort this pass via cancellation so the cached value is recomputed once PSI is
@@ -478,7 +580,7 @@ class SpringSearchService(private val project: Project) {
         }
     }
 
-    private fun searchBeanPsiClassesByComponentAnnotationLibraryScopeCached(module: Module): Set<PsiBean> {
+    private fun searchBeanPsiClassesByComponentAnnotationLibraryScopeCached(module: Module): ProfileSplit {
         return cachedValuesManager.getCachedValue(module) {
             val annotationPsiClasses = SpringSearchUtils.getComponentClassAnnotations(module)
             CachedValueProvider.Result(
@@ -567,7 +669,14 @@ class SpringSearchService(private val project: Project) {
         val active: Set<PsiBean>,
         val excluded: Set<PsiBean>,
         val verdicts: Map<PsiBean, ConditionVerdict> = emptyMap()
-    )
+    ) {
+        val excludedByCondition: Set<PsiBean> by lazy {
+            excluded.filterNotTo(mutableSetOf()) { verdicts[it].isProfileInactive }
+        }
+
+        private val ConditionVerdict?.isProfileInactive: Boolean
+            get() = (this as? ConditionVerdict.Inactive)?.condition?.annotationFqn == SpringCoreClasses.PROFILE
+    }
 
     fun conditionVerdictOf(bean: PsiBean, module: Module): ConditionVerdict? =
         getAllBeansClasses(module).verdicts[bean]
@@ -576,6 +685,8 @@ class SpringSearchService(private val project: Project) {
         getAllBeansClasses(module).verdicts
 
     fun foundBeans(module: Module): FoundBeans = getAllBeansClasses(module)
+
+
 
     fun conditionVerdictOf(member: PsiMember, module: Module): ConditionVerdict? =
         getAllBeansClasses(module).verdicts
@@ -680,11 +791,10 @@ class SpringSearchService(private val project: Project) {
             )
     }
 
-    private fun getExtraComponents(module: Module, modulePackagesHolder: RootDataHolder): Set<PsiBean> {
+    private fun getExtraComponents(module: Module, modulePackagesHolder: RootDataHolder): ProfileSplit {
         return AdditionalBeansDiscoverer.EP_NAME.getExtensions(project).asSequence()
             .flatMap { getFilteredExtraBeans(it, module, modulePackagesHolder) }
-            .filter { isActive(it.psiClass) }
-            .toSet()
+            .splitByProfile { it.psiClass }
     }
 
     private fun getFilteredExtraBeans(
@@ -713,8 +823,8 @@ class SpringSearchService(private val project: Project) {
         val allModuleWithDependenciesBeans = filterBeansByPackage(
             searchBeanPsiClassesByAnnotations(module, annotationPsiClasses, scope),
             modulePackagesHolder, module
-        )
-        val extraComponents = getExtraComponents(module, modulePackagesHolder)
+        ).active
+        val extraComponents = getExtraComponents(module, modulePackagesHolder).active
         val moduleWithDependenciesBeans = allModuleWithDependenciesBeans + extraComponents
         val importedPsiBeans = getImportedBeans(modulePackagesHolder, module)
 
