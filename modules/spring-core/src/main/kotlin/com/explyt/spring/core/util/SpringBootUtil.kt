@@ -34,13 +34,24 @@ object SpringBootUtil {
     @RequiresReadLock
     fun getSpringBootVersion(psiElement: PsiElement): String {
         val module = ModuleUtilCore.findModuleForPsiElement(psiElement) ?: return ""
-        return CachedValuesManager.getManager(psiElement.project).getCachedValue(module) {
+        return getSpringBootVersion(module)
+    }
+
+    @RequiresReadLock
+    fun getSpringBootVersion(module: Module): String =
+        CachedValuesManager.getManager(module.project).getCachedValue(module) {
             val libraryVersion = JavaLibraryUtil.getLibraryVersion(module, SPRING_BOOT_MAVEN) ?: ""
             CachedValueProvider.Result.create(
                 libraryVersion,
                 ProjectRootManager.getInstance(module.project)
             )
         }
+
+    @RequiresReadLock
+    fun isBelowSpringBoot3(module: Module): Boolean {
+        val version = getSpringBootVersion(module)
+        if (version.isEmpty()) return false
+        return VersionComparatorUtil.compare(version, SPRING_BOOT_3_VERSION) < 0
     }
 
     @RequiresReadLock

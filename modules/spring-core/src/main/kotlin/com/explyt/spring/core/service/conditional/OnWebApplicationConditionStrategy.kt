@@ -5,12 +5,13 @@
 
 package com.explyt.spring.core.service.conditional
 
-import com.explyt.base.LibraryClassCache
+
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.core.service.PsiBean
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.util.BootWebApplicationType
+import com.explyt.spring.core.util.RuntimeClasspath
 import com.intellij.openapi.module.Module
 import com.intellij.psi.PsiMember
 import org.jetbrains.uast.UExpression
@@ -74,8 +75,9 @@ abstract class WebApplicationTypeConditionStrategy(protected val module: Module,
     }
 }
 
-class WebApplication(private val module: Module) {
+class WebApplication(module: Module) {
     val type: BootWebApplicationType = BootWebApplicationType.cachedOf(module)
+    private val runtimeClasspath by lazy { RuntimeClasspath(module) }
 
     fun matches(webType: WebType): Boolean = when (webType) {
         WebType.SERVLET -> isServlet
@@ -84,14 +86,12 @@ class WebApplication(private val module: Module) {
     }
 
     private val isServlet: Boolean by lazy {
-        type == BootWebApplicationType.SERVLET && hasLibraryClass(SERVLET_WEB_APPLICATION_CLASS)
+        type == BootWebApplicationType.SERVLET && runtimeClasspath.has(SERVLET_WEB_APPLICATION_CLASS)
     }
 
     private val isReactive: Boolean by lazy {
-        type == BootWebApplicationType.REACTIVE && hasLibraryClass(REACTIVE_WEB_APPLICATION_CLASS)
+        type == BootWebApplicationType.REACTIVE && runtimeClasspath.has(REACTIVE_WEB_APPLICATION_CLASS)
     }
-
-    private fun hasLibraryClass(fqn: String) = LibraryClassCache.searchForLibraryClass(module, fqn) != null
 
     private companion object {
         const val SERVLET_WEB_APPLICATION_CLASS = "org.springframework.web.context.support.GenericWebApplicationContext"

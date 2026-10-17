@@ -19,7 +19,7 @@ enum class BootWebApplicationType {
         const val WEB_APPLICATION_TYPE_KEY = "spring.main.web-application-type"
 
         fun of(module: Module): BootWebApplicationType = when (val declared = declaredOf(module)) {
-            null -> ClassPresence(module).deduced()
+            null -> RuntimeClasspath(module).deduced(servletApis = servletApisOf(module))
             else -> declared
         }
 
@@ -36,19 +36,19 @@ enum class BootWebApplicationType {
                     ?: UNKNOWN
             }
 
-        private fun ClassPresence.deduced(): BootWebApplicationType =
-            if (has(BOOT_4_DEDUCER)) deducedByBoot4() else deducedByBoot3()
+        private fun servletApisOf(module: Module): List<String> =
+            if (SpringBootUtil.isBelowSpringBoot3(module)) listOf(SERVLET_API, JAVAX_SERVLET_API) else listOf(SERVLET_API)
 
-        private fun ClassPresence.deducedByBoot3(): BootWebApplicationType = when {
+        private fun RuntimeClasspath.deduced(servletApis: List<String>): BootWebApplicationType =
+            if (has(BOOT_4_DEDUCER)) deducedByBoot4() else deducedByBoot3(servletApis)
+
+        private fun RuntimeClasspath.deducedByBoot3(servletApis: List<String>): BootWebApplicationType = when {
             has(DISPATCHER_HANDLER) && !has(DISPATCHER_SERVLET) && !has(JERSEY_SERVLET_CONTAINER) -> REACTIVE
-            hasServletIndicators() -> SERVLET
+            has(CONFIGURABLE_WEB_CONTEXT) && servletApis.any { has(it) } -> SERVLET
             else -> NONE
         }
 
-        private fun ClassPresence.hasServletIndicators(): Boolean =
-            SERVLET_INDICATORS.all { has(it) } || JAVAX_SERVLET_INDICATORS.all { has(it) }
-
-        private fun ClassPresence.deducedByBoot4(): BootWebApplicationType = when {
+        private fun RuntimeClasspath.deducedByBoot4(): BootWebApplicationType = when {
             has(BOOT_4_WEBMVC_DEDUCER) && WEBMVC_INDICATORS.all { has(it) } -> SERVLET
             has(BOOT_4_WEBFLUX_DEDUCER) && WEBFLUX_INDICATORS.all { has(it) } -> REACTIVE
             SERVLET_INDICATORS.all { has(it) } -> SERVLET
@@ -64,20 +64,22 @@ enum class BootWebApplicationType {
         private const val DISPATCHER_HANDLER = "org.springframework.web.reactive.DispatcherHandler"
         private const val JERSEY_SERVLET_CONTAINER = "org.glassfish.jersey.servlet.ServletContainer"
         private const val SERVLET_API = "jakarta.servlet.Servlet"
+        private const val JAVAX_SERVLET_API = "javax.servlet.Servlet"
         private const val CONFIGURABLE_WEB_CONTEXT = "org.springframework.web.context.ConfigurableWebApplicationContext"
         private const val REACTOR_MONO = "reactor.core.publisher.Mono"
 
         private val SERVLET_INDICATORS = listOf(SERVLET_API, CONFIGURABLE_WEB_CONTEXT)
-        private val JAVAX_SERVLET_INDICATORS = listOf("javax.servlet.Servlet", CONFIGURABLE_WEB_CONTEXT)
+
         private val WEBMVC_INDICATORS = listOf(SERVLET_API, DISPATCHER_SERVLET, CONFIGURABLE_WEB_CONTEXT)
         private val WEBFLUX_INDICATORS = listOf(REACTOR_MONO, DISPATCHER_HANDLER)
     }
 
-    private class ClassPresence(module: Module) {
-        private val facade = JavaPsiFacade.getInstance(module.project)
-        private val scope = module.moduleWithLibrariesScope
-        private val known = HashMap<String, Boolean>()
+}
 
-        fun has(fqn: String): Boolean = known.getOrPut(fqn) { facade.findClass(fqn, scope) != null }
-    }
+class RuntimeClasspath(module: Module) {
+    private val facade = JavaPsiFacade.getInstance(module.project)
+    private val scope = module.getModuleRuntimeScope(false)
+    private val known = HashMap<String, Boolean>()
+
+    fun has(fqn: String): Boolean = known.getOrPut(fqn) { facade.findClass(fqn, scope) != null }
 }
