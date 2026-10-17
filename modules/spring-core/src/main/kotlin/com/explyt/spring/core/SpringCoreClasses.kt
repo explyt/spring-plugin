@@ -105,6 +105,8 @@ object SpringCoreClasses {
         "org.springframework.boot.autoconfigure.condition.ConditionalOnBooleanProperties"
     const val CONDITIONAL_ON_WEB_APPLICATION =
         "org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication"
+    const val CONDITIONAL_ON_NOT_WEB_APPLICATION =
+        "org.springframework.boot.autoconfigure.condition.ConditionalOnNotWebApplication"
 
     const val CONFIGURATION_PROPERTIES = "org.springframework.boot.context.properties.ConfigurationProperties"
     const val NESTED_CONFIGURATION_PROPERTIES = "org.springframework.boot.context.properties.NestedConfigurationProperty"

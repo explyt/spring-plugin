@@ -708,6 +708,7 @@ class SpringSearchService(private val project: Project) {
             ConditionalOnMissingBeanStrategy(module),
             ConditionalOnPropertyStrategy(module),
             OnWebApplicationConditionStrategy(module),
+            OnNotWebApplicationConditionStrategy(module),
             ProfileConditionStrategy(module)
         )
         return supported + UnsupportedConditionStrategy(module, supported)
