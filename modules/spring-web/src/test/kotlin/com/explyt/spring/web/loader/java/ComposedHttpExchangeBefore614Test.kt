@@ -34,6 +34,7 @@ class ComposedHttpExchangeBefore614Test : ExplytJavaLightTestCase() {
         val jarName = versionClass!!.containingFile.virtualFile.path.substringBefore("!/").substringAfterLast('/')
         assertEquals("Precondition: Spring 6.1.2 is below the 6.1.4 conflict gate", "spring-core-6.1.2.jar", jarName)
         addSources()
+        assertDifferentMetaDepths()
     }
 
     fun testDirectExchangeDeclaredAfterGetExchangeWins() =
@@ -57,7 +58,49 @@ class ComposedHttpExchangeBefore614Test : ExplytJavaLightTestCase() {
     fun testGutterUsesDirectExchangeDeclaredBeforeGetExchange() =
         assertEquals(listOf(ExchangeRow("/b", listOf("POST"))), fixture.gutterRows("ItemClient", "exchangeThenGet"))
 
+    fun testFirstDeclaredDeeperComposedExchangeWins() =
+        assertEquals(listOf(ExchangeRow("/lvl", listOf("GET"))), fixture.rows("ItemClient", "deeperFirst"))
+
+    fun testGutterUsesFirstDeclaredDeeperComposedExchange() =
+        assertEquals(listOf(ExchangeRow("/lvl", listOf("GET"))), fixture.gutterRows("ItemClient", "deeperFirst"))
+
+    fun testFirstDeclaredDeeperComposedTypeSuppliesThePrefix() =
+        assertEquals(
+            listOf(ExchangeRow("/deep/x", listOf("GET")), ExchangeRow("/deep/y", listOf("GET"))),
+            fixture.allRows("DeeperFirstTypeClient")
+        )
+
+    private fun assertDifferentMetaDepths() {
+        val httpExchange = "org.springframework.web.service.annotation.HttpExchange"
+        val apiGetV = myFixture.findClass("com.example.ApiGetV")
+        assertFalse("Precondition: ApiGetV does not directly carry HttpExchange", apiGetV.hasAnnotation(httpExchange))
+        assertTrue("Precondition: ApiGetV carries ApiGet", apiGetV.hasAnnotation("com.example.ApiGet"))
+        assertTrue("Precondition: ApiGet directly carries HttpExchange", myFixture.findClass("com.example.ApiGet").hasAnnotation(httpExchange))
+        assertTrue("Precondition: ApiPost directly carries HttpExchange", myFixture.findClass("com.example.ApiPost").hasAnnotation(httpExchange))
+        val apiTypeV = myFixture.findClass("com.example.ApiTypeV")
+        assertFalse("Precondition: ApiTypeV does not directly carry HttpExchange", apiTypeV.hasAnnotation(httpExchange))
+        assertTrue("Precondition: ApiTypeV carries ApiType", apiTypeV.hasAnnotation("com.example.ApiType"))
+        assertTrue("Precondition: ApiType directly carries HttpExchange", myFixture.findClass("com.example.ApiType").hasAnnotation(httpExchange))
+        assertTrue("Precondition: ApiOtherType directly carries HttpExchange", myFixture.findClass("com.example.ApiOtherType").hasAnnotation(httpExchange))
+    }
+
     private fun addSources() {
+        myFixture.addFileToProject(
+            "com/example/DeeperFirstTypeClient.java", """
+            package com.example;
+            import org.springframework.web.service.annotation.GetExchange;
+
+            @ApiTypeV
+            @ApiOtherType
+            public interface DeeperFirstTypeClient {
+                @GetExchange("/x")
+                String x();
+
+                @GetExchange("/y")
+                String y();
+            }
+            """.trimIndent()
+        )
         myFixture.addFileToProject(
             "com/example/ComposedExchanges.java", """
             package com.example;
@@ -110,11 +153,23 @@ class ComposedHttpExchangeBefore614Test : ExplytJavaLightTestCase() {
             }
 
             @Retention(RetentionPolicy.RUNTIME)
-            @Target(ElementType.TYPE)
+            @Target({ElementType.TYPE, ElementType.ANNOTATION_TYPE})
             @HttpExchange
             @interface ApiType {
                 @AliasFor(annotation = HttpExchange.class, attribute = "url")
                 String url() default "/prefix";
+            }
+
+            @Retention(RetentionPolicy.RUNTIME)
+            @Target(ElementType.TYPE)
+            @ApiType(url = "/deep")
+            @interface ApiTypeV {
+            }
+
+            @Retention(RetentionPolicy.RUNTIME)
+            @Target(ElementType.TYPE)
+            @HttpExchange(url = "/shallow")
+            @interface ApiOtherType {
             }
             """.trimIndent()
         )
@@ -126,6 +181,10 @@ class ComposedHttpExchangeBefore614Test : ExplytJavaLightTestCase() {
             import org.springframework.web.service.annotation.HttpExchange;
 
             public interface ItemClient {
+                @ApiGetV
+                @ApiPost
+                String deeperFirst();
+
                 @ApiGet
                 String bare();
 

@@ -35,6 +35,7 @@ class ComposedHttpExchangeBefore614Test : ExplytKotlinLightTestCase() {
         val jarName = versionClass!!.containingFile.virtualFile.path.substringBefore("!/").substringAfterLast('/')
         assertEquals("Precondition: Spring 6.1.2 is below the 6.1.4 conflict gate", "spring-core-6.1.2.jar", jarName)
         addSources()
+        assertDifferentMetaDepths()
     }
 
     fun testDirectExchangeDeclaredAfterGetExchangeWins() =
@@ -58,7 +59,49 @@ class ComposedHttpExchangeBefore614Test : ExplytKotlinLightTestCase() {
     fun testGutterUsesDirectExchangeDeclaredBeforeGetExchange() =
         assertEquals(listOf(ExchangeRow("/b", listOf("POST"))), fixture.gutterRows("ItemClient", "exchangeThenGet"))
 
+    fun testFirstDeclaredDeeperComposedExchangeWins() =
+        assertEquals(listOf(ExchangeRow("/lvl", listOf("GET"))), fixture.rows("ItemClient", "deeperFirst"))
+
+    fun testGutterUsesFirstDeclaredDeeperComposedExchange() =
+        assertEquals(listOf(ExchangeRow("/lvl", listOf("GET"))), fixture.gutterRows("ItemClient", "deeperFirst"))
+
+    fun testFirstDeclaredDeeperComposedTypeSuppliesThePrefix() =
+        assertEquals(
+            listOf(ExchangeRow("/deep/x", listOf("GET")), ExchangeRow("/deep/y", listOf("GET"))),
+            fixture.allRows("DeeperFirstTypeClient")
+        )
+
+    private fun assertDifferentMetaDepths() {
+        val httpExchange = "org.springframework.web.service.annotation.HttpExchange"
+        val apiGetV = myFixture.findClass("com.example.ApiGetV")
+        assertFalse("Precondition: ApiGetV does not directly carry HttpExchange", apiGetV.hasAnnotation(httpExchange))
+        assertTrue("Precondition: ApiGetV carries ApiGet", apiGetV.hasAnnotation("com.example.ApiGet"))
+        assertTrue("Precondition: ApiGet directly carries HttpExchange", myFixture.findClass("com.example.ApiGet").hasAnnotation(httpExchange))
+        assertTrue("Precondition: ApiPost directly carries HttpExchange", myFixture.findClass("com.example.ApiPost").hasAnnotation(httpExchange))
+        val apiTypeV = myFixture.findClass("com.example.ApiTypeV")
+        assertFalse("Precondition: ApiTypeV does not directly carry HttpExchange", apiTypeV.hasAnnotation(httpExchange))
+        assertTrue("Precondition: ApiTypeV carries ApiType", apiTypeV.hasAnnotation("com.example.ApiType"))
+        assertTrue("Precondition: ApiType directly carries HttpExchange", myFixture.findClass("com.example.ApiType").hasAnnotation(httpExchange))
+        assertTrue("Precondition: ApiOtherType directly carries HttpExchange", myFixture.findClass("com.example.ApiOtherType").hasAnnotation(httpExchange))
+    }
+
     private fun addSources() {
+        myFixture.addFileToProject(
+            "com/example/DeeperFirstTypeClient.kt", """
+            package com.example
+            import org.springframework.web.service.annotation.GetExchange
+
+            @ApiTypeV
+            @ApiOtherType
+            interface DeeperFirstTypeClient {
+                @GetExchange("/x")
+                fun x(): String
+
+                @GetExchange("/y")
+                fun y(): String
+            }
+            """.trimIndent()
+        )
         myFixture.addFileToProject(
             "com/example/ComposedExchanges.kt", """
             package com.example
@@ -103,12 +146,22 @@ class ComposedHttpExchangeBefore614Test : ExplytKotlinLightTestCase() {
             annotation class ApiConv(val url: String = "/conv")
 
             @Retention(AnnotationRetention.RUNTIME)
-            @Target(AnnotationTarget.CLASS)
+            @Target(AnnotationTarget.CLASS, AnnotationTarget.ANNOTATION_CLASS)
             @HttpExchange
             annotation class ApiType(
                 @get:AliasFor(annotation = HttpExchange::class, attribute = "url")
                 val url: String = "/prefix",
             )
+
+            @Retention(AnnotationRetention.RUNTIME)
+            @Target(AnnotationTarget.CLASS)
+            @ApiType(url = "/deep")
+            annotation class ApiTypeV
+
+            @Retention(AnnotationRetention.RUNTIME)
+            @Target(AnnotationTarget.CLASS)
+            @HttpExchange(url = "/shallow")
+            annotation class ApiOtherType
             """.trimIndent()
         )
         myFixture.addFileToProject(
@@ -119,6 +172,10 @@ class ComposedHttpExchangeBefore614Test : ExplytKotlinLightTestCase() {
             import org.springframework.web.service.annotation.HttpExchange
 
             interface ItemClient {
+                @ApiGetV
+                @ApiPost
+                fun deeperFirst(): String
+
                 @ApiGet
                 fun bare(): String
 
