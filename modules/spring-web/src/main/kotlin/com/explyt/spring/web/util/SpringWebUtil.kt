@@ -26,6 +26,7 @@ import com.explyt.spring.web.route.RoutePredicates
 import com.explyt.spring.web.route.RoutePrefix
 import com.explyt.spring.web.route.RouteScope
 import com.explyt.spring.web.route.RouterDslRoutes
+import com.explyt.spring.web.util.HandlerMethods.firstPathOrNull
 import com.explyt.util.ExplytAnnotationUtil.getBooleanValue
 import com.explyt.util.ExplytAnnotationUtil.getStringValue
 import com.explyt.util.ExplytKotlinUtil.mapToList
@@ -347,7 +348,7 @@ object SpringWebUtil {
         val controllerName = psiClass.name ?: return null
 
         val mapping = HandlerMethods.methodMapping(mappingSource, MetaAnnotationsHolder.of(module, REQUEST_MAPPING))
-        val path = mapping.paths.firstOrNull()?.path ?: ""
+        val path = mapping.firstPathOrNull() ?: return null
         if (isAbsolutePath(path)) return null
 
         val fullPath = simplifyUrl(MappingPathPlaceholders.resolve(module, "$prefix/${removeParams(path)}"))
