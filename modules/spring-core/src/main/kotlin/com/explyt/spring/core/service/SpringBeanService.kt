@@ -32,7 +32,7 @@ class SpringBeanService {
         val beanPsiClass = psiType.resolveBeanPsiClass ?: return emptySet()
         val searchServiceFacade = SpringSearchServiceFacade.getInstance(module.project)
 
-        val excludedBeans = searchServiceFacade.getExcludedBeansClasses(module)
+        val excludedBeans = searchServiceFacade.getBeansExcludedByCondition(module)
         val classInheritors = SpringSearchUtils.searchClassInheritors(beanPsiClass)
             .asSequence()
             .filter { it.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT) }

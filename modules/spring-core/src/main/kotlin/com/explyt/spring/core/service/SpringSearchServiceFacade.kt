@@ -101,6 +101,14 @@ class SpringSearchServiceFacade(private val project: Project) {
         }
     }
 
+    fun getBeansExcludedByCondition(module: Module): Set<PsiBean> {
+        return if (isExternalProjectExist(project)) {
+            emptySet()
+        } else {
+            springSearchService.foundBeans(module).excludedByCondition
+        }
+    }
+
     fun findActiveBeanDeclarations(
         module: Module,
         byBeanName: String,
