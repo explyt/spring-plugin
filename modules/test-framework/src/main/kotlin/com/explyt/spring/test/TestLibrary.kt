@@ -19,6 +19,9 @@ data class TestLibrary(val mavenCoordinates: String, val includeTransitiveDepend
         val springTx_6_0_7 = TestLibrary("org.springframework:spring-tx:6.0.7")
         val springTest_6_0_7 = TestLibrary("org.springframework:spring-test:6.0.7")
         val springWeb_6_0_7 = TestLibrary("org.springframework:spring-web:6.0.7", true)
+        val jakartaServlet_6_0_0 = TestLibrary("jakarta.servlet:jakarta.servlet-api:6.0.0")
+        val jakartaServlet_6_1_0 = TestLibrary("jakarta.servlet:jakarta.servlet-api:6.1.0")
+        val javaxServlet_4_0_1 = TestLibrary("javax.servlet:javax.servlet-api:4.0.1")
 
         /** Spring MVC without Reactor, so a fixture can model a servlet-stack project that has no WebFlux. */
         val springWebMvc_6_0_7 = TestLibrary("org.springframework:spring-webmvc:6.0.7", true)
@@ -38,6 +41,7 @@ data class TestLibrary(val mavenCoordinates: String, val includeTransitiveDepend
         val springBootActuatorAutoConfigure_4_1_0: TestLibrary =
             TestLibrary("org.springframework.boot:spring-boot-actuator-autoconfigure:4.1.0")
         val springBootHealth_4_1_0: TestLibrary = TestLibrary("org.springframework.boot:spring-boot-health:4.1.0")
+        val springBootWebFlux_4_1_1: TestLibrary = TestLibrary("org.springframework.boot:spring-boot-webflux:4.1.1")
 
         /** Boot 4 moved `IntegrationAutoConfiguration` out of `spring-boot-autoconfigure` into this jar. */
         val springBootIntegration_4_1_0: TestLibrary = TestLibrary("org.springframework.boot:spring-boot-integration:4.1.0")
