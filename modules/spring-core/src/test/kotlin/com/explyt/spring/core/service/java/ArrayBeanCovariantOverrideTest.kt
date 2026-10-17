@@ -65,6 +65,35 @@ class ArrayBeanCovariantOverrideTest : ExplytJavaLightTestCase() {
         assertNoAutowiringProblems()
     }
 
+    fun testObjectFactoryOverriddenByArrayResolvesArrayInjection() {
+        myFixture.addFileToProject(
+            "com/explyt/demo/Config.java",
+            """
+            package com.explyt.demo;
+            import org.springframework.context.annotation.Bean;
+            import org.springframework.context.annotation.Configuration;
+            class C {}
+            class SubC extends C {}
+            class Base {
+                @Bean
+                public Object thing() { return new Object(); }
+            }
+            @Configuration
+            public class Config extends Base {
+                @Override public SubC[] thing() { return new SubC[1]; }
+            }
+            """.trimIndent()
+        )
+        assertEquals("java.lang.Object", psiClass("Base").findMethodsByName("thing", false).single().returnType?.canonicalText)
+        assertEquals(
+            "com.explyt.demo.SubC[]",
+            psiClass("Config").findMethodsByName("thing", false).single().returnType?.canonicalText
+        )
+        configureConsumer("SubC")
+        assertInjectionTargetsArrayBean("thing")
+        assertNoAutowiringProblems()
+    }
+
     private fun configureCovariantOverride() {
         configureConfig(override = true)
         val base = psiClass("Base").findMethodsByName("arrayC", false).single()
@@ -128,7 +157,7 @@ class ArrayBeanCovariantOverrideTest : ExplytJavaLightTestCase() {
         )
     }
 
-    private fun assertInjectionTargetsArrayBean() {
+    private fun assertInjectionTargetsArrayBean(beanName: String = "arrayC") {
         val fieldLine = myFixture.editor.document.text.lines().indexOfFirst { it.contains(" arrays;") }
         val targets = myFixture.findAllGutters()
             .filter { gutter ->
@@ -138,8 +167,8 @@ class ArrayBeanCovariantOverrideTest : ExplytJavaLightTestCase() {
             }
             .flatMap { getGutterTargetsStrings(it) }
         assertTrue(
-            "The injection gutter must target the arrayC bean, got $targets",
-            targets.any { it.startsWith("arrayC") }
+            "The injection gutter must target the $beanName bean, got $targets",
+            targets.any { it.startsWith(beanName) }
         )
     }
 

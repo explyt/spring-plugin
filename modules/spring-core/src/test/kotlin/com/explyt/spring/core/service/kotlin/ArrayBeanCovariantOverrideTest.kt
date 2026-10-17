@@ -65,6 +65,35 @@ class ArrayBeanCovariantOverrideTest : ExplytKotlinLightTestCase() {
         assertNoAutowiringProblems()
     }
 
+    fun testObjectFactoryOverriddenByArrayResolvesArrayInjection() {
+        myFixture.addFileToProject(
+            "com/explyt/demo/Config.kt",
+            """
+            package com.explyt.demo
+            import org.springframework.context.annotation.Bean
+            import org.springframework.context.annotation.Configuration
+            open class C
+            class SubC : C()
+            open class Base {
+                @Bean
+                open fun thing(): Any = Any()
+            }
+            @Configuration
+            open class Config : Base() {
+                override fun thing(): Array<SubC> = arrayOf(SubC())
+            }
+            """.trimIndent()
+        )
+        assertEquals("java.lang.Object", psiClass("Base").findMethodsByName("thing", false).single().returnType?.canonicalText)
+        assertEquals(
+            "com.explyt.demo.SubC[]",
+            psiClass("Config").findMethodsByName("thing", false).single().returnType?.canonicalText
+        )
+        configureConsumer("SubC")
+        assertInjectionTargetsArrayBean("thing")
+        assertNoAutowiringProblems()
+    }
+
     private fun configureCovariantOverride() {
         configureConfig(override = true)
         val base = psiClass("Base").findMethodsByName("arrayC", false).single()
@@ -128,7 +157,7 @@ class ArrayBeanCovariantOverrideTest : ExplytKotlinLightTestCase() {
         )
     }
 
-    private fun assertInjectionTargetsArrayBean() {
+    private fun assertInjectionTargetsArrayBean(beanName: String = "arrayC") {
         val fieldLine = myFixture.editor.document.text.lines().indexOfFirst { it.contains(" arrays:") }
         val targets = myFixture.findAllGutters()
             .filter { gutter ->
@@ -138,8 +167,8 @@ class ArrayBeanCovariantOverrideTest : ExplytKotlinLightTestCase() {
             }
             .flatMap { getGutterTargetsStrings(it) }
         assertTrue(
-            "The injection gutter must target the arrayC bean, got $targets",
-            targets.any { it.startsWith("arrayC") }
+            "The injection gutter must target the $beanName bean, got $targets",
+            targets.any { it.startsWith(beanName) }
         )
     }
 
