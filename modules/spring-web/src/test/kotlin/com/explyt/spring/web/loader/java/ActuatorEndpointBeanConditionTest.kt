@@ -183,4 +183,30 @@ class ActuatorEndpointBeanConditionTest : ActuatorEndpointBeanConditionTestCase(
             public class ExtEtlWebExtension { @ReadOperation public String status() { return "extension"; } }
         """.trimIndent())
     }
+
+    override fun addXEndpoint() {
+        myFixture.addFileToProject("com/app/XEndpoint.java", """
+            package com.app;
+            import org.springframework.boot.actuate.endpoint.annotation.Endpoint;
+            import org.springframework.boot.actuate.endpoint.annotation.ReadOperation;
+            import org.springframework.stereotype.Component;
+            @Component
+            @Endpoint(id = "x")
+            public class XEndpoint { @ReadOperation public String read() { return "endpoint"; } }
+        """.trimIndent())
+    }
+
+    override fun addXWebExtension(packageName: String, annotations: String) {
+        myFixture.addFileToProject("${packageName.replace('.', '/')}/XWebExtension.java", """
+            package $packageName;
+            import com.app.XEndpoint;
+            import org.springframework.boot.actuate.endpoint.annotation.ReadOperation;
+            import org.springframework.boot.actuate.endpoint.web.annotation.EndpointWebExtension;
+            import org.springframework.context.annotation.Profile;
+            import org.springframework.stereotype.Component;
+            $annotations
+            @EndpointWebExtension(endpoint = XEndpoint.class)
+            public class XWebExtension { @ReadOperation public String extended() { return "extension"; } }
+        """.trimIndent())
+    }
 }
