@@ -181,9 +181,10 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "declaration to read it from. Rows come PROJECT first, then LIBRARY, then those of unknown origin, " +
                 "each by beanName and className. Pass origin=PROJECT or origin=LIBRARY to keep one of them: rows " +
                 "of unknown origin are then left out and counted in 'unknownOriginCount', absent when none was. " +
-                "Project beans (and those of unknown origin) excluded by a @Conditional (except @Profile, which is " +
-                "filtered earlier) are listed after all the others with 'condition': {state: INACTIVE, annotation, " +
-                "carrier, detail}; the rows of library beans excluded by a condition are only counted in " +
+                "Project beans (and those of unknown origin) excluded by a @Conditional or an inactive @Profile " +
+                "are listed after all the others with 'condition': {state: INACTIVE, annotation, carrier, detail}, " +
+                "a @Profile one even with condition evaluation disabled; the rows of library beans excluded by a " +
+                "condition are only counted in " +
                 "'inactiveLibraryCount', absent when there was none, unless origin=LIBRARY is requested, which " +
                 "lists them after the active library rows. A bean whose condition cannot be decided keeps its place " +
                 "with 'condition': {state: UNDECIDED, reasons, annotation, carrier, detail}. The envelope-level " +

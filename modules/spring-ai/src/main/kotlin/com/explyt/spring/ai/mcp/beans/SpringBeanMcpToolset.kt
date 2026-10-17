@@ -41,11 +41,11 @@ class SpringBeanMcpToolset : McpToolset {
                 "'condition' {state UNDECIDED, every undecided 'reasons', and the first condition's " +
                 "'annotation', 'carrier' and 'detail'} and makes the answer INDETERMINATE with " +
                 "CONDITIONS_UNDECIDED (and PROFILE_NOT_DECIDABLE) in 'model.limitations'. Matching beans " +
-                "excluded by a @Conditional other than @Profile never count toward 'outcome': they are counted " +
+                "excluded by a @Conditional or an inactive @Profile never count toward 'outcome': they are counted " +
                 "in 'inactiveCount' on every page and up to 3 are sampled in 'inactiveCandidates' on the first " +
                 "page, each with 'condition' {state INACTIVE, ...}, and 'inactiveCandidatesTruncated' is true " +
-                "when not all fit; beans inactive by @Profile are filtered earlier and not listed. With condition " +
-                "evaluation disabled in the settings 'model.limitations' holds CONDITIONS_NOT_EVALUATED. " +
+                "when not all fit. With condition evaluation disabled in the settings 'model.limitations' holds " +
+                "CONDITIONS_NOT_EVALUATED and only @Profile exclusions are reported. " +
                 "A candidate's 'declaration' carries the project-relative 'filePath' and 'line' of the declaring " +
                 "member, or a null 'filePath' and 'library' naming the jar for a bean declared in one - never a " +
                 "path of the machine. " +
