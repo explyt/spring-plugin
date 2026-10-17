@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Spring Core
+- fix: Library `@Controller`, `@Service` and other stereotype classes are beans only when a component scan of the application covers their package; previously every such class in a dependency was reported as an active bean; library configurations and `@ConfigurationProperties` classes are unchanged (#645)
 - fix: Bean conditions on the web application type follow Spring Boot's deduction: a servlet app with WebFlux on the classpath, a reactive app and a client-only app are told apart, `spring.main.web-application-type` is honoured, and `@ConditionalOnNotWebApplication` is evaluated (#496)
 - `@MessagingGateway` interfaces are beans only inside `@IntegrationComponentScan` packages (or Boot's integration auto-configuration) and under their `name` attribute (#598)
 - feat: MyBatis mapper interfaces are beans under `@MapperScan` (packages, `annotationClass`, `markerInterface`) and under the MyBatis Spring Boot auto-configuration (`@Mapper`) (#598)
