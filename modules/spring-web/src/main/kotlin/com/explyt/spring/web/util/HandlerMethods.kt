@@ -54,6 +54,9 @@ object HandlerMethods {
         val consumes: List<String>,
     )
 
+    fun MethodMapping.firstPathOrNull(): String? =
+        if (pathsDeclared) paths.firstOrNull()?.path else ""
+
     fun mappedMethods(
         controller: PsiClass,
         order: HierarchyOrder = HierarchyOrder.INTERFACES_FIRST,
