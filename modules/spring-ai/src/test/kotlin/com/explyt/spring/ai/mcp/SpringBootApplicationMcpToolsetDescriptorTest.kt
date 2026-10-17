@@ -69,6 +69,18 @@ class SpringBootApplicationMcpToolsetDescriptorTest {
         }
     }
 
+    @Test
+    fun `no bean description claims profile-inactive beans are hidden`() {
+        val beanTools = tools.filter { it.toolName in BEAN_TOOLS }
+        assertEquals(BEAN_TOOLS, beanTools.map { it.toolName }.toSet())
+        for (tool in beanTools) {
+            assertTrue(
+                "${tool.toolName} still says profile-inactive beans are filtered earlier",
+                !tool.toolDescription.contains("filtered earlier")
+            )
+        }
+    }
+
     /**
      * The descriptions hand the agent from one tool to the next by name ("take applicationClassName from
      * explyt_get_spring_boot_applications"). A renamed tool leaves such a hand-off pointing at nothing, and the
@@ -174,5 +186,6 @@ class SpringBootApplicationMcpToolsetDescriptorTest {
         val TOOL_NAME = Regex("""explyt_[a-z_]+""")
         const val LEAD_SENTENCES = 2
         const val MAX_TOOL_NAME_LENGTH = 40
+        val BEAN_TOOLS = setOf("explyt_get_spring_beans", "explyt_find_spring_bean")
     }
 }
