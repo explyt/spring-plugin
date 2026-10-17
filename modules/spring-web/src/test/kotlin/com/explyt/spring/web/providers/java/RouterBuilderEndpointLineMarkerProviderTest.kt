@@ -237,6 +237,30 @@ class RouterBuilderEndpointLineMarkerProviderTest : ExplytJavaLightTestCase() {
         )
     }
 
+    fun testServletRouteOfAnotherVerbUnderAVerbNestHasNoMarker() {
+        assertMarkersFollowModel(
+            EndpointType.SPRING_MVC,
+            VERB_NEST_WITH_TWO_VERBS,
+            listOf("GET /s", "PUT /a/c")
+        )
+    }
+
+    fun testReactiveRouteOfAnotherVerbUnderAVerbNestHasNoMarker() {
+        assertMarkersFollowModel(
+            EndpointType.SPRING_WEBFLUX,
+            VERB_NEST_WITH_TWO_VERBS,
+            listOf("GET /s", "PUT /a/c")
+        )
+    }
+
+    fun testServletRouteOfAnotherVerbUnderAPathFreeMethodNestHasNoMarker() {
+        assertMarkersFollowModel(
+            EndpointType.SPRING_MVC,
+            """route().nest(RequestPredicates.method(org.springframework.http.HttpMethod.PUT), b -> b.POST("/b", h::list).PUT("/c", h::list)).build()""",
+            listOf("PUT /c")
+        )
+    }
+
     private fun assertMarkersFollowModel(
         type: EndpointType,
         route: String,
@@ -335,6 +359,9 @@ class RouterBuilderEndpointLineMarkerProviderTest : ExplytJavaLightTestCase() {
         .sorted()
 
     private companion object {
+        const val VERB_NEST_WITH_TWO_VERBS =
+            """route().GET("/s", h::list).nest(RequestPredicates.PUT("/a"), b -> b.POST("/b", h::list).PUT("/c", h::list)).build()"""
+
         const val ANONYMOUS_SERVLET_HANDLER =
             """return RouterFunctions.route(RequestPredicates.GET("/x"), new HandlerFunction<ServerResponse>() {
                 public ServerResponse handle(ServerRequest method) { return ServerResponse.ok().build(); }

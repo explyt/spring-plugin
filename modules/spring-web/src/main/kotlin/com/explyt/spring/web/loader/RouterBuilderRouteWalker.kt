@@ -9,6 +9,7 @@ import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.route.RoutePredicates
 import com.explyt.spring.web.route.RoutePrefix
+import com.explyt.spring.web.route.RouteScope
 import com.explyt.spring.web.util.RoutePathResolver
 import com.explyt.spring.web.util.SpringWebUtil
 import com.intellij.openapi.progress.ProgressManager
@@ -36,7 +37,7 @@ object RouterBuilderRouteWalker {
             CachedValueProvider.Result(
                 BeanMethodWalk(
                     router != null && callChainOf(router).any { it.isRouteRegistration() },
-                    router?.let { walkChain(it, "", 0) }.orEmpty()
+                    router?.let { walkChain(it, RouteScope.ROOT, 0) }.orEmpty()
                 ),
                 ModificationTrackerManager.getInstance(beanMethod.project).getUastModelAndLibraryTracker(),
                 PsiModificationTracker.MODIFICATION_COUNT
@@ -56,9 +57,9 @@ object RouterBuilderRouteWalker {
     private fun returnedRouterOf(beanMethod: PsiMethod): PsiExpression? =
         beanMethod.body?.statements?.firstNotNullOfOrNull { (it as? PsiReturnStatement)?.returnValue }
 
-    private fun walkChain(expression: PsiExpression, prefix: String, nesting: Int): List<BuilderRoute> {
+    private fun walkChain(expression: PsiExpression, scope: RouteScope, nesting: Int): List<BuilderRoute> {
         if (nesting > MAX_NESTING) return emptyList()
-        return callChainOf(expression).toList().asReversed().flatMap { routesOfCall(it, prefix, nesting) }
+        return callChainOf(expression).toList().asReversed().flatMap { routesOfCall(it, scope, nesting) }
     }
 
     private fun callChainOf(expression: PsiExpression?): Sequence<PsiMethodCallExpression> =
@@ -66,7 +67,7 @@ object RouterBuilderRouteWalker {
             unwrap(it.methodExpression.qualifierExpression) as? PsiMethodCallExpression
         }
 
-    private fun routesOfCall(call: PsiMethodCallExpression, prefix: String, nesting: Int): List<BuilderRoute> {
+    private fun routesOfCall(call: PsiMethodCallExpression, scope: RouteScope, nesting: Int): List<BuilderRoute> {
         ProgressManager.checkCanceled()
         val method = call.resolveMethod()
             ?.takeIf { it.containingClass?.qualifiedName in SpringWebClasses.ROUTE_FUNCTION_BUILDERS }
@@ -74,15 +75,15 @@ object RouterBuilderRouteWalker {
         val arguments = call.argumentList.expressions
         return when {
             method.name in SpringWebClasses.ROUTE_FUNCTION_BUILDER_VERBS ->
-                verbRoutes(call, method, arguments.firstOrNull(), prefix)
+                verbRoutes(call, method, arguments.firstOrNull(), scope)
 
             arguments.size != 2 -> emptyList()
 
             method.name == SpringWebClasses.ROUTE_PATH ->
-                nestedRoutes(uriValues(arguments[0]), arguments[1], prefix, nesting)
+                nestedRoutes(RouteScope.of(RoutePrefix.of(uriValues(arguments[0]))), arguments[1], scope, nesting)
 
             method.name == SpringWebClasses.ROUTE_NEST ->
-                nestedRoutes(predicatePrefixes(arguments[0]), arguments[1], prefix, nesting)
+                nestedRoutes(predicateScope(arguments[0]), arguments[1], scope, nesting)
 
             else -> emptyList()
         }
@@ -92,28 +93,33 @@ object RouterBuilderRouteWalker {
         call: PsiMethodCallExpression,
         method: PsiMethod,
         uriArgument: PsiExpression?,
-        prefix: String
+        scope: RouteScope
     ): List<BuilderRoute> {
         if (!method.takesUriFirst()) return emptyList()
-        return uriValues(uriArgument).mapNotNull { uri ->
-            when {
-                prefix.isNotEmpty() -> SpringWebUtil.simplifyUrl(RoutePathResolver.joinPaths(prefix, uri))
-                uri.isNotEmpty() -> uri
-                else -> null
-            }?.let { BuilderRoute(it, method.name, call) }
+        val verb = scope.verbs.servedVerbsOf(listOf(method.name))?.singleOrNull() ?: return emptyList()
+        val uris = uriValues(uriArgument)
+        val paths = when (val prefix = scope.prefix) {
+            RoutePrefix.PathFree -> uris.filter { it.isNotEmpty() }
+            is RoutePrefix.Decided -> (prefix.then(RoutePrefix.of(uris)) as? RoutePrefix.Decided)
+                ?.segments?.map(SpringWebUtil::simplifyUrl).orEmpty()
+
+            RoutePrefix.Undecidable -> emptyList()
         }
+        return paths.map { BuilderRoute(it, verb, call) }
     }
 
     private fun nestedRoutes(
-        segments: List<String>,
+        nestScope: RouteScope,
         callback: PsiExpression,
-        prefix: String,
+        scope: RouteScope,
         nesting: Int
-    ): List<BuilderRoute> = segments.flatMap {
-        callbackRoutes(callback, RoutePathResolver.joinPaths(prefix, it), nesting + 1)
+    ): List<BuilderRoute> {
+        val innerScope = scope.then(nestScope)
+        if (innerScope.isUndecidable) return emptyList()
+        return callbackRoutes(callback, innerScope, nesting + 1)
     }
 
-    private fun callbackRoutes(callback: PsiExpression, prefix: String, nesting: Int): List<BuilderRoute> {
+    private fun callbackRoutes(callback: PsiExpression, scope: RouteScope, nesting: Int): List<BuilderRoute> {
         val lambda = unwrap(callback) as? PsiLambdaExpression ?: return emptyList()
         val builderParameter = lambda.parameterList.parameters.singleOrNull()
         val chains = if (builderParameter == null) {
@@ -121,15 +127,11 @@ object RouterBuilderRouteWalker {
         } else {
             statementExpressions(lambda.body).filter { it.isChainRootedAt(builderParameter) }
         }
-        return chains.flatMap { walkChain(it, prefix, nesting) }
+        return chains.flatMap { walkChain(it, scope, nesting) }
     }
 
-    private fun predicatePrefixes(predicate: PsiExpression): List<String> =
-        when (val prefix = predicate.toUElementOfType<UExpression>()?.let(RoutePredicates::prefixOf)) {
-            is RoutePrefix.Decided -> prefix.segments
-            RoutePrefix.PathFree -> listOf("")
-            RoutePrefix.Undecidable, null -> emptyList()
-        }
+    private fun predicateScope(predicate: PsiExpression): RouteScope =
+        predicate.toUElementOfType<UExpression>()?.let(RoutePredicates::scopeOf) ?: RouteScope.UNDECIDABLE
 
     private fun returnedExpressions(body: PsiElement?): List<PsiExpression> = when (body) {
         is PsiExpression -> listOf(body)
@@ -153,7 +155,6 @@ object RouterBuilderRouteWalker {
 
     private fun uriValues(expression: PsiExpression?): List<String> =
         expression?.toUElementOfType<UExpression>()?.let(RoutePathResolver::resolveUriValues).orEmpty()
-
 
     private fun unwrap(expression: PsiExpression?): PsiExpression? = PsiUtil.skipParenthesizedExprDown(expression)
 }
