@@ -12,11 +12,11 @@ import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.editor.openapi.OpenApiUtils
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
 import com.explyt.spring.web.util.HandlerSignature
+import com.explyt.spring.web.util.HttpExchanges
+import com.explyt.spring.web.util.HttpExchanges.Mapped
 import com.explyt.spring.web.util.SpringWebUtil
-import com.explyt.util.ExplytPsiUtil
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytUastUtil.getCommentText
-import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.daemon.LineMarkerInfo
 import com.intellij.codeInsight.daemon.LineMarkerProviderDescriptor
 import com.intellij.openapi.editor.markup.GutterIconRenderer
@@ -51,25 +51,17 @@ class HttpExchangeEndpointActionsLineMarkerProvider : LineMarkerProviderDescript
         val psiClass = psiMethod.containingClass ?: return null
         val className = psiClass.name ?: return null
 
-        val requestMappingMah = MetaAnnotationsHolder.of(module, SpringWebClasses.HTTP_EXCHANGE)
-        val path = requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("path", "value")).asSequence()
-            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
-            .firstOrNull() ?: ""
+        val exchangeMah = MetaAnnotationsHolder.of(module, SpringWebClasses.HTTP_EXCHANGE)
+        val exchange = HttpExchanges.exchangeOf(psiMethod, exchangeMah) as? Mapped ?: return null
+        val path = exchange.urls.firstOrNull().orEmpty()
         if (OpenApiUtils.isAbsolutePath(path)) return null
 
-        val prefix = if (psiClass.isMetaAnnotatedBy(SpringWebClasses.HTTP_EXCHANGE)) {
-            requestMappingMah.getAnnotationMemberValues(psiClass, setOf("path", "value")).asSequence()
-                .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
-                .firstOrNull() ?: ""
-        } else {
-            ""
-        }
+        val typeExchange = HttpExchanges.exchangeOf(psiClass, exchangeMah) as? Mapped ?: return null
+        val prefix = typeExchange.urls.firstOrNull().orEmpty()
         if (OpenApiUtils.isAbsolutePath(prefix)) return null
 
         val fullPath = SpringWebUtil.simplifyUrl("$prefix/$path")
-
-        val requestMethods = requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("method"))
-            .map { ExplytPsiUtil.getUnquotedText(it) }
+        val requestMethods = exchange.methods
 
         val description = uMethod.comments.firstOrNull()?.getCommentText() ?: ""
         val returnTypeFqn = SpringWebUtil.getTypeFqn(HandlerSignature.declaredReturnType(psiMethod), psiMethod.language)
