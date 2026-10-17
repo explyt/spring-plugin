@@ -5,12 +5,15 @@
 
 package com.explyt.spring.web.util
 
+import com.explyt.spring.core.service.MergedAnnotationAttributes
 import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.util.ExplytPsiUtil
 import com.intellij.codeInsight.AnnotationUtil
+import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiAnnotationMemberValue
 import com.intellij.psi.PsiCompiledElement
 import com.intellij.psi.PsiMember
+import com.intellij.psi.PsiMethod
 import org.jetbrains.uast.UAnnotated
 import org.jetbrains.uast.UAnnotation
 import org.jetbrains.uast.UClassLiteralExpression
@@ -20,10 +23,12 @@ import org.jetbrains.uast.toUElement
 
 object HttpExchanges {
 
-    private val URL_ATTRIBUTES = setOf("url", "value")
-    private val METHOD_ATTRIBUTES = setOf("method")
-    private val ACCEPT_ATTRIBUTES = setOf("accept")
-    private val CONTENT_TYPE_ATTRIBUTES = setOf("contentType")
+    private const val URL = "url"
+    private const val VALUE = "value"
+    private const val METHOD = "method"
+    private val URL_ATTRIBUTES = setOf(URL, VALUE)
+    private val METHOD_ATTRIBUTES = setOf(METHOD)
+    private val COMPARED_ATTRIBUTES = listOf(URL, METHOD, "contentType", "accept", "headers", "version")
 
     sealed interface ExchangeMapping
 
@@ -31,18 +36,17 @@ object HttpExchanges {
 
     data object Conflicting : ExchangeMapping
 
-    private data class Exchange(
-        val url: String,
-        val methods: List<String>,
-        val accept: Set<String>,
-        val contentType: List<String>,
-    )
+    private data class Exchange(val attributes: Map<String, List<String>>) {
+        val url get() = attributes[URL].orEmpty().firstOrNull { it.isNotBlank() }.orEmpty()
+        val methods get() = attributes[METHOD].orEmpty().filter { it.isNotBlank() }
+    }
 
     fun exchangeOf(owner: PsiMember, exchangeMah: MetaAnnotationsHolder): ExchangeMapping {
         val annotated = owner.toUElement() as? UAnnotated ?: return declaredExchangeOf(owner, exchangeMah)
+        val attributes = comparedAttributesOf(owner, exchangeMah)
         val exchanges = annotated.uAnnotations
             .filter { exchangeMah.contains(it) }
-            .map { mergedExchangeOf(it, exchangeMah) }
+            .map { mergedExchangeOf(it, attributes, exchangeMah) }
         val readable = exchanges.filterNotNull().distinct()
         return when {
             readable.size > 1 -> Conflicting
@@ -51,20 +55,35 @@ object HttpExchanges {
         }
     }
 
-    private fun mergedExchangeOf(annotation: UAnnotation, exchangeMah: MetaAnnotationsHolder): Exchange? {
+    private fun comparedAttributesOf(owner: PsiMember, exchangeMah: MetaAnnotationsHolder): Map<String, PsiMethod?> {
+        val exchangeType = JavaPsiFacade.getInstance(owner.project)
+            .findClass(exchangeMah.getRootClassQualified(), owner.resolveScope)
+            ?: return COMPARED_ATTRIBUTES.associateWith { null }
+        val declared = exchangeType.methods.associateBy { it.name }
+        return COMPARED_ATTRIBUTES
+            .filter { it in declared || it == URL && VALUE in declared }
+            .associateWith { declared[it] ?: declared[VALUE] }
+    }
+
+    private fun mergedExchangeOf(
+        annotation: UAnnotation,
+        attributes: Map<String, PsiMethod?>,
+        exchangeMah: MetaAnnotationsHolder,
+    ): Exchange? {
         if (annotation.attributeValues.any { attribute -> hasUnreadableString(attribute.expression) }) return null
 
-        fun values(attributes: Set<String>): List<String>? =
-            exchangeMah.getAnnotationMemberValues(annotation, attributes)
-                .mapNotNull { if (it.isLibraryValue()) it.libraryStringValue() else it.evaluateString() ?: return null }
-                .filter { it.isNotBlank() }
+        fun strings(values: Collection<UExpression>): List<String>? =
+            values.mapNotNull { if (it.isLibraryValue()) it.libraryStringValue() else it.evaluateString() ?: return null }
 
-        return Exchange(
-            url = (values(URL_ATTRIBUTES) ?: return null).firstOrNull().orEmpty(),
-            methods = values(METHOD_ATTRIBUTES) ?: return null,
-            accept = values(ACCEPT_ATTRIBUTES)?.toSet() ?: return null,
-            contentType = values(CONTENT_TYPE_ATTRIBUTES) ?: return null,
-        )
+        fun values(attribute: String, declaration: PsiMethod?): List<String>? {
+            val names = if (attribute == URL) URL_ATTRIBUTES else setOf(attribute)
+            val merged = exchangeMah.getAnnotationMemberValues(annotation, names)
+            if (merged.isNotEmpty()) return strings(merged)
+            val default = declaration?.let(MergedAnnotationAttributes::defaultValueOf) ?: return emptyList()
+            return strings(MetaAnnotationsHolder.getValues(default))
+        }
+
+        return Exchange(attributes.mapValues { (attribute, declaration) -> values(attribute, declaration) ?: return null })
     }
 
     private fun hasUnreadableString(expression: UExpression): Boolean =
