@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Spring Core
+- fix: Bean conditions on the web application type follow Spring Boot's deduction: a servlet app with WebFlux on the classpath, a reactive app and a client-only app are told apart, `spring.main.web-application-type` is honoured, and `@ConditionalOnNotWebApplication` is evaluated (#496)
 - `@MessagingGateway` interfaces are beans only inside `@IntegrationComponentScan` packages (or Boot's integration auto-configuration) and under their `name` attribute (#598)
 - feat: MyBatis mapper interfaces are beans under `@MapperScan` (packages, `annotationClass`, `markerInterface`) and under the MyBatis Spring Boot auto-configuration (`@Mapper`) (#598)
 - fix: Treat a `@SpringBootApplication` or `@ComponentScan` in the default package as scanning every package, as Spring does, so its components in named packages are beans and their entities and repositories are no longer reported as outside the scan (#710)
