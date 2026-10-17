@@ -16,6 +16,8 @@ import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiMember
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.search.GlobalSearchScope
+import org.jetbrains.uast.UClass
+import org.jetbrains.uast.toUElementOfType
 
 abstract class ActuatorEndpointBeanConditionTestCase : ExplytBaseLightTestCase() {
 
@@ -33,6 +35,8 @@ abstract class ActuatorEndpointBeanConditionTestCase : ExplytBaseLightTestCase()
     protected abstract fun addSupertypeFactoryEndpoint()
     protected abstract fun addDuplicateEndpointRegistrations()
     protected abstract fun addPropertyGatedWebExtension()
+    protected abstract fun addXEndpoint()
+    protected abstract fun addXWebExtension(packageName: String, annotations: String)
 
     override fun setUp() {
         super.setUp()
@@ -209,6 +213,56 @@ abstract class ActuatorEndpointBeanConditionTestCase : ExplytBaseLightTestCase()
         assertEquals(ConditionReason.PROPERTY_UNRESOLVABLE, evidence.reason)
     }
 
+    fun testWebExtensionOutsideTheComponentScanLeavesTheEndpointOperation() {
+        addProperties(EXPOSE_ALL)
+        addXEndpoint()
+        addXWebExtension(OUTSIDE_SCAN_PACKAGE, "@Component")
+        assertDiscoveredWebExtensionIsNotABean(OUTSIDE_SCAN_EXTENSION)
+
+        assertEquals(listOf(X_ENDPOINT), operationOwnersAt(X_PATH))
+    }
+
+    fun testWebExtensionWithoutStereotypeLeavesTheEndpointOperation() {
+        addProperties(EXPOSE_ALL)
+        addXEndpoint()
+        addXWebExtension(APPLICATION_PACKAGE, "")
+        assertDiscoveredWebExtensionIsNotABean(IN_SCAN_EXTENSION)
+
+        assertEquals(listOf(X_ENDPOINT), operationOwnersAt(X_PATH))
+    }
+
+    fun testProfileInactiveWebExtensionLeavesTheEndpointOperation() {
+        addProperties(EXPOSE_ALL)
+        addXEndpoint()
+        addXWebExtension(APPLICATION_PACKAGE, "@Component\n@Profile(\"dev\")")
+        assertBeanModelSays<ConditionVerdict.Inactive>(projectClass(IN_SCAN_EXTENSION))
+
+        assertEquals(listOf(X_ENDPOINT), operationOwnersAt(X_PATH))
+    }
+
+    fun testWebExtensionBeanInsideTheComponentScanReplacesTheEndpointOperation() {
+        addProperties(EXPOSE_ALL)
+        addXEndpoint()
+        addXWebExtension(APPLICATION_PACKAGE, "@Component")
+        assertBeanModelSays<ConditionVerdict.Active>(projectClass(IN_SCAN_EXTENSION))
+
+        assertEquals(listOf(IN_SCAN_EXTENSION), operationOwnersAt(X_PATH))
+    }
+
+    private fun assertDiscoveredWebExtensionIsNotABean(qualifiedName: String) {
+        val extension = projectClass(qualifiedName).toUElementOfType<UClass>()
+        assertNotNull("Precondition: $qualifiedName is a UAST class", extension)
+        assertTrue(
+            "Precondition: $qualifiedName declares a web extension",
+            ActuatorWebExtensions.isDeclaredOn(extension!!, module)
+        )
+        ModificationTrackerManager.getInstance(project).invalidateAll()
+        val beans = SpringSearchService.getInstance(project).foundBeans(module)
+        val beanClasses = (beans.active + beans.excluded).mapNotNull { it.psiClass.qualifiedName }.toSet()
+        assertTrue("Precondition: $X_ENDPOINT is a bean among $beanClasses", X_ENDPOINT in beanClasses)
+        assertFalse("Precondition: $qualifiedName is not a bean among $beanClasses", qualifiedName in beanClasses)
+    }
+
     private fun addProperties(vararg lines: String) {
         myFixture.addFileToProject("application.properties", lines.joinToString("\n"))
     }
@@ -269,5 +323,11 @@ abstract class ActuatorEndpointBeanConditionTestCase : ExplytBaseLightTestCase()
         const val EXT_ENDPOINT = "com.app.ExtEtlEndpoint"
         const val EXT_WEB_EXTENSION = "com.app.ExtEtlWebExtension"
         const val EXT_PATH = "/actuator/extEtl"
+        const val APPLICATION_PACKAGE = "com.app"
+        const val OUTSIDE_SCAN_PACKAGE = "com.other"
+        const val X_ENDPOINT = "com.app.XEndpoint"
+        const val IN_SCAN_EXTENSION = "com.app.XWebExtension"
+        const val OUTSIDE_SCAN_EXTENSION = "com.other.XWebExtension"
+        const val X_PATH = "/actuator/x"
     }
 }
