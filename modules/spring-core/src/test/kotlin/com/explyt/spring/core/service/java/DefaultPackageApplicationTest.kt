@@ -87,6 +87,48 @@ class DefaultPackageApplicationTest : ExplytJavaLightTestCase() {
         assertFalse("no scan reaches com.other, got $activeBeans", "com.other.Outside" in activeBeans)
     }
 
+    fun testWildcardScanRootDoesNotScanUnrelatedPackage() {
+        myFixture.addFileToProject(
+            "com/app/AppApplication.java",
+            """
+            package com.app;
+
+            @org.springframework.boot.autoconfigure.SpringBootApplication(scanBasePackages = "a*")
+            public class AppApplication {}
+            """.trimIndent()
+        )
+        addComponent("com/other/OutsideService.java", "com.other", "OutsideService", "Component")
+        val roots = PackageScanService.getInstance(project).getAllPackages()
+        assertTrue("precondition: the application is recognised", roots.isRootComponent("com.app.AppApplication"))
+        assertFalse("precondition: the scan packages are read", roots.getPackages(module).isEmpty())
+        assertEquals("precondition: the outside component exists", "com.other.OutsideService", projectClass("com.other.OutsideService").qualifiedName)
+
+        val activeBeans = activeBeanNames()
+
+        assertFalse("a wildcard-derived empty prefix must not scan com.other.OutsideService", "com.other.OutsideService" in activeBeans)
+    }
+
+    fun testNormalizeDeclaredEmptyPackage() {
+        assertEquals("", PackageScanService.normalizePackage(""))
+    }
+
+    fun testNormalizeNamedPackage() {
+        assertEquals("com.app.", PackageScanService.normalizePackage("com.app"))
+        assertEquals("com.app.", PackageScanService.normalizePackage("com.app.*"))
+    }
+
+    fun testNormalizeShortWildcardKeepsLegacyPrefix() {
+        assertEquals(".", PackageScanService.normalizePackage("a*"))
+    }
+
+    fun testNormalizeDotWildcardKeepsLegacyPrefix() {
+        assertEquals(".", PackageScanService.normalizePackage(".*"))
+    }
+
+    fun testNormalizeDoubleWildcardKeepsLegacyPrefix() {
+        assertEquals(".", PackageScanService.normalizePackage("**"))
+    }
+
     private fun addDefaultPackageApplication() {
         myFixture.addFileToProject(
             "DemoApplication.java",
