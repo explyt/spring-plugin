@@ -1,0 +1,13 @@
+<!--
+  ~ Copyright (c) 2026 Explyt Ltd
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
+<idea-plugin xmlns:xi="http://www.w3.org/2001/XInclude">
+    <vendor>explyt</vendor>
+    <name>Spring MyBatis Tests</name>
+    <description>Overriding services and components for tests.</description>
+
+    <xi:include href="spring-mybatis-plugin.xml" xpointer="xpointer(/idea-plugin/*)"/>
+    <xi:include href="spring-core-plugin.xml" xpointer="xpointer(/idea-plugin/*)"/>
+</idea-plugin>
