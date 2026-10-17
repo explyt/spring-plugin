@@ -12,6 +12,7 @@ import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.editor.openapi.OpenApiUtils
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
 import com.explyt.spring.web.util.HandlerMethods
+import com.explyt.spring.web.util.HandlerMethods.firstPathOrNull
 import com.explyt.spring.web.util.MappingPathPlaceholders
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
@@ -54,7 +55,7 @@ class ControllerEndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor
 
         val requestMappingMah = MetaAnnotationsHolder.of(module, SpringWebClasses.REQUEST_MAPPING)
         val mapping = HandlerMethods.methodMapping(mappingSource, requestMappingMah)
-        val path = mapping.paths.firstOrNull()?.path ?: ""
+        val path = mapping.firstPathOrNull() ?: return null
         if (OpenApiUtils.isAbsolutePath(path)) return null
 
         val prefix = HandlerMethods.requestMappingPrefixes(psiClass, requestMappingMah).firstOrNull() ?: ""
