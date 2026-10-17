@@ -12,6 +12,9 @@ import com.intellij.openapi.util.registry.Registry
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiClass
 import com.intellij.psi.search.GlobalSearchScope
+import org.jetbrains.kotlin.idea.references.mainReference
+import org.jetbrains.kotlin.psi.KtClass
+import org.jetbrains.kotlin.psi.KtUserType
 
 private const val MESSAGING_GATEWAY = "org.springframework.integration.annotation.MessagingGateway"
 private const val INTEGRATION_COMPONENT_SCAN = "org.springframework.integration.annotation.IntegrationComponentScan"
@@ -106,6 +109,80 @@ abstract class MessagingGatewayBeanTest : ExplytKotlinLightTestCase() {
         findClass(integrationAutoConfiguration, GlobalSearchScope.allScope(project))
 
         assertBeanNames(ORDER_GATEWAY, setOf("orderGateway"))
+    }
+
+    fun testMetaAnnotatedGatewayIsRegisteredByIntegrationComponentScan() {
+        addApplication("com.app", "@EnableIntegration @IntegrationComponentScan")
+        myFixture.addFileToProject(
+            "com/app/OrderGw.kt", """
+            package com.app
+
+            import org.springframework.integration.annotation.MessagingGateway
+
+            @Retention(AnnotationRetention.RUNTIME)
+            @Target(AnnotationTarget.CLASS)
+            @MessagingGateway
+            annotation class OrderGw
+            """.trimIndent()
+        )
+        addGateway(ORDER_GATEWAY, "@com.app.OrderGw")
+        findClass(MESSAGING_GATEWAY, GlobalSearchScope.allScope(project))
+        val orderGw = findClass("com.app.OrderGw", GlobalSearchScope.projectScope(project))
+        assertTrue("OrderGw must be an annotation", orderGw.isAnnotationType)
+        assertEquals(MESSAGING_GATEWAY, orderGw.getAnnotation(MESSAGING_GATEWAY)?.resolveAnnotationType()?.qualifiedName)
+        val gateway = findClass(ORDER_GATEWAY, GlobalSearchScope.projectScope(project))
+        assertTrue("OrderGateway must be an interface", gateway.isInterface)
+        assertEquals("com.app.OrderGw", gateway.getAnnotation("com.app.OrderGw")?.qualifiedName)
+        val gatewaySource = gateway.navigationElement as KtClass
+        val annotationType = gatewaySource.annotationEntries.single().typeReference?.typeElement as KtUserType
+        assertEquals(orderGw.navigationElement, annotationType.referenceExpression?.mainReference?.resolve())
+        val app = findClass("com.app.App", GlobalSearchScope.projectScope(project))
+        assertEquals(INTEGRATION_COMPONENT_SCAN, app.getAnnotation(INTEGRATION_COMPONENT_SCAN)?.resolveAnnotationType()?.qualifiedName)
+
+        assertBeanNames(ORDER_GATEWAY, setOf("orderGateway"))
+    }
+
+    fun testExplicitIntegrationComponentScanDisablesBootGatewayPackageScan() {
+        myFixture.addFileToProject(
+            "com/app/App.kt", """
+            package com.app
+
+            import org.springframework.boot.autoconfigure.SpringBootApplication
+
+            @SpringBootApplication
+            class App
+            """.trimIndent()
+        )
+        myFixture.addFileToProject(
+            "com/app/GatewayConfiguration.kt", """
+            package com.app
+
+            import org.springframework.context.annotation.Configuration
+            import org.springframework.integration.annotation.IntegrationComponentScan
+
+            @Configuration
+            @IntegrationComponentScan(basePackages = ["com.app.gw"])
+            class GatewayConfiguration
+            """.trimIndent()
+        )
+        addGateway("com.app.gw.InGateway", "@MessagingGateway")
+        addGateway("com.app.other.OtherGateway", "@MessagingGateway")
+        assertGatewayFixture("com.app.gw.InGateway")
+        assertGatewayFixture("com.app.other.OtherGateway")
+        findClass(integrationAutoConfiguration, GlobalSearchScope.allScope(project))
+        val configuration = findClass("com.app.GatewayConfiguration", GlobalSearchScope.projectScope(project))
+        assertEquals(INTEGRATION_COMPONENT_SCAN, configuration.getAnnotation(INTEGRATION_COMPONENT_SCAN)?.resolveAnnotationType()?.qualifiedName)
+
+        assertBeanNames("com.app.gw.InGateway", setOf("inGateway"))
+        assertBeanNames("com.app.other.OtherGateway", emptySet())
+    }
+
+    fun testIntegrationComponentScanRegistersGatewayUnderItsValueAttribute() {
+        addApplication("com.app", "@EnableIntegration @IntegrationComponentScan")
+        addGateway(ORDER_GATEWAY, "@MessagingGateway(\"orders\")")
+        assertGatewayFixture(ORDER_GATEWAY)
+
+        assertBeanNames(ORDER_GATEWAY, setOf("orders"))
     }
 
     fun testEnableIntegrationAloneRegistersNoGateway() {

@@ -109,6 +109,75 @@ abstract class MessagingGatewayBeanTest : ExplytJavaLightTestCase() {
         assertBeanNames(ORDER_GATEWAY, setOf("orderGateway"))
     }
 
+    fun testMetaAnnotatedGatewayIsRegisteredByIntegrationComponentScan() {
+        addApplication("com.app", "@EnableIntegration @IntegrationComponentScan")
+        myFixture.addFileToProject(
+            "com/app/OrderGw.java", """
+            package com.app;
+            import java.lang.annotation.Retention;
+            import java.lang.annotation.RetentionPolicy;
+            import java.lang.annotation.Target;
+            import java.lang.annotation.ElementType;
+            import org.springframework.integration.annotation.MessagingGateway;
+            @Retention(RetentionPolicy.RUNTIME)
+            @Target(ElementType.TYPE)
+            @MessagingGateway
+            public @interface OrderGw {}
+            """.trimIndent()
+        )
+        addGateway(ORDER_GATEWAY, "@OrderGw")
+        findClass(MESSAGING_GATEWAY, GlobalSearchScope.allScope(project))
+        val orderGw = findClass("com.app.OrderGw", GlobalSearchScope.projectScope(project))
+        assertTrue("OrderGw must be an annotation", orderGw.isAnnotationType)
+        assertEquals(MESSAGING_GATEWAY, orderGw.getAnnotation(MESSAGING_GATEWAY)?.resolveAnnotationType()?.qualifiedName)
+        val gateway = findClass(ORDER_GATEWAY, GlobalSearchScope.projectScope(project))
+        assertTrue("OrderGateway must be an interface", gateway.isInterface)
+        assertEquals("com.app.OrderGw", gateway.getAnnotation("com.app.OrderGw")?.resolveAnnotationType()?.qualifiedName)
+        val app = findClass("com.app.App", GlobalSearchScope.projectScope(project))
+        assertEquals(INTEGRATION_COMPONENT_SCAN, app.getAnnotation(INTEGRATION_COMPONENT_SCAN)?.resolveAnnotationType()?.qualifiedName)
+
+        assertBeanNames(ORDER_GATEWAY, setOf("orderGateway"))
+    }
+
+    fun testExplicitIntegrationComponentScanDisablesBootGatewayPackageScan() {
+        myFixture.addFileToProject(
+            "com/app/App.java", """
+            package com.app;
+            import org.springframework.boot.autoconfigure.SpringBootApplication;
+            @SpringBootApplication
+            public class App {}
+            """.trimIndent()
+        )
+        myFixture.addFileToProject(
+            "com/app/GatewayConfiguration.java", """
+            package com.app;
+            import org.springframework.context.annotation.Configuration;
+            import org.springframework.integration.annotation.IntegrationComponentScan;
+            @Configuration
+            @IntegrationComponentScan(basePackages = "com.app.gw")
+            public class GatewayConfiguration {}
+            """.trimIndent()
+        )
+        addGateway("com.app.gw.InGateway", "@MessagingGateway")
+        addGateway("com.app.other.OtherGateway", "@MessagingGateway")
+        assertGatewayFixture("com.app.gw.InGateway")
+        assertGatewayFixture("com.app.other.OtherGateway")
+        findClass(integrationAutoConfiguration, GlobalSearchScope.allScope(project))
+        val configuration = findClass("com.app.GatewayConfiguration", GlobalSearchScope.projectScope(project))
+        assertEquals(INTEGRATION_COMPONENT_SCAN, configuration.getAnnotation(INTEGRATION_COMPONENT_SCAN)?.resolveAnnotationType()?.qualifiedName)
+
+        assertBeanNames("com.app.gw.InGateway", setOf("inGateway"))
+        assertBeanNames("com.app.other.OtherGateway", emptySet())
+    }
+
+    fun testIntegrationComponentScanRegistersGatewayUnderItsValueAttribute() {
+        addApplication("com.app", "@EnableIntegration @IntegrationComponentScan")
+        addGateway(ORDER_GATEWAY, "@MessagingGateway(\"orders\")")
+        assertGatewayFixture(ORDER_GATEWAY)
+
+        assertBeanNames(ORDER_GATEWAY, setOf("orders"))
+    }
+
     fun testEnableIntegrationAloneRegistersNoGateway() {
         addApplication("com.app", "@EnableIntegration")
         addGateway(ORDER_GATEWAY, "@MessagingGateway")
