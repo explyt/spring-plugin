@@ -5,11 +5,16 @@
 
 package com.explyt.spring.core.service.kotlin
 
+import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.service.PackageScanService
 import com.explyt.spring.core.service.PsiBean
+import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.service.SpringSearchServiceFacade
+import com.explyt.spring.core.service.conditional.ConditionVerdict
+import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.test.ExplytKotlinLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.util.registry.Registry
 import com.intellij.psi.JavaPsiFacade
@@ -69,6 +74,83 @@ class LibraryStereotypeScanTest : ExplytKotlinLightTestCase() {
         )
     }
 
+    fun testLibraryStereotypeImportedByAnActiveConfigurationIsAnActiveBean() {
+        addApplication("@SpringBootApplication")
+        addErrorControllerImporter(gated = false)
+        assertImportedLibraryStereotypeOutsideScan(BASIC_ERROR_CONTROLLER)
+        assertEquals("precondition: $IMPORTER is active", ConditionVerdict.Active, verdictOf(IMPORTER))
+
+        val verdict = verdictOf(BASIC_ERROR_CONTROLLER)
+
+        assertEquals(ConditionVerdict.Active, verdict)
+        assertEquals("@Import registers $BASIC_ERROR_CONTROLLER without a scan", 1, componentRecordsOf(BASIC_ERROR_CONTROLLER).size)
+    }
+
+    fun testLibraryStereotypeImportedByAnInactiveConfigurationIsInactiveWithTheImporterAsCarrier() {
+        addApplication("@SpringBootApplication")
+        addErrorControllerImporter(gated = true)
+        assertImportedLibraryStereotypeOutsideScan(BASIC_ERROR_CONTROLLER)
+        assertEquals("precondition: $IMPORTER is inactive by its own condition", IMPORTER, inactiveCarrierOf(IMPORTER))
+
+        val carrier = inactiveCarrierOf(BASIC_ERROR_CONTROLLER)
+
+        assertEquals(IMPORTER, carrier)
+        assertEmpty(componentRecordsOf(BASIC_ERROR_CONTROLLER))
+        assertTrue(
+            "$BASIC_ERROR_CONTROLLER must be an excluded class bean",
+            SpringSearchServiceFacade.getInstance(project).getExcludedBeansClasses(module)
+                .any { it.psiMember is PsiClass && it.psiClass.qualifiedName == BASIC_ERROR_CONTROLLER }
+        )
+    }
+
+    private fun addErrorControllerImporter(gated: Boolean) {
+        val gate = if (gated) """@ConditionalOnProperty(name = ["importer.enabled"], havingValue = "true")""" else ""
+        myFixture.addFileToProject(
+            "com/app/ErrorControllerImporter.kt",
+            """
+            package com.app
+
+            import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+            import org.springframework.boot.autoconfigure.web.servlet.error.BasicErrorController
+            import org.springframework.context.annotation.Configuration
+            import org.springframework.context.annotation.Import
+
+            @Configuration
+            $gate
+            @Import(BasicErrorController::class)
+            class ErrorControllerImporter
+            """.trimIndent()
+        )
+        ModificationTrackerManager.getInstance(project).invalidateAll()
+    }
+
+    private fun assertImportedLibraryStereotypeOutsideScan(qualifiedName: String) {
+        assertLibraryClassOutsideScan(qualifiedName)
+        val psiClass = JavaPsiFacade.getInstance(project).findClass(qualifiedName, GlobalSearchScope.allScope(project))!!
+        assertTrue(
+            "precondition: $qualifiedName is a stereotype",
+            AnnotationUtil.isAnnotated(psiClass, SpringCoreClasses.CONTROLLER, 0)
+        )
+        assertTrue(
+            "precondition: $qualifiedName is reached through @Import",
+            qualifiedName in PackageScanService.getInstance(project).getAllPackages().importQualified
+        )
+    }
+
+    private fun verdictOf(qualifiedName: String): ConditionVerdict? {
+        ModificationTrackerManager.getInstance(project).invalidateAll()
+        val psiClass = JavaPsiFacade.getInstance(project).findClass(qualifiedName, GlobalSearchScope.allScope(project))!!
+        return SpringSearchService.getInstance(project).conditionVerdictOf(psiClass, module)
+    }
+
+    private fun inactiveCarrierOf(qualifiedName: String): String? {
+        val verdict = verdictOf(qualifiedName)
+        assertInstanceOf(verdict, ConditionVerdict.Inactive::class.java)
+        val condition = (verdict as ConditionVerdict.Inactive).condition
+        assertEquals(CONDITIONAL_ON_PROPERTY, condition.annotationFqn)
+        return condition.carrierFqn
+    }
+
     private fun addApplication(annotation: String) {
         myFixture.addFileToProject(
             "com/app/AppApplication.kt",
@@ -115,6 +197,8 @@ class LibraryStereotypeScanTest : ExplytKotlinLightTestCase() {
 
     private companion object {
         const val APPLICATION = "com.app.AppApplication"
+        const val IMPORTER = "com.app.ErrorControllerImporter"
+        const val CONDITIONAL_ON_PROPERTY = "org.springframework.boot.autoconfigure.condition.ConditionalOnProperty"
         const val BASIC_ERROR_CONTROLLER_PACKAGE = "org.springframework.boot.autoconfigure.web.servlet.error"
         const val BASIC_ERROR_CONTROLLER = "$BASIC_ERROR_CONTROLLER_PACKAGE.BasicErrorController"
         const val SERVER_PROPERTIES = "org.springframework.boot.autoconfigure.web.ServerProperties"
