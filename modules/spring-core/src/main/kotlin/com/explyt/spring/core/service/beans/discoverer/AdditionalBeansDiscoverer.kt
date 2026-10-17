@@ -31,7 +31,7 @@ abstract class AdditionalBeansDiscoverer {
 
     open fun getExtraComponents(module: Module): Collection<PsiBean> = emptyList()
 
-    open fun ownsComponent(psiClass: PsiClass): Boolean = false
+    open fun ownsComponent(module: Module, psiClass: PsiClass): Boolean = false
 
     open fun additionalFilterBeans(module: Module, bean: PsiBean, rootDataHolder: RootDataHolder): Boolean {
         if (rootDataHolder.isEmpty()) return true

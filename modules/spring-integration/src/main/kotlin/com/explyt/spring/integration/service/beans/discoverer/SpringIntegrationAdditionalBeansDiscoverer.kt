@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Explyt Ltd
+ * Copyright (c) 2024 Explyt Ltd
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -12,6 +12,7 @@ import com.explyt.spring.core.service.beans.discoverer.AdditionalBeansDiscoverer
 import com.explyt.spring.core.util.SpringCoreUtil.resolveBeanName
 import com.explyt.spring.integration.SpringIntegrationClasses
 import com.explyt.spring.integration.util.SpringIntegrationUtil
+import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.openapi.module.Module
 import com.intellij.psi.*
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
@@ -30,23 +31,32 @@ class SpringIntegrationAdditionalBeansDiscoverer : AdditionalBeansDiscoverer() {
         )
     }
 
-    override fun ownsComponent(psiClass: PsiClass): Boolean = psiClass.isMessagingGateway()
+    override fun ownsComponent(module: Module, psiClass: PsiClass): Boolean =
+        psiClass.isGatewayOf(gatewayAnnotationTypes(module))
 
     override fun getExtraComponents(module: Module): Collection<PsiBean> {
         val gatewayPackages = gatewayScanPackages(module)
         if (gatewayPackages.isEmpty()) return emptyList()
-        val messagingGateway = LibraryClassCache.searchForLibraryClass(module, SpringIntegrationClasses.MESSAGING_GATEWAY)
-            ?: return emptyList()
-        return AnnotatedElementsSearch.searchPsiClasses(messagingGateway, module.moduleWithDependenciesScope)
-            .filter { it.isInterface && it.isInAnyPackage(gatewayPackages) }
+        val gatewayAnnotationTypes = gatewayAnnotationTypes(module)
+        return gatewayAnnotationTypes.asSequence()
+            .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, module.moduleWithDependenciesScope) }
+            .distinct()
+            .filter { it.isGatewayOf(gatewayAnnotationTypes) && it.isInAnyPackage(gatewayPackages) }
             .map { PsiBean(name = it.gatewayBeanName(module), psiClass = it, psiMember = it) }
+            .toList()
     }
+
+    private fun gatewayAnnotationTypes(module: Module): Collection<PsiClass> =
+        MetaAnnotationUtil.getAnnotationTypesWithChildren(module, SpringIntegrationClasses.MESSAGING_GATEWAY, false)
+
+    private fun PsiClass.isGatewayOf(gatewayAnnotationTypes: Collection<PsiClass>): Boolean =
+        isInterface && gatewayAnnotationTypes.any { type -> type.qualifiedName?.let { hasAnnotation(it) } == true }
 
     override fun additionalFilterBeans(module: Module, bean: PsiBean, rootDataHolder: RootDataHolder): Boolean = true
 
     private fun gatewayScanPackages(module: Module): Set<String> =
-        packagesDeclaredBy(module, SpringIntegrationClasses.INTEGRATION_COMPONENT_SCAN) { it.integrationScanPackages() } +
-                autoConfigurationPackages(module)
+        packagesDeclaredBy(module, SpringIntegrationClasses.INTEGRATION_COMPONENT_SCAN) { it.integrationScanPackages() }
+            .ifEmpty { autoConfigurationPackages(module) }
 
     private fun autoConfigurationPackages(module: Module): Set<String> {
         val integrationAutoConfigured = SpringIntegrationClasses.INTEGRATION_AUTO_CONFIGURATIONS
@@ -78,10 +88,6 @@ class SpringIntegrationAdditionalBeansDiscoverer : AdditionalBeansDiscoverer() {
         }
     }
 
-    private fun PsiClass.isMessagingGateway(): Boolean =
-        isInterface && (hasAnnotation(SpringIntegrationClasses.MESSAGING_GATEWAY) || annotations.any {
-            it.resolveAnnotationType()?.hasAnnotation(SpringIntegrationClasses.MESSAGING_GATEWAY) == true
-        })
 
     private fun PsiClass.gatewayBeanName(module: Module): String =
         getAnnotation(SpringIntegrationClasses.MESSAGING_GATEWAY)?.strings("name")?.firstOrNull { it.isNotEmpty() }

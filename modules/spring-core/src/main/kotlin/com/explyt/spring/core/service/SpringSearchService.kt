@@ -568,7 +568,7 @@ class SpringSearchService(private val project: Project) {
                 .filter { it.isValid }
                 .filter { SpringCoreUtil.isSpringBeanCandidateClass(it) }
                 .filter { SpringCoreUtil.isCandidateComponent(it) }
-                .filterNot { psiClass -> componentOwners.any { it.ownsComponent(psiClass) } }
+                .filterNot { psiClass -> componentOwners.any { it.ownsComponent(module, psiClass) } }
                 .map { PsiBean(it.resolveBeanName(module), it, it.getQualifierAnnotation(), it) }
                 .splitByProfile { it.psiClass }
         } catch (e: RuntimeExceptionWithAttachments) {
