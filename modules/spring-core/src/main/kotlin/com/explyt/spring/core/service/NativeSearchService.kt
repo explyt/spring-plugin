@@ -22,6 +22,7 @@ import com.explyt.spring.core.util.SpringCoreUtil.filterByExactMatch
 import com.explyt.spring.core.util.SpringCoreUtil.filterByExactMatchRegistrar
 import com.explyt.spring.core.util.SpringCoreUtil.filterByQualifier
 import com.explyt.spring.core.util.SpringCoreUtil.getQualifierAnnotation
+import com.explyt.spring.core.util.SpringCoreUtil.isEqualOrInheritorBeanType
 import com.explyt.spring.core.util.SpringCoreUtil.matchesWildcardType
 import com.explyt.spring.core.util.SpringCoreUtil.possibleMultipleBean
 import com.explyt.spring.core.util.SpringCoreUtil.resolveBeanName
@@ -35,6 +36,7 @@ import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytPsiUtil.isRegistrar
 import com.explyt.util.ExplytPsiUtil.resolvedDeepPsiClass
 import com.explyt.util.ExplytPsiUtil.resolvedPsiClass
+import com.explyt.util.ExplytPsiUtil.returnPsiType
 import com.intellij.lang.Language
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
@@ -334,16 +336,12 @@ class NativeSearchService(private val project: Project) {
 
     private fun findInArray(beanPsiType: PsiType, module: Module?): List<PsiBean> {
         module ?: return emptyList()
-        val methodsPsiBeans = SpringSearchService.getInstance(project).getComponentBeanPsiMethods(module)
-            .filter { it.returnType is PsiArrayType }
-        val psiMethods = methodsPsiBeans.filterByBeanPsiType(beanPsiType).toSet()
-        return psiMethods.flatMap { methodToPsiBean(it) }
-    }
-
-    private fun methodToPsiBean(method: PsiMethod): List<PsiBean> {
-        return method.returnType?.resolvedDeepPsiClass?.let { psiClass ->
-            method.resolveBeanName.map { PsiBean(it, psiClass, method.getQualifierAnnotation(), method) }
-        } ?: emptyList()
+        return SpringSearchService.getInstance(project).searchArrayComponentPsiClassesByBeanMethods(module)
+            .filter { bean ->
+                listOfNotNull(bean.psiMember, bean.factoryMethod).any {
+                    it.returnPsiType?.isEqualOrInheritorBeanType(beanPsiType) == true
+                }
+            }
     }
 
     private fun findInStaticBeans(beanPsiClass: PsiClass?, moduleFindInStatic: Module?): List<PsiBean> {
