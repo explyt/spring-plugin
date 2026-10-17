@@ -5,6 +5,7 @@
 
 package com.explyt.spring.core.service.conditional
 
+import com.explyt.spring.core.util.SpringBootUtil
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.service.conditional.kotlin.KotlinConditionFixtures
 import com.explyt.spring.core.tracker.ModificationTrackerManager
@@ -375,4 +376,31 @@ abstract class Boot3JavaxServletWebApplicationTypeTestCase : WebApplicationTypeV
     fun testBoot3JavaxServletBeanIsInactive() = assertInactive(SERVLET_BEAN, CONDITIONAL_ON_WEB_APPLICATION)
 
     fun testBoot3JavaxNotWebBeanIsActive() = assertActive(NOT_WEB_BEAN)
+}
+
+abstract class Boot2JavaxServletWebApplicationTypeTestCase : WebApplicationTypeVerdictTestCase() {
+    override val libraries: Array<TestLibrary> = arrayOf(
+        TestLibrary.springBootAutoConfigure_2_7_18, springWeb_5_3_39, springContext_5_3_39,
+        TestLibrary.javaxServlet_4_0_1
+    )
+
+    override fun setUp() {
+        super.setUp()
+        assertEquals("Precondition: Boot 2.7.18", "2.7.18", SpringBootUtil.getSpringBootVersion(module))
+        assertClasspath(
+            present = listOf("javax.servlet.Servlet", CONFIGURABLE_WEB_CONTEXT, GENERIC_WEB_CONTEXT),
+            absent = listOf(SERVLET_API, DISPATCHER_SERVLET, DISPATCHER_HANDLER, HANDLER_RESULT, BOOT_4_DEDUCER)
+        )
+    }
+
+    fun testBoot2JavaxServletBeanIsActive() = assertActive(SERVLET_BEAN)
+
+    fun testBoot2JavaxNotWebBeanIsInactive() = assertInactive(NOT_WEB_BEAN, CONDITIONAL_ON_NOT_WEB_APPLICATION)
+
+    fun testBoot2JavaxAnyWebBeanIsActive() = assertActive(ANY_WEB_BEAN)
+
+    companion object {
+        val springWeb_5_3_39 = TestLibrary("org.springframework:spring-web:5.3.39")
+        val springContext_5_3_39 = TestLibrary("org.springframework:spring-context:5.3.39")
+    }
 }
