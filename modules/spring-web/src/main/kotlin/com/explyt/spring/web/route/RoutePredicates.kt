@@ -8,64 +8,84 @@ package com.explyt.spring.web.route
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.util.RoutePathResolver
 import com.intellij.openapi.progress.ProgressManager
+import com.intellij.psi.PsiField
 import com.intellij.psi.PsiMethod
+import com.intellij.psi.PsiModifier
 import org.jetbrains.uast.*
 
 object RoutePredicates {
 
     private const val MAX_DEPTH = 16
 
-    fun prefixOf(expression: UExpression): RoutePrefix = prefixOf(expression, 0)
+    fun scopeOf(expression: UExpression): RouteScope = scopeOf(expression, 0)
 
-    fun prefixOfNest(nestCall: UCallExpression): RoutePrefix =
-        nestPredicate(nestCall)?.let(::prefixOf) ?: RoutePrefix.Undecidable
+    fun scopeOfNest(nestCall: UCallExpression): RouteScope =
+        nestPredicate(nestCall)?.let(::scopeOf) ?: RouteScope.UNDECIDABLE
+
+    fun prefixOfNest(nestCall: UCallExpression): RoutePrefix = scopeOfNest(nestCall).prefix
 
     fun returnsRequestPredicate(call: UCallExpression): Boolean = call.resolve()?.returnsRequestPredicate() == true
 
     private fun nestPredicate(nestCall: UCallExpression): UExpression? =
         nestCall.receiver ?: nestCall.valueArguments.takeIf { it.size == 2 }?.first()
 
-    private fun prefixOf(expression: UExpression, depth: Int): RoutePrefix {
+    private fun scopeOf(expression: UExpression, depth: Int): RouteScope {
         ProgressManager.checkCanceled()
-        if (depth > MAX_DEPTH) return RoutePrefix.Undecidable
+        if (depth > MAX_DEPTH) return RouteScope.UNDECIDABLE
 
         val values = RoutePathResolver.resolveUriValues(expression)
-        if (values.isNotEmpty()) return RoutePrefix.Decided(values)
+        if (values.isNotEmpty()) return RouteScope.of(RoutePrefix.Decided(values))
 
         return when (expression) {
-            is UParenthesizedExpression -> prefixOf(expression.expression, depth + 1)
+            is UParenthesizedExpression -> scopeOf(expression.expression, depth + 1)
             is UQualifiedReferenceExpression ->
-                (expression.selector as? UCallExpression)?.let { prefixOfCall(it, depth + 1) }
-                    ?: RoutePrefix.Undecidable
+                (expression.selector as? UCallExpression)?.let { scopeOfCall(it, depth + 1) }
+                    ?: RouteScope.UNDECIDABLE
 
-            is UCallExpression -> prefixOfCall(expression, depth + 1)
-            is UBinaryExpression -> prefixOfOperator(expression, depth + 1)
-            else -> RoutePrefix.Undecidable
+            is UCallExpression -> scopeOfCall(expression, depth + 1)
+            is UBinaryExpression -> scopeOfOperator(expression, depth + 1)
+            else -> RouteScope.UNDECIDABLE
         }
     }
 
-    private fun prefixOfCall(call: UCallExpression, depth: Int): RoutePrefix {
-        val method = call.resolve() ?: return RoutePrefix.Undecidable
+    private fun scopeOfCall(call: UCallExpression, depth: Int): RouteScope {
+        val method = call.resolve() ?: return RouteScope.UNDECIDABLE
         val argument = call.valueArguments.singleOrNull()
         return when {
             method.isPredicateAnd() && argument != null -> {
-                val receiver = call.receiver ?: return RoutePrefix.Undecidable
-                prefixOf(receiver, depth).then(prefixOf(argument, depth))
+                val receiver = call.receiver ?: return RouteScope.UNDECIDABLE
+                scopeOf(receiver, depth).then(scopeOf(argument, depth))
             }
 
-            !method.isDeclaredIn(SpringWebClasses.REQUEST_PREDICATE_FACTORY_CLASSES) -> RoutePrefix.Undecidable
+            !method.isDeclaredIn(SpringWebClasses.REQUEST_PREDICATE_FACTORY_CLASSES) -> RouteScope.UNDECIDABLE
 
             method.isPathPredicateFactory() && argument != null ->
-                RoutePrefix.of(RoutePathResolver.resolveUriValues(argument))
+                RouteScope.of(RoutePrefix.of(RoutePathResolver.resolveUriValues(argument)))
 
-            method.name in SpringWebClasses.REQUEST_PREDICATES_PATH_FREE_FACTORIES -> RoutePrefix.PathFree
-            else -> RoutePrefix.Undecidable
+            method.isVerbPredicateFactory() && argument != null -> RouteScope(
+                RoutePrefix.of(RoutePathResolver.resolveUriValues(argument)),
+                RouteVerbs.Only(setOf(method.name))
+            )
+
+            method.name in SpringWebClasses.REQUEST_PREDICATES_METHOD_FACTORIES ->
+                RouteScope(RoutePrefix.PathFree, RouteVerbs.of(call.valueArguments.map { it.httpMethodName() }))
+
+            method.name in SpringWebClasses.REQUEST_PREDICATES_PATH_FREE_FACTORIES -> RouteScope.ROOT
+            else -> RouteScope.UNDECIDABLE
         }
     }
 
-    private fun prefixOfOperator(operation: UBinaryExpression, depth: Int): RoutePrefix {
-        if (operation.resolveOperator()?.isPredicateAnd() != true) return RoutePrefix.Undecidable
-        return prefixOf(operation.leftOperand, depth).then(prefixOf(operation.rightOperand, depth))
+    private fun scopeOfOperator(operation: UBinaryExpression, depth: Int): RouteScope {
+        if (operation.resolveOperator()?.isPredicateAnd() != true) return RouteScope.UNDECIDABLE
+        return scopeOf(operation.leftOperand, depth).then(scopeOf(operation.rightOperand, depth))
+    }
+
+    private fun UExpression.httpMethodName(): String? {
+        val field = (skipParenthesizedExprDown() as? UResolvable)?.resolve() as? PsiField ?: return null
+        return field.name.takeIf {
+            field.hasModifierProperty(PsiModifier.STATIC) &&
+                    field.containingClass?.qualifiedName == SpringWebClasses.HTTP_METHOD
+        }
     }
 
     private fun PsiMethod.isPredicateAnd(): Boolean =
@@ -74,8 +94,10 @@ object RoutePredicates {
                 returnsRequestPredicate()
 
     private fun PsiMethod.isPathPredicateFactory(): Boolean =
-        (name == SpringWebClasses.ROUTE_PATH || name in SpringWebClasses.ROUTE_FUNCTION_BUILDER_VERBS) &&
-                returnsRequestPredicate()
+        name == SpringWebClasses.ROUTE_PATH && returnsRequestPredicate()
+
+    private fun PsiMethod.isVerbPredicateFactory(): Boolean =
+        name in SpringWebClasses.ROUTE_FUNCTION_BUILDER_VERBS && returnsRequestPredicate()
 
     private fun PsiMethod.returnsRequestPredicate(): Boolean =
         returnType?.canonicalText in SpringWebClasses.REQUEST_PREDICATE_CLASSES
