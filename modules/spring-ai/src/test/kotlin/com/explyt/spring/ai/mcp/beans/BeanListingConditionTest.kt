@@ -403,6 +403,18 @@ class BeanListingConditionTest : ExplytJavaLightTestCase() {
     }
 
     fun testLibraryOriginListsInactiveLibraryBeansAfterTheActiveOnes() = runBlockingReleasingWriteIntent<Unit> {
+        addJava(
+            "LibraryControllerScan",
+            """
+            package com.explyt.demo;
+
+            @org.springframework.context.annotation.Configuration
+            @org.springframework.context.annotation.ComponentScan(basePackages = {
+                "com.explyt.demo", "org.springframework.boot.autoconfigure.web.servlet.error"
+            })
+            public class LibraryControllerScan {}
+            """
+        )
         addProperties("admin.marker=present")
         addActiveControllers()
         addSyncAdminController()
