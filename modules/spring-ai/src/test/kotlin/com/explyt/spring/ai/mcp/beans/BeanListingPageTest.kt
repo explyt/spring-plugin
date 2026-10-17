@@ -78,7 +78,7 @@ class BeanListingPageTest : ExplytJavaLightTestCase() {
     }
 
     fun testLibraryBeanIsMarkedLibrary() = runBlockingReleasingWriteIntent<Unit> {
-        copyDemoApplication()
+        copyDemoApplicationScanningLibraryControllers()
         assertTrue(
             "Precondition: $LIBRARY_CONTROLLER comes from a library jar",
             JavaPsiFacade.getInstance(project).findClass(LIBRARY_CONTROLLER, GlobalSearchScope.allScope(project))
@@ -93,7 +93,7 @@ class BeanListingPageTest : ExplytJavaLightTestCase() {
     }
 
     fun testOriginFilterProject() = runBlockingReleasingWriteIntent<Unit> {
-        copyDemoApplication()
+        copyDemoApplicationScanningLibraryControllers()
         val everything = listing(DEMO_APPLICATION, "CONTROLLER", limit = 50, maxChars = 16000)
         assertTrue(
             "Precondition: the fixture has library controllers to filter out, got $everything",
@@ -177,7 +177,7 @@ class BeanListingPageTest : ExplytJavaLightTestCase() {
     }
 
     fun testOrderProjectFirst() = runBlockingReleasingWriteIntent<Unit> {
-        copyDemoApplication()
+        copyDemoApplicationScanningLibraryControllers()
 
         val beans = rows(listing(DEMO_APPLICATION, "CONTROLLER", limit = 50, maxChars = 16000))
         assertTrue(
@@ -306,6 +306,21 @@ class BeanListingPageTest : ExplytJavaLightTestCase() {
 
     private fun wrappedLength(json: String): Int =
         mapper.writeValueAsString(mapper.createArrayNode().add(json)).length
+
+    private fun copyDemoApplicationScanningLibraryControllers() {
+        copyDemoApplication()
+        myFixture.addClass(
+            """
+            package com.example.app;
+
+            @org.springframework.context.annotation.Configuration
+            @org.springframework.context.annotation.ComponentScan(basePackages = {
+                "com.example.app", "org.springframework.boot.autoconfigure.web.servlet.error"
+            })
+            public class LibraryControllerScan {}
+            """.trimIndent()
+        )
+    }
 
     private fun copyDemoApplication() {
         myFixture.copyDirectoryToProject("springBootApp", "")
