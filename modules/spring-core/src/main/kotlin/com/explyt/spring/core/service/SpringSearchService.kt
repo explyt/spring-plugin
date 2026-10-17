@@ -340,7 +340,7 @@ class SpringSearchService(private val project: Project) {
 
     private fun getImportedBeans(modulePackagesHolder: RootDataHolder, module: Module): Set<PsiBean> {
         val importPsiClasses = modulePackagesHolder.importQualified
-            .mapNotNull { JavaPsiFacade.getInstance(project).findClass(it, module.moduleWithDependenciesScope) }
+            .mapNotNull { findImportClass(it, module) }
         return getImportedBeans(importPsiClasses, module)
     }
 
@@ -348,13 +348,17 @@ class SpringSearchService(private val project: Project) {
         modulePackagesHolder: RootDataHolder, module: Module, scannedBeans: ProfileSplit
     ): Map<PsiClass, List<PsiClass>> {
         val scannedClasses = (scannedBeans.active + scannedBeans.profileInactive.keys).mapTo(mutableSetOf()) { it.psiClass }
-        val javaPsiFacade = JavaPsiFacade.getInstance(project)
-        fun classOf(qualifiedName: String) = javaPsiFacade.findClass(qualifiedName, module.moduleWithDependenciesScope)
+        fun classOf(qualifiedName: String) = findImportClass(qualifiedName, module)
         return modulePackagesHolder.importersByImported.entries
             .mapNotNull { (imported, importers) -> classOf(imported)?.let { it to importers.mapNotNull(::classOf) } }
             .filter { (imported, importers) -> imported !in scannedClasses && importers.isNotEmpty() }
             .toMap()
     }
+
+    private fun findImportClass(qualifiedName: String, module: Module): PsiClass? =
+        JavaPsiFacade.getInstance(project).findClass(
+            qualifiedName, GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module)
+        )
 
     private fun getImportedBeans(importPsiClasses: List<PsiClass>, module: Module): Set<PsiBean> {
         val result = mutableSetOf<PsiBean>()
