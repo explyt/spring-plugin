@@ -119,6 +119,7 @@
 - fix: Make `gradlew` and `mvnw` executable in a project generated through Spring Initializr, so the first `./gradlew` in a terminal no longer fails with "permission denied" (#60)
 
 ### Spring Web
+- fix: Endpoint gutters, Run in Swagger and OpenAPI generation no longer offer the class-prefix URL for a handler whose path cannot be evaluated (#709)
 - fix: Read the class-level prefix of a controller annotated with a composed annotation the way Spring merges it: an `@AliasFor` default, such as `String[] path() default "/api"` on an annotation meta-annotated with `@RequestMapping`, also through a second composed level, is now the prefix of the controller's endpoints in the Endpoints tool window, the Spring MCP endpoint tools, the endpoint gutters and "Generate OpenApi Specification", and an attribute named like a `@RequestMapping` path attribute without `@AliasFor` sets the prefix only before Spring 7, as Spring's convention mapping does (#672)
 - fix: Show the composed path, including enclosing path() and nest() prefixes, in the gutter of a route declared in a Java RouterFunctions builder, and no longer give a request predicate passed as an argument of a builder route its own marker (#609)
 - fix: Join Kotlin router DSL nest prefixes and inner paths the way Spring does, and stop listing more than 100 prefix × path combinations (#627)
