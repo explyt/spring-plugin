@@ -9,9 +9,7 @@ import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.core.service.PsiBean
 import com.explyt.spring.core.service.SpringSearchService
-import com.explyt.spring.core.util.PsiAnnotationUtils
 import com.explyt.spring.core.util.SpringCoreUtil.resolvePsiClass
-import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.openapi.module.Module
 import com.intellij.psi.PsiMember
 
@@ -26,22 +24,18 @@ class ConditionalOnBeanStrategy(module: Module) : AnnotationConditionStrategy(
     ): String? {
         val foundBeanNames = activeBeans.mapTo(mutableSetOf()) { it.name }
 
-        val names = holder.getAnnotationMemberValues(carrier, setOf("name"))
-            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
-            .toSet()
+        val names = holder.mergedValuesOf(carrier, setOf("name")).mapNotNullTo(mutableSetOf()) { it.stringValue }
         names.firstOrNull { it !in foundBeanNames }?.let { return "no bean named $it" }
 
         val foundBeanClassQn = activeBeans.mapNotNullTo(mutableSetOf()) { it.psiClass.qualifiedName }
-        val types = holder.getAnnotationMemberValues(carrier, setOf("type"))
-            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
-            .toSet()
+        val types = holder.mergedValuesOf(carrier, setOf("type")).mapNotNullTo(mutableSetOf()) { it.stringValue }
         types.firstOrNull { it !in foundBeanClassQn }?.let { return "no bean of type $it" }
 
-        val classAttributes = holder.getAnnotationMemberValues(carrier, setOf("value"))
+        val classAttributes = holder.mergedValuesOf(carrier, setOf("value"))
         val classesQn = if (names.isEmpty() && types.isEmpty() && classAttributes.isEmpty()) {
             setOfNotNull(carrier.resolvePsiClass?.qualifiedName)
         } else {
-            val typeNames = PsiAnnotationUtils.getTypeNames(classAttributes)
+            val typeNames = classAttributes.mapNotNullTo(mutableSetOf()) { it.classQualifiedName }
             if (classAttributes.size != typeNames.size) return UNRESOLVED_TYPE
             typeNames
         }

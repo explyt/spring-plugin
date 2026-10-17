@@ -9,9 +9,7 @@ import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.core.service.PsiBean
 import com.explyt.spring.core.service.SpringSearchService
-import com.explyt.spring.core.util.PsiAnnotationUtils
 import com.explyt.spring.core.util.SpringCoreUtil.resolvePsiClass
-import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.openapi.module.Module
 import com.intellij.psi.PsiMember
 
@@ -26,22 +24,18 @@ class ConditionalOnMissingBeanStrategy(module: Module) : AnnotationConditionStra
     override fun unmetRequirement(
         holder: MetaAnnotationsHolder, carrier: PsiMember, activeBeans: Collection<PsiBean>
     ): String? {
-        val names = holder.getAnnotationMemberValues(carrier, setOf("name"))
-            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
-            .toSet()
+        val names = holder.mergedValuesOf(carrier, setOf("name")).mapNotNullTo(mutableSetOf()) { it.stringValue }
         activeBeans.firstOrNull { it.name in names }?.let { return "bean named ${it.name} exists" }
 
-        val types = holder.getAnnotationMemberValues(carrier, setOf("type"))
-            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
-            .toSet()
+        val types = holder.mergedValuesOf(carrier, setOf("type")).mapNotNullTo(mutableSetOf()) { it.stringValue }
         activeBeans.firstOrNull { it.psiClass.qualifiedName in types }
             ?.let { return "bean of type ${it.psiClass.qualifiedName} exists" }
 
-        val classAttributes = holder.getAnnotationMemberValues(carrier, setOf("value"))
+        val classAttributes = holder.mergedValuesOf(carrier, setOf("value"))
         val classesQn = if (names.isEmpty() && types.isEmpty() && classAttributes.isEmpty()) {
             setOfNotNull(carrier.resolvePsiClass?.qualifiedName)
         } else {
-            PsiAnnotationUtils.getTypeNames(classAttributes)
+            classAttributes.mapNotNullTo(mutableSetOf()) { it.classQualifiedName }
         }
         if (classesQn.isEmpty()) return null
         return activeBeans.asSequence()
