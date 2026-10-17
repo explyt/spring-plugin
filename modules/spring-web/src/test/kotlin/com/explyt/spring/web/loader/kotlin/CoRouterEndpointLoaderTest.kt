@@ -33,6 +33,7 @@ private const val REQUEST_PREDICATE = "$REACTIVE_FUNCTION_PACKAGE.RequestPredica
 private const val MEDIA_TYPE_IMPORT = "import org.springframework.http.MediaType"
 private const val PREDICATE_IMPORTS = "import $REACTIVE_FUNCTION_PACKAGE.RequestPredicate\n" +
         "import $REACTIVE_FUNCTION_PACKAGE.RequestPredicates"
+private const val METHOD_PREDICATE_IMPORTS = "$PREDICATE_IMPORTS\nimport org.springframework.http.HttpMethod"
 
 class CoRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
 
@@ -854,6 +855,166 @@ class CoRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
         val expected = (1..10).flatMap { prefix -> (1..10).map { path -> "/p$prefix/r$path" to "GET" } }
             .sortedBy { it.first + it.second }
         assertEquals(expected, webFluxEndpoints())
+    }
+
+    fun testVerbNestDropsAnInnerRouteOfAnotherVerb() {
+        addRouterConfig(
+            """
+            PUT("/a").nest { POST("/b", handler::handle) }
+            GET("/s", handler::handle)
+            """
+        )
+        assertCallsResolveTo("PUT", CO_ROUTER_DSL)
+        assertEquals(listOf("/s" to "GET"), webFluxEndpoints())
+    }
+
+    fun testVerbNestKeepsAnInnerRouteOfTheSameVerb() {
+        addRouterConfig(
+            """
+            PUT("/a").nest { PUT("/b", handler::handle) }
+            GET("/s", handler::handle)
+            """
+        )
+        assertCallsResolveTo("PUT", CO_ROUTER_DSL)
+        assertEquals(listOf("/a/b" to "PUT", "/s" to "GET"), webFluxEndpoints())
+    }
+
+    fun testTwoArgumentPathRouteUnderAVerbNestServesOnlyTheNestVerb() {
+        addRouterConfig("""PUT("/a").nest { path("/b", handler::handle) }""")
+        assertCallsResolveTo("PUT", CO_ROUTER_DSL)
+        assertTwoArgumentPathRouteResolvesTo(CO_ROUTER_DSL)
+        assertEquals(listOf("/a/b" to "PUT"), webFluxEndpoints())
+    }
+
+    fun testStringRouteUnderAVerbNestServesOnlyTheNestVerb() {
+        addRouterConfig("""PUT("/a").nest { "/b" { handler.handle(it) } }""")
+        assertCallsResolveTo("PUT", CO_ROUTER_DSL)
+        assertStringRoutesResolveToDslInvoke(CO_ROUTER_DSL)
+        assertEquals(listOf("/a/b" to "PUT"), webFluxEndpoints())
+    }
+
+    fun testPathFreeMethodNestDropsAnInnerRouteOfAnotherVerb() {
+        addRouterConfig(
+            """
+            RequestPredicates.method(HttpMethod.PUT).nest { POST("/b", handler::handle) }
+            GET("/s", handler::handle)
+            """,
+            imports = METHOD_PREDICATE_IMPORTS
+        )
+        assertCallsResolveTo("method", REQUEST_PREDICATES)
+        assertEquals(listOf("/s" to "GET"), webFluxEndpoints())
+    }
+
+    fun testPathFreeMethodNestKeepsAnInnerRouteOfTheSameVerb() {
+        addRouterConfig(
+            """RequestPredicates.method(HttpMethod.PUT).nest { PUT("/b", handler::handle) }""",
+            imports = METHOD_PREDICATE_IMPORTS
+        )
+        assertCallsResolveTo("method", REQUEST_PREDICATES)
+        assertEquals(listOf("/b" to "PUT"), webFluxEndpoints())
+    }
+
+    fun testMethodsAndPathNestKeepsAnInnerRouteOfOneOfItsVerbs() {
+        addRouterConfig(
+            """
+            RequestPredicates.methods(HttpMethod.PUT, HttpMethod.POST).and(RequestPredicates.path("/a"))
+                .nest { POST("/b", handler::handle) }
+            """,
+            imports = METHOD_PREDICATE_IMPORTS
+        )
+        assertCallsResolveTo("path", REQUEST_PREDICATES)
+        assertCallsResolveTo("and", REQUEST_PREDICATE)
+        assertEquals(listOf("/a/b" to "POST"), webFluxEndpoints())
+    }
+
+    fun testNestedVerbNestsWithDisjointVerbsDropTheInnerRoute() {
+        addRouterConfig(
+            """
+            PUT("/a").nest { POST("/b").nest { GET("/c", handler::handle) } }
+            GET("/s", handler::handle)
+            """
+        )
+        assertCallsResolveTo("PUT", CO_ROUTER_DSL)
+        assertCallsResolveTo("POST", CO_ROUTER_DSL)
+        assertEquals(listOf("/s" to "GET"), webFluxEndpoints())
+    }
+
+    fun testNestedVerbNestsOfTheSameVerbKeepTheInnerRoute() {
+        addRouterConfig("""PUT("/a").nest { PUT("/b").nest { PUT("/c", handler::handle) } }""")
+        assertCallsResolveTo("PUT", CO_ROUTER_DSL)
+        assertEquals(listOf("/a/b/c" to "PUT"), webFluxEndpoints())
+    }
+
+    fun testPathPredicateNestKeepsAnInnerRouteOfAnyVerb() {
+        addRouterConfig("""path("/a").nest { POST("/b", handler::handle) }""")
+        assertPathPredicateCall(isNestReceiver = true)
+        assertEquals(listOf("/a/b" to "POST"), webFluxEndpoints())
+    }
+
+    fun testUnresolvableMethodNestKeepsTheInnerRoute() {
+        addRouterConfig(
+            """
+            val m = HttpMethod.valueOf(readLine() ?: "PUT")
+            RequestPredicates.method(m).nest { POST("/b", handler::handle) }
+            """,
+            imports = METHOD_PREDICATE_IMPORTS
+        )
+        assertCallsResolveTo("method", REQUEST_PREDICATES)
+        assertEquals(listOf("/b" to "POST"), webFluxEndpoints())
+    }
+
+    fun testNestOfTwoDisjointVerbPredicatesDropsEveryInnerRoute() {
+        addRouterConfig(
+            """
+            (PUT("/a") and POST("/b")).nest {
+                GET("/c", handler::handle)
+                POST("/d", handler::handle)
+            }
+            GET("/s", handler::handle)
+            """
+        )
+        assertCallsResolveTo("PUT", CO_ROUTER_DSL)
+        assertCallsResolveTo("POST", CO_ROUTER_DSL)
+        assertEquals(listOf("/s" to "GET"), webFluxEndpoints())
+    }
+
+    fun testMethodsNestWithOneUnresolvableVerbKeepsTheInnerRoute() {
+        addRouterConfig(
+            """
+            val m = HttpMethod.valueOf(readLine() ?: "PUT")
+            RequestPredicates.methods(HttpMethod.PUT, m).nest { POST("/b", handler::handle) }
+            """,
+            imports = METHOD_PREDICATE_IMPORTS
+        )
+        assertCallsResolveTo("methods", REQUEST_PREDICATES, argumentCount = 2)
+        assertEquals(listOf("/b" to "POST"), webFluxEndpoints())
+    }
+
+    fun testStringNestInsideAVerbNestKeepsTheVerbRestriction() {
+        addRouterConfig(
+            """
+            PUT("/a").nest {
+                "/b".nest {
+                    POST("/c", handler::handle)
+                    PUT("/d", handler::handle)
+                }
+            }
+            """
+        )
+        assertCallsResolveTo("PUT", CO_ROUTER_DSL)
+        assertEquals(listOf("/a/b/d" to "PUT"), webFluxEndpoints())
+    }
+
+    fun testUndecidableNestInsideAVerbNestDropsTheInnerRoute() {
+        addRouterConfig(
+            """
+            val prefix = readLine() ?: "/b"
+            PUT("/a").nest { prefix.nest { PUT("/c", handler::handle) } }
+            GET("/s", handler::handle)
+            """
+        )
+        assertCallsResolveTo("PUT", CO_ROUTER_DSL)
+        assertEquals(listOf("/s" to "GET"), webFluxEndpoints())
     }
 
     private fun addCombinationRouterConfig(prefixCount: Int, pathCount: Int) {
