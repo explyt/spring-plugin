@@ -15,6 +15,7 @@ import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.
 import com.explyt.spring.web.util.OpenApiFileUtil.Companion.DEFAULT_SERVER
 import com.explyt.spring.web.util.ApplicationBasePath
 import com.explyt.spring.web.util.HandlerMethods
+import com.explyt.spring.web.util.HandlerMethods.firstPathOrNull
 import com.explyt.spring.web.util.HandlerSignature
 import com.explyt.spring.web.util.MappingPathPlaceholders
 import com.explyt.spring.web.util.OpenApiFileUtil.Companion.DEFAULT_SERVER_HOST
@@ -49,7 +50,8 @@ class EndpointRunLineMarkerProvider : RunLineMarkerContributor() {
 
         val requestMappingMah = MetaAnnotationsHolder.of(module, SpringWebClasses.REQUEST_MAPPING)
 
-        val path = MappingPathPlaceholders.resolve(module, getUrlPath(requestMappingMah, psiMethod, mappingSource))
+        val urlPath = getUrlPath(requestMappingMah, psiMethod, mappingSource) ?: return null
+        val path = MappingPathPlaceholders.resolve(module, urlPath)
 
         val fullPath = if (isAbsolutePath(path)) path else "$DEFAULT_SERVER/$path"
 
@@ -70,8 +72,8 @@ class EndpointRunLineMarkerProvider : RunLineMarkerContributor() {
         requestMappingMah: MetaAnnotationsHolder,
         psiMethod: PsiMethod,
         mappingSource: PsiMethod,
-    ): String {
-        var path = HandlerMethods.methodMapping(mappingSource, requestMappingMah).paths.firstOrNull()?.path ?: ""
+    ): String? {
+        var path = HandlerMethods.methodMapping(mappingSource, requestMappingMah).firstPathOrNull() ?: return null
         if (isAbsolutePath(path)) return path
 
         val containingClass = psiMethod.containingClass ?: return path
