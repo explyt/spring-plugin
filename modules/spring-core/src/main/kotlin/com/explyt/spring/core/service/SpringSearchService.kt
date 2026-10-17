@@ -562,12 +562,14 @@ class SpringSearchService(private val project: Project) {
         module: Module, annotationPsiClasses: Collection<PsiClass>, scope: SearchScope
     ): ProfileSplit {
         try {
+            val componentOwners = AdditionalBeansDiscoverer.EP_NAME.getExtensions(project).filter { it.accepts(module) }
             return annotationPsiClasses.asSequence()
                 .filter { isSearchableAnnotationType(it) }
                 .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, scope) }
                 .filter { it.isValid }
                 .filter { SpringCoreUtil.isSpringBeanCandidateClass(it) }
                 .filter { SpringCoreUtil.isCandidateComponent(it) }
+                .filterNot { psiClass -> componentOwners.any { it.ownsComponent(module, psiClass) } }
                 .map { PsiBean(it.resolveBeanName(module), it, it.getQualifierAnnotation(), it) }
                 .splitByProfile { it.psiClass }
         } catch (e: RuntimeExceptionWithAttachments) {
