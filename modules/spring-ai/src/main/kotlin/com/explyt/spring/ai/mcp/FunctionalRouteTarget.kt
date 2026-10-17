@@ -44,14 +44,14 @@ internal sealed class FunctionalRouteTarget(val call: UCallExpression, val facto
         get() = (this as? Lambda)?.lambda?.body
 
     val requestMethods: List<String>?
-        get() = RouterDslRoutes.requestMethodsOf(call)
+        get() = RouterDslRoutes.requestMethodsOf(call)?.let { SpringWebUtil.getServedRequestMethods(call, it) }
 
     val paths: List<String>
         get() = walkedBuilderPaths().ifEmpty { declaredPaths() }
 
     val route: String?
         get() {
-            val method = requestMethods?.let(McpHttpMethods::listed)?.singleOrNull() ?: return null
+            val method = requestMethods?.let(McpHttpMethods::routeVerb) ?: return null
             val path = paths.firstOrNull() ?: return null
             return "$method $path"
         }
