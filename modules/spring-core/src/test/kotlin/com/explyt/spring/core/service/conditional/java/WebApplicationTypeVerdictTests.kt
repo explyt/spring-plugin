@@ -8,6 +8,8 @@ package com.explyt.spring.core.service.conditional.java
 import com.explyt.spring.core.service.conditional.Boot4ReactiveWebApplicationTypeTestCase
 import com.explyt.spring.core.service.conditional.Boot4ReactiveWithoutBootWebFluxWebApplicationTypeTestCase
 import com.explyt.spring.core.service.conditional.ConditionFixtures
+import com.explyt.spring.core.service.conditional.RuntimeServletWebApplicationTypeTestCase
+import com.explyt.spring.core.service.conditional.Boot3JavaxServletWebApplicationTypeTestCase
 import com.explyt.spring.core.service.conditional.ReactiveOnlyWebApplicationTypeTestCase
 import com.explyt.spring.core.service.conditional.ServletAndWebFluxWebApplicationTypeTestCase
 import com.explyt.spring.core.service.conditional.ServletOnlyWebApplicationTypeTestCase
@@ -34,5 +36,13 @@ class Boot4ReactiveWithoutBootWebFluxWebApplicationTypeTest : Boot4ReactiveWitho
 }
 
 class Boot4ReactiveWebApplicationTypeTest : Boot4ReactiveWebApplicationTypeTestCase() {
+    override val fixtures: ConditionFixtures by lazy { JavaConditionFixtures(myFixture) }
+}
+
+class RuntimeServletWebApplicationTypeTest : RuntimeServletWebApplicationTypeTestCase() {
+    override val fixtures: ConditionFixtures by lazy { JavaConditionFixtures(myFixture) }
+}
+
+class Boot3JavaxServletWebApplicationTypeTest : Boot3JavaxServletWebApplicationTypeTestCase() {
     override val fixtures: ConditionFixtures by lazy { JavaConditionFixtures(myFixture) }
 }
