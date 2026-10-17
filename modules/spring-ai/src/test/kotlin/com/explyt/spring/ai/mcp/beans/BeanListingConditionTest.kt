@@ -9,6 +9,7 @@ import com.explyt.spring.ai.mcp.BoundedPageWriter
 import com.explyt.spring.ai.mcp.SpringBootApplicationMcpToolset
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
+import com.explyt.spring.core.service.ProfileActivation
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.core.service.beans.BeanConditionState
@@ -92,6 +93,46 @@ class BeanListingConditionTest : ExplytJavaLightTestCase() {
             "the listing reports the condition exactly as the lookup tool does",
             lookupInactiveConditionOf(SYNC_ADMIN), condition
         )
+    }
+
+    fun testProfileInactiveControllerIsListedLastAsInactiveNamingTheProfile() = runBlockingReleasingWriteIntent<Unit> {
+        addProperties("spring.profiles.active=prod")
+        addActiveControllers()
+        addJava(
+            "DevController",
+            """
+            package com.explyt.demo;
+
+            import org.springframework.context.annotation.Profile;
+            import org.springframework.stereotype.Controller;
+
+            @Controller
+            @Profile("dev")
+            public class DevController {}
+            """
+        )
+        val devController = myFixture.findClass(DEV_CONTROLLER)
+        assertNotNull("Precondition: @Profile resolves to the Spring annotation", devController.getAnnotation(SpringCoreClasses.PROFILE))
+        assertEquals(
+            "Precondition: DevController is inactive by its profile",
+            ProfileActivation.INACTIVE,
+            SpringSearchService.getInstance(project).profileActivation(devController)
+        )
+
+        val page = listing(limit = BoundedPageWriter.MAX_LIMIT, maxChars = BoundedPageWriter.MAX_CHARS)
+
+        val beans = completeRows(page)
+        assertEquals(listOf(ALPHA, ZULU, DEV), projectBeanNames(beans))
+        val inactive = beans.single { it["beanName"].asText() == DEV }
+        assertTrue(
+            "every row before the profile-inactive one is active, got $beans",
+            beans.takeWhile { it !== inactive }.none { stateOf(it) == INACTIVE }
+        )
+        val condition = conditionOf(inactive)
+        assertEquals(INACTIVE, condition["state"].asText())
+        assertEquals(SpringCoreClasses.PROFILE, condition["annotation"].asText())
+        assertEquals(DEV_CONTROLLER, condition["carrier"].asText())
+        assertTrue("detail must name the profile, got $condition", "dev" in condition["detail"].asText())
     }
 
     fun testControllerWhoseConditionHoldsIsAnOrdinaryRow() = runBlockingReleasingWriteIntent<Unit> {
@@ -674,6 +715,8 @@ class BeanListingConditionTest : ExplytJavaLightTestCase() {
         const val APPLICATION = "com.explyt.demo.App"
         const val SYNC_ADMIN = "syncAdminController"
         const val SYNC_ADMIN_CONTROLLER = "com.explyt.demo.SyncAdminController"
+        const val DEV = "devController"
+        const val DEV_CONTROLLER = "com.explyt.demo.DevController"
         const val ALPHA = "alphaController"
         const val ZULU = "zuluController"
         const val CONTROLLER = "CONTROLLER"
