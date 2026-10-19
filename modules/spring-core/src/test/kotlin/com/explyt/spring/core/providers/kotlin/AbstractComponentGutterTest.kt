@@ -17,8 +17,12 @@ import com.intellij.codeInsight.daemon.GutterMark
 import com.intellij.codeInsight.daemon.LineMarkerInfo
 import com.intellij.codeInsight.navigation.NavigationGutterIconRenderer
 import com.intellij.psi.JavaPsiFacade
+import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiModifier
+import com.intellij.psi.presentation.java.SymbolPresentationUtil
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.util.PsiTreeUtil
+import org.jetbrains.kotlin.psi.KtClassOrObject
 
 class AbstractComponentGutterTest : ExplytKotlinLightTestCase() {
     override val libraries: Array<TestLibrary> = arrayOf(
@@ -169,6 +173,78 @@ class AbstractComponentGutterTest : ExplytKotlinLightTestCase() {
             SpringCoreBundle.message("explyt.spring.gutter.abstract.component.tooltip", 1) to listOf("foo()"),
             gutter.tooltipText to SpringGutterTestUtil.getGutterTargetsStrings(gutter)
         )
+    }
+
+    fun testGenericFactoryBoundedByAbstractTypeIsImplementation() {
+        configure(
+            """
+            @Component abstract class <caret>AbstractFoo
+            class FirstFoo : AbstractFoo()
+            @org.springframework.context.annotation.Configuration
+            open class Cfg {
+                @Suppress("UNCHECKED_CAST")
+                @org.springframework.context.annotation.Bean
+                open fun <T : AbstractFoo> foo(): T = FirstFoo() as T
+            }
+            """.trimIndent()
+        )
+        assertAbstractNonBean("candidates.AbstractFoo")
+        assertActiveBeans("candidates.Cfg")
+        val facade = JavaPsiFacade.getInstance(project)
+        val scope = GlobalSearchScope.projectScope(project)
+        val abstractType = facade.findClass("candidates.AbstractFoo", scope)!!
+        val factory = facade.findClass("candidates.Cfg", scope)!!.findMethodsByName("foo", false).single()
+        assertNotNull(factory.getAnnotation(SpringCoreClasses.BEAN))
+        val typeParameter = (factory.returnType as com.intellij.psi.PsiClassType).resolve()
+        assertInstanceOf(typeParameter, com.intellij.psi.PsiTypeParameter::class.java)
+        assertEquals(listOf(abstractType), typeParameter!!.extendsListTypes.map { it.resolve() })
+
+        assertEquals(listOf("foo()"), SpringGutterTestUtil.getGutterTargetsStrings(springGutterAtCaret()))
+    }
+
+    fun testTargetsWithEqualNamesAreOrderedByContainingClass() {
+        myFixture.addFileToProject(
+            "candidates/ZConsumer.kt",
+            """
+            package candidates
+            import org.springframework.stereotype.Component
+            import org.springframework.beans.factory.annotation.Autowired
+            @Component class ZConsumer { @Autowired lateinit var foo: AbstractFoo }
+            """.trimIndent()
+        )
+        configure(
+            """
+            @Component abstract class <caret>AbstractFoo
+            @Component class FirstFoo : AbstractFoo()
+            @Component class AConsumer { @Autowired lateinit var foo: AbstractFoo }
+            """.trimIndent()
+        )
+        assertAbstractNonBean("candidates.AbstractFoo")
+        assertActiveBeans("candidates.FirstFoo", "candidates.ZConsumer", "candidates.AConsumer")
+        val scope = GlobalSearchScope.projectScope(project)
+        val facade = JavaPsiFacade.getInstance(project)
+        listOf("candidates.AConsumer", "candidates.ZConsumer").forEach {
+            assertNotNull("$it.foo must exist", facade.findClass(it, scope)!!.findFieldByName("foo", false))
+        }
+
+        val targets = gutterTargetsAtCaret()
+        assertEquals(
+            listOf(
+                "FirstFoo" to "candidates.FirstFoo",
+                "foo" to "candidates.AConsumer",
+                "foo" to "candidates.ZConsumer"
+            ),
+            targets.map { target ->
+                SymbolPresentationUtil.getSymbolPresentableText(target) to
+                        PsiTreeUtil.getNonStrictParentOfType(target.navigationElement, KtClassOrObject::class.java)
+                            ?.fqName?.asString()
+            }
+        )
+    }
+
+    private fun gutterTargetsAtCaret(): List<PsiElement> {
+        val gutter = springGutterAtCaret() as LineMarkerInfo.LineMarkerGutterIconRenderer<*>
+        return (gutter.lineMarkerInfo.navigationHandler as NavigationGutterIconRenderer).targetElements
     }
 
     private fun configureFactoryImplementation() {
