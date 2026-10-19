@@ -262,6 +262,7 @@
 
 ### Other
 - fix: Keep a repeated action in the Sentry trail when unrecorded editor input separates it from the first, and count suppressed repeats in the collapsed breadcrumb
+- fix: Collapsed action breadcrumbs no longer read Sentry's internal breadcrumb data API, which release plugin verification rejects (#739)
 - fix: Do not freeze the UI on the first action after the IDE starts: error-reporting setup no longer runs while an action is being recorded (#307)
 - fix: Keep Sentry action breadcrumbs useful by dropping editor typing and caret movement, recording a repeated action once, and trimming a captured report to the actions that led to it
 - fix: Bring error reporting back up when the pooled executor rejects the initialization task, instead of leaving it disabled for the rest of the session

@@ -122,7 +122,7 @@ class ActionBreadcrumbSanitizerTest {
     }
 
     @Test
-    fun `carries every data key into a collapsed group`() {
+    fun `collapsed group keeps known data keys and drops unknown ones`() {
         val eventTime = Date(DAY)
         val breadcrumbs = listOf(
             action("GotoDeclaration", eventTime.time - 1).apply { setData("custom", "kept") },
@@ -131,8 +131,10 @@ class ActionBreadcrumbSanitizerTest {
 
         val result = ActionBreadcrumbSanitizer.sanitize(breadcrumbs, eventTime).single()
 
-        assertEquals("kept", result.getData("custom"))
         assertEquals("Editor", result.getData("place"))
+        assertEquals(2, result.getData("count"))
+        assertEquals(Date(eventTime.time - 1).toString(), result.getData("first_seen"))
+        assertNull("unknown custom data must not survive collapse", result.getData("custom"))
     }
 
     @Test
