@@ -66,6 +66,6 @@ class OpenApiSpecificationManagerTest : ExplytJavaLightTestCase() {
         """.trimIndent()
 
         val psiFile = myFixture.configureByText("openapi.json", text)
-        return OpenApiSpecificationFinder.findSpecificationType(psiFile.virtualFile, psiFile)
+        return OpenApiSpecificationFinder.findSpecificationType(psiFile)
     }
 }
