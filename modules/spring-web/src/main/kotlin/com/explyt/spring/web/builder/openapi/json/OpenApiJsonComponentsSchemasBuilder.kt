@@ -13,9 +13,12 @@ import com.explyt.spring.web.editor.openapi.OpenApiUtils.ComponentSchemaInfo
 class OpenApiJsonComponentsSchemasBuilder(indent: String, builder: StringBuilder) :
     OpenApiComponentsSchemasBuilder(indent, builder), JsonValueGenerator {
     private val schemaBuilders = mutableListOf<OpenApiComponentsSchemaBuilder>()
+    private val typeQnSet = mutableSetOf<String>()
 
     override fun addType(typeInfo: ComponentSchemaInfo): OpenApiJsonComponentsSchemasBuilder {
-        schemaBuilders += OpenApiJsonComponentsSchemaBuilder(typeInfo, "$indent  ", builder)
+        if (typeQnSet.add(typeInfo.typeQN)) {
+            schemaBuilders += OpenApiJsonComponentsSchemaBuilder(typeInfo, "$indent  ", builder)
+        }
 
         return this
     }
