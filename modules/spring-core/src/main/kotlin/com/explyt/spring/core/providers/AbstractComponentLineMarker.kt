@@ -12,6 +12,7 @@ import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.core.util.SpringCoreUtil
 import com.explyt.spring.core.util.SpringCoreUtil.hasComponentAnnotation
+import com.explyt.util.ExplytPsiUtil.resolvedPsiClass
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.navigation.NavigationGutterIconBuilder
 import com.intellij.openapi.editor.markup.GutterIconRenderer
@@ -20,8 +21,13 @@ import com.intellij.openapi.util.NotNullLazyValue
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiMember
+import com.intellij.psi.PsiMethod
 import com.intellij.psi.PsiModifier
+import com.intellij.psi.PsiTypeParameter
 import com.intellij.psi.presentation.java.SymbolPresentationUtil
+import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.psi.util.TypeConversionUtil
+import org.jetbrains.kotlin.psi.KtClassOrObject
 
 object AbstractComponentLineMarker {
 
@@ -35,9 +41,10 @@ object AbstractComponentLineMarker {
         anchor: PsiElement,
         abstractClass: PsiClass,
         beans: Collection<PsiBean>,
+        factories: Map<PsiMethod, PsiMethod> = emptyMap(),
         injectionPoints: () -> Collection<PsiElement>
     ): RelatedItemLineMarkerInfo<PsiElement> {
-        val implementations = implementationsOf(abstractClass, beans)
+        val implementations = implementationsOf(abstractClass, beans, factories)
         return NavigationGutterIconBuilder.create(
             SpringIcons.SpringBeanDependencies,
             SpringCoreBundle.message("explyt.spring.gutter.group.bean")
@@ -47,7 +54,7 @@ object AbstractComponentLineMarker {
                 StatisticService.getInstance().addActionUsage(StatisticActionId.GUTTER_ABSTRACT_COMPONENT)
                 (implementations.filter { it.isValid } + injectionPoints())
                     .distinct()
-                    .sortedBy { SymbolPresentationUtil.getSymbolPresentableText(it) }
+                    .sortedWith(targetOrder)
             })
             .setTooltipText(
                 SpringCoreBundle.message("explyt.spring.gutter.abstract.component.tooltip", implementations.size)
@@ -58,15 +65,42 @@ object AbstractComponentLineMarker {
             .createLineMarkerInfo(anchor)
     }
 
-    fun implementationsOf(abstractClass: PsiClass, beans: Collection<PsiBean>): List<PsiMember> =
-        beans.asSequence()
+    fun implementationsOf(
+        abstractClass: PsiClass,
+        beans: Collection<PsiBean>,
+        factories: Map<PsiMethod, PsiMethod> = emptyMap()
+    ): List<PsiMember> {
+        val typedBeans = beans.asSequence()
             .onEach { ProgressManager.checkCanceled() }
             .filter { it.psiClass.isValid && it.psiMember.isValid }
-            .filter {
-                it.psiMember != abstractClass
-                        && (it.psiClass == abstractClass || it.psiClass.isInheritor(abstractClass, true))
-            }
+            .filter { it.psiMember != abstractClass && it.psiClass.isSubtypeOf(abstractClass) }
             .map { it.psiMember }
-            .distinct()
-            .toList()
+        val genericFactories = factories.asSequence()
+            .onEach { ProgressManager.checkCanceled() }
+            .filter { (factory, effectiveFactory) -> factory.isValid && effectiveFactory.isValid }
+            .filter { (_, effectiveFactory) ->
+                effectiveFactory.boundOfGenericReturnType()?.isSubtypeOf(abstractClass) == true
+            }
+            .map { (factory, _) -> factory }
+        return (typedBeans + genericFactories).distinct().toList()
+    }
+
+    private fun PsiClass.isSubtypeOf(abstractClass: PsiClass): Boolean =
+        this == abstractClass || isInheritor(abstractClass, true)
+
+    private fun PsiMethod.boundOfGenericReturnType(): PsiClass? {
+        val returnType = returnType?.takeIf { it.resolvedPsiClass is PsiTypeParameter } ?: return null
+        return TypeConversionUtil.erasure(returnType).resolvedPsiClass
+    }
+
+    private val targetOrder: Comparator<PsiElement> =
+        compareBy<PsiElement> { SymbolPresentationUtil.getSymbolPresentableText(it) }
+            .thenBy { containingClassName(it.navigationElement) }
+            .thenBy { it.navigationElement.containingFile?.virtualFile?.path.orEmpty() }
+            .thenBy { it.navigationElement.textOffset }
+
+    private fun containingClassName(navigationElement: PsiElement): String =
+        PsiTreeUtil.getNonStrictParentOfType(navigationElement, KtClassOrObject::class.java)?.fqName?.asString()
+            ?: PsiTreeUtil.getNonStrictParentOfType(navigationElement, PsiClass::class.java)?.qualifiedName
+            ?: ""
 }
