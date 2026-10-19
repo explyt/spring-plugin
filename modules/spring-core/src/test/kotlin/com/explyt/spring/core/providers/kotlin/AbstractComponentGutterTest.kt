@@ -278,19 +278,19 @@ class AbstractComponentGutterTest : ExplytKotlinLightTestCase() {
 
     fun testTargetsWithEqualNamesAreOrderedByContainingClass() {
         myFixture.addFileToProject(
-            "candidates/AConsumer.kt",
+            "candidates/ZConsumer.kt",
             """
             package candidates
             import org.springframework.stereotype.Component
             import org.springframework.beans.factory.annotation.Autowired
-            @Component class AConsumer { @Autowired lateinit var foo: AbstractFoo }
+            @Component class ZConsumer { @Autowired lateinit var foo: AbstractFoo }
             """.trimIndent()
         )
         configure(
             """
             @Component abstract class <caret>AbstractFoo
             @Component class FirstFoo : AbstractFoo()
-            @Component class ZConsumer { @Autowired lateinit var foo: AbstractFoo }
+            @Component class AConsumer { @Autowired lateinit var foo: AbstractFoo }
             """.trimIndent()
         )
         assertAbstractNonBean("candidates.AbstractFoo")
