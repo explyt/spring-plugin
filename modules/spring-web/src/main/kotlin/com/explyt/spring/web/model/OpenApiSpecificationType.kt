@@ -66,8 +66,8 @@ open class OpenApiSpecificationType(val name: String) {
 }
 
 object OpenApiSpecificationFinder {
-    fun findSpecificationType(file: VirtualFile, psiFile: PsiFile): OpenApiSpecificationType {
-        return OpenApiFileUtil.INSTANCE.findSpecificationType(psiFile.project, psiFile, file)
+    fun findSpecificationType(psiFile: PsiFile): OpenApiSpecificationType {
+        return OpenApiFileUtil.INSTANCE.findSpecificationType(psiFile)
     }
 
     fun identifySpecificationType(file: VirtualFile, psiFile: PsiFile): OpenApiSpecificationType {
