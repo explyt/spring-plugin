@@ -35,7 +35,7 @@ class OpenApiJsonSchemaProvider(
         return runReadAction {
             val psiFile = PsiManager.getInstance(project).findFile(file)
                 ?: return@runReadAction OpenApiSpecificationType.OpenApiUndefined
-            OpenApiSpecificationFinder.findSpecificationType(file, psiFile)
+            OpenApiSpecificationFinder.findSpecificationType(psiFile)
         }
     }
 
