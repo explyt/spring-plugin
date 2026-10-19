@@ -114,7 +114,6 @@ object ActionBreadcrumbSanitizer {
     /** A breadcrumb standing for repeats suppressed at the producer carries their number. */
     private fun Breadcrumb.occurrences(): Int = (getData(COUNT_KEY) as? Number)?.toInt() ?: 1
 
-    @Suppress("UnstableApiUsage")
     private fun copyOf(source: Breadcrumb, timestamp: Date): Breadcrumb =
         Breadcrumb(timestamp).apply {
             message = source.message
@@ -122,7 +121,9 @@ object ActionBreadcrumbSanitizer {
             category = source.category
             origin = source.origin
             level = source.level
-            source.data.forEach { (key, value) -> setData(key, value) }
+            listOf(PLACE_KEY, COUNT_KEY, FIRST_SEEN_KEY).forEach { key ->
+                source.getData(key)?.let { setData(key, it) }
+            }
         }
 
     /** [Breadcrumb.getTimestamp] throws when a breadcrumb carries no time; such an entry must not be aged out. */
