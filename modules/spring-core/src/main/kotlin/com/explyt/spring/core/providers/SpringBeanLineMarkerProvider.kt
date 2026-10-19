@@ -166,7 +166,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 element,
                 uClass.javaPsi,
                 facade.getAllActiveBeans(module),
-                facade.getComponentBeanFactoryMethods(module)
+                facade.getActiveGenericBeanFactoryMethods(module)
             ) {
                 facade.findInjectionPoints(uClass, null, module)
             }

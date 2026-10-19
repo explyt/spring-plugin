@@ -24,10 +24,7 @@ import com.intellij.psi.PsiMember
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.PsiModifier
 import com.intellij.psi.PsiTypeParameter
-import com.intellij.psi.presentation.java.SymbolPresentationUtil
-import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.TypeConversionUtil
-import org.jetbrains.kotlin.psi.KtClassOrObject
 
 object AbstractComponentLineMarker {
 
@@ -54,7 +51,7 @@ object AbstractComponentLineMarker {
                 StatisticService.getInstance().addActionUsage(StatisticActionId.GUTTER_ABSTRACT_COMPONENT)
                 (implementations.filter { it.isValid } + injectionPoints())
                     .distinct()
-                    .sortedWith(targetOrder)
+                    .sortedInAbstractComponentTargetOrder()
             })
             .setTooltipText(
                 SpringCoreBundle.message("explyt.spring.gutter.abstract.component.tooltip", implementations.size)
@@ -92,15 +89,4 @@ object AbstractComponentLineMarker {
         val returnType = returnType?.takeIf { it.resolvedPsiClass is PsiTypeParameter } ?: return null
         return TypeConversionUtil.erasure(returnType).resolvedPsiClass
     }
-
-    private val targetOrder: Comparator<PsiElement> =
-        compareBy<PsiElement> { SymbolPresentationUtil.getSymbolPresentableText(it) }
-            .thenBy { containingClassName(it.navigationElement) }
-            .thenBy { it.navigationElement.containingFile?.virtualFile?.path.orEmpty() }
-            .thenBy { it.navigationElement.textOffset }
-
-    private fun containingClassName(navigationElement: PsiElement): String =
-        PsiTreeUtil.getNonStrictParentOfType(navigationElement, KtClassOrObject::class.java)?.fqName?.asString()
-            ?: PsiTreeUtil.getNonStrictParentOfType(navigationElement, PsiClass::class.java)?.qualifiedName
-            ?: ""
 }
