@@ -215,7 +215,7 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
         if (psiMethod.parameterList.parametersCount == 1) {
             eventPsiType = psiMethod.parameterList.parameters[0].type
         }
-        val eventPsiClassByAnnotation = getPsiClassesByAnnotationCached(module, psiMethod)
+        val eventPsiClassByAnnotation = getPsiClassesByAnnotationCached(psiMethod)
 
         val methodArgumentTypes = getMethodArgumentTypes(module)
         val publishCalls = getPublishMethodCalls(methodArgumentTypes, eventPsiType, eventPsiClassByAnnotation)
@@ -253,18 +253,26 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
             .map { it.navigationElement }
     }
 
-    private fun getPsiClassesByAnnotationCached(module: Module, psiMethod: PsiMethod): Set<PsiClass> {
-        val cacheManager = CachedValuesManager.getManager(module.project)
-
-        return cacheManager.getCachedValue(psiMethod) {
+    /**
+     * The event classes a listener method declares through `@EventListener(classes = ...)`.
+     *
+     * Resolved in the method's own module, which is derived from the method inside the provider: the platform keeps
+     * the provider of the first call for the lifetime of the holder, so a module passed in by the caller - the
+     * initiating module of a project-wide search - would freeze that caller's module into every later answer.
+     */
+    private fun getPsiClassesByAnnotationCached(psiMethod: PsiMethod): Set<PsiClass> {
+        return CachedValuesManager.getCachedValue(psiMethod) {
+            val project = psiMethod.project
+            val classes = getPsiClassesByAnnotation(psiMethod)
             CachedValueProvider.Result.create(
-                getPsiClassesByAnnotation(module, psiMethod),
-                ModificationTrackerManager.getInstance(module.project).getUastModelAndLibraryTracker()
+                classes,
+                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
             )
         }
     }
 
-    private fun getPsiClassesByAnnotation(module: Module, psiMethod: PsiMethod): Set<PsiClass> {
+    private fun getPsiClassesByAnnotation(psiMethod: PsiMethod): Set<PsiClass> {
+        val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return emptySet()
         val metaHolder = SpringSearchService.getInstance(module.project).getMetaAnnotations(module, EVENT_LISTENER)
         val annotationValues = metaHolder.getAnnotationMemberValues(psiMethod, setOf("value", "classes"))
         return annotationValues
@@ -405,12 +413,16 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
         val methodArguments = mutableListOf<MethodArgumentClasses>()
         for (element in listenerMethods) {
-            val byAnnotation = getPsiClassesByAnnotationCached(module, element)
+            val byAnnotation = getPsiClassesByAnnotationCached(element)
             methodArguments.add(MethodArgumentClasses(element, byAnnotation))
         }
         return methodArguments
     }
 
+    /**
+     * Spring invokes a listener when the published event is assignable to what it declares - the declared type is
+     * the event or one of its supertypes, never a subtype of it.
+     */
     private fun isEqualsTypeOrClass(methodArgumentClasses: MethodArgumentClasses, eventPsiType: PsiType): Boolean {
         val argumentType = methodArgumentClasses.argumentType
         val argumentClasses = methodArgumentClasses.argumentClasses
