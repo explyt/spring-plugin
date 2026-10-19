@@ -43,17 +43,15 @@ import java.util.concurrent.Callable
 class OpenApiFileUtil {
 
     fun findSpecificationType(
-        project: Project,
-        psiFile: PsiFile,
-        virtualFile: VirtualFile
+        psiFile: PsiFile
     ): OpenApiSpecificationType {
-        val key: Key<CachedValue<OpenApiSpecificationType>> = SPECIFICATION_TYPE_KEY
-        return CachedValuesManager.getManager(project).getCachedValue(
+        return CachedValuesManager.getManager(psiFile.project).getCachedValue(
             psiFile,
-            key,
             {
-                val result = getSpecificationType(virtualFile, psiFile)
-                val modificationTracker = project.getService(OpenApiLanguagesModificationTracker::class.java)
+                val virtualFile = psiFile.virtualFile
+                val result = virtualFile?.let { getSpecificationType(it, psiFile) }
+                    ?: OpenApiSpecificationType.OpenApiUndefined
+                val modificationTracker = psiFile.project.getService(OpenApiLanguagesModificationTracker::class.java)
                     ?: ModificationTracker.NEVER_CHANGED
 
                 CachedValueProvider.Result.create(
@@ -61,8 +59,7 @@ class OpenApiFileUtil {
                     modificationTracker,
                     CacheKeyStore.cacheReset
                 )
-            },
-            false
+            }
         )
     }
 
@@ -78,7 +75,7 @@ class OpenApiFileUtil {
             ?.getSpecificationType(fileUrl) ?: OpenApiSpecificationType.OpenApiUndefined
 
         return localSpecificationType.takeUnless { it is OpenApiSpecificationType.OpenApiUndefined }
-            ?: findSpecificationType(psiFile.project, psiFile, file)
+            ?: findSpecificationType(psiFile)
     }
 
     private fun isValidFileType(file: VirtualFile): Boolean {
@@ -211,7 +208,6 @@ class OpenApiFileUtil {
 
     companion object {
         val INSTANCE: OpenApiFileUtil = OpenApiFileUtil()
-        val SPECIFICATION_TYPE_KEY: Key<CachedValue<OpenApiSpecificationType>> = Key.create("openApiSpecificationType")
         val SPECIFICATION_ICON_TYPE_KEY: Key<OpenApiSpecificationType> = Key.create("openApiIconSpecificationType")
 
         const val DEFAULT_SERVER = "http://localhost:8080"

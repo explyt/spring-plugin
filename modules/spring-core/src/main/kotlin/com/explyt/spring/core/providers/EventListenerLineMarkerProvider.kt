@@ -246,9 +246,7 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
     private fun getPsiClassesByAnnotationCached(psiMethod: PsiMethod): Set<PsiClass> {
         return CachedValuesManager.getCachedValue(psiMethod) {
             val project = psiMethod.project
-            val classes = ModuleUtilCore.findModuleForPsiElement(psiMethod)
-                ?.let { getPsiClassesByAnnotation(it, psiMethod) }
-                .orEmpty()
+            val classes = getPsiClassesByAnnotation(psiMethod)
             CachedValueProvider.Result.create(
                 classes,
                 ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
@@ -256,7 +254,8 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
         }
     }
 
-    private fun getPsiClassesByAnnotation(module: Module, psiMethod: PsiMethod): Set<PsiClass> {
+    private fun getPsiClassesByAnnotation(psiMethod: PsiMethod): Set<PsiClass> {
+        val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return emptySet()
         val metaHolder = SpringSearchService.getInstance(module.project).getMetaAnnotations(module, EVENT_LISTENER)
         val annotationValues = metaHolder.getAnnotationMemberValues(psiMethod, setOf("value", "classes"))
         return annotationValues
