@@ -70,6 +70,9 @@ internal object ResponseSchemaReader {
             return pagedModelOf(type.parameters.firstOrNull(), depth, context, null, PageWireShape.DECLARED_TYPE)
         }
         if (isPageImplSubclass(resolved)) return pageImplSubclassSchemaOf(type, resolved, fqn, depth, context)
+        if (fqn in HateoasSchemas.MODELS && !ProjectSources.declares(resolved)) {
+            return halSchemaOf(type, fqn, depth, context)
+        }
         if (isContainer(resolved, fqn)) {
             return type.parameters.firstOrNull()?.let { schemaOf(it, depth, context) }
         }
@@ -118,6 +121,57 @@ internal object ResponseSchemaReader {
             wireShapeAssumed = assumed,
         )
     }
+
+    /**
+     * A Spring HATEOAS model as the HAL document Boot writes by default: an `EntityModel` writes its content inline
+     * next to `_links`, a `CollectionModel` its items under `_embedded` keyed by their collection relation, and the
+     * HATEOAS `PagedModel` adds `page`. The content and the items are written without their `@JsonTypeInfo` type id,
+     * and the entries of a map content are unwrapped next to `_links`. A relation Evo Inflector would pluralise, or
+     * one the runtime class of an abstract, interface or polymorphic element decides unless the element and every known
+     * subtype declare the same collection relation, is not guessed: `_embedded` is then described by its map type
+     * alone, and the shape is assumed, as it is when HAL is not the default.
+     */
+    private fun halSchemaOf(type: PsiClassType, fqn: String, depth: Int, context: SchemaContext): DtoSchemaJson {
+        val element = type.parameters.firstOrNull()
+        val hal = context.halSerialization
+        if (fqn == HateoasSchemas.ENTITY_MODEL) {
+            val mapContent = element != null && MAPS.any { InheritanceUtil.isInheritor(element, it) }
+            val content = element?.takeUnless { mapContent }?.let { halContentOf(it, depth, context) }
+                ?: DtoSchemaJson(className = fqn, fields = null, additionalProperties = true.takeIf { mapContent })
+            val contentFields = content.fields.orEmpty()
+            val links = HateoasSchemas.links().takeIf { link -> contentFields.none { it.name == link.name } }
+            return content.copy(
+                className = fqn,
+                fields = contentFields + listOfNotNull(links),
+                wireShapeAssumed = true.takeIf { hal.halAssumed } ?: content.wireShapeAssumed,
+            )
+        }
+        val relation = element?.let { HateoasSchemas.collectionRelationOf(it, hal.inflectsRelations) }?.let(hal::keyOf)
+        return DtoSchemaJson(
+            className = fqn,
+            fields = listOfNotNull(
+                embeddedOf(element, relation, depth, context),
+                HateoasSchemas.links(),
+                HateoasSchemas.pageMetadata(depth, hal::keyOf).takeIf { fqn == HateoasSchemas.PAGED_MODEL },
+            ),
+            wireShapeAssumed = true.takeIf { hal.halAssumed || relation == null },
+        )
+    }
+
+    private fun embeddedOf(element: PsiType?, relation: String?, depth: Int, context: SchemaContext): DtoFieldJson {
+        val items = element?.let { "$LIST<${it.canonicalText}>" } ?: LIST
+        val type = "${HateoasSchemas.MAP}<${HateoasSchemas.STRING},$items>"
+        val embedded = if (element == null || relation == null || depth <= 1) null else DtoSchemaJson(
+            className = HateoasSchemas.MAP,
+            fields = listOf(HateoasSchemas.field(relation, items, halContentOf(element, depth - 2, context))),
+        )
+        return HateoasSchemas.field(HateoasSchemas.EMBEDDED, type, embedded).copy(nullable = null)
+    }
+
+    private fun halContentOf(type: PsiType, depth: Int, context: SchemaContext): DtoSchemaJson? =
+        schemaOf(type, depth, context)?.let { content ->
+            content.copy(discriminator = null, variants = content.variants?.map { it.copy(typeId = null) })
+        }
 
     private fun projectFieldsOf(psiClass: PsiClass, depth: Int, names: Names): List<DtoFieldJson> =
         if (isJavaBean(psiClass)) {
@@ -415,6 +469,7 @@ internal object ResponseSchemaReader {
     /** What the handler module configures for every class of one schema, read once and only when needed. */
     private class SchemaContext(val configured: JacksonNaming?, module: Module?) {
         val pageSerialization: PageSerialization by lazy { PageSerialization.of(module) }
+        val halSerialization: HalSerialization by lazy { HalSerialization.of(module, configured) }
     }
 
     private fun isWrittenField(field: PsiField): Boolean =

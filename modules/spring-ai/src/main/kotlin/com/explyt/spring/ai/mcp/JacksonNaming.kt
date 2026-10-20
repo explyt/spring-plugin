@@ -30,6 +30,8 @@ internal class JacksonNaming private constructor(
     /** The name Jackson writes [declaredName] under, or `null` when the strategy cannot be read. */
     fun translate(declaredName: String): String? = strategy?.translate(declaredName)
 
+    val isReadable: Boolean get() = strategy != null
+
     companion object {
         private const val ANNOTATION_SOURCE = "@JsonNaming"
         private const val PROPERTY = "spring.jackson.property-naming-strategy"
