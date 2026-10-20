@@ -7,6 +7,8 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.test.ExplytMultiModuleTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.core.service.PackageScanService
+import com.explyt.spring.test.util.TestCompiledLibrary
 import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.explyt.spring.web.util.WebApplicationStack
 import com.fasterxml.jackson.databind.JsonNode
@@ -15,10 +17,16 @@ import com.explyt.spring.core.service.conditional.ConditionPropertyValue
 import com.explyt.spring.core.service.conditional.PropertyConditionValues
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.module.Module
+import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.roots.DependencyScope
 import com.intellij.openapi.roots.ModuleRootManager
+import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.search.ProjectScope
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
+import com.intellij.psi.search.searches.ReferencesSearch
+import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PsiTestUtil
 
 /**
@@ -765,6 +773,150 @@ class SpringBootApplicationMcpToolsetPageSchemaModulesTest : ExplytMultiModuleTe
             assertPagedModelFrom(SERIALIZATION_MODE_KEY, handlerPageSchema())
         }
 
+    fun testLibraryViaDtoConfigurationImportedByAnotherApplicationLeavesThisApplicationDirect() {
+        val vendor = TestCompiledLibrary.attach(
+            module, testRootDisposable, "vendor-web-support", mapOf(VENDOR_WEB_CONFIG_PATH to VENDOR_WEB_CONFIG_SOURCE)
+        )
+        val beta = addStandaloneModule("beta")
+        vendor.attachTo(beta, testRootDisposable)
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
+        runBlockingReleasingWriteIntent<Unit> {
+            addApplication(module, "alpha", "/alpha/orders/page")
+            addFileToModule(module, "com/example/alpha/VendorImports.java", ALPHA_VENDOR_IMPORTS)
+            addApplication(beta, "beta", "/beta/orders/page")
+
+            assertFalse("precondition: 'beta' does not depend on the main module", dependsOn(beta, module))
+            assertFalse("precondition: the main module does not depend on 'beta'", dependsOn(module, beta))
+            readAction {
+                assertCompiledLibraryClassSeenBy(VENDOR_WEB_CONFIG, module, beta)
+                assertEquals(
+                    "precondition: only the main module's application imports $VENDOR_WEB_CONFIG",
+                    setOf("com.example.alpha.VendorImports"), importersOf(VENDOR_WEB_CONFIG)
+                )
+                val importer = JavaPsiFacade.getInstance(project)
+                    .findClass("com.example.alpha.VendorImports", GlobalSearchScope.allScope(project))!!
+                assertEquals(module, ModuleUtilCore.findModuleForPsiElement(importer))
+            }
+
+            assertPagedModelFrom("@EnableSpringDataWebSupport on $VENDOR_WEB_CONFIG", pageSchemaOf("/alpha/orders/page"))
+            assertDirectByDefault(pageSchemaOf("/beta/orders/page"))
+        }
+    }
+
+    fun testLibraryViaDtoConfigurationImportedOnlyByATestConfigurationLeavesTheApplicationDirect() {
+        TestCompiledLibrary.attach(
+            module, testRootDisposable, "vendor-web-support", mapOf(VENDOR_WEB_CONFIG_PATH to VENDOR_WEB_CONFIG_SOURCE)
+        )
+        addLibraries(module, listOf(SPRING_BOOT_TEST), DependencyScope.TEST)
+        runBlockingReleasingWriteIntent<Unit> {
+            addFileToModule(module, "com/example/shop/ShopApplication.java", SHOP_APPLICATION)
+            addFileToModule(module, "com/example/shop/OrderDto.java", ORDER_DTO_SOURCE)
+            addFileToModule(module, "com/example/shop/OrderController.java", PAGE_CONTROLLER)
+            val importerFile = addTestSourceFileToModule(
+                module, "com/example/shop/VendorTestImports.java", vendorTestImports()
+            )
+
+            readAction {
+                assertCompiledLibraryClassSeenBy(VENDOR_WEB_CONFIG, module)
+                assertTrue(
+                    "precondition: the importer lives in a test source root",
+                    ProjectFileIndex.getInstance(project).isInTestSourceContent(importerFile.virtualFile)
+                )
+                val importer = JavaPsiFacade.getInstance(project)
+                    .findClass(VENDOR_TEST_IMPORTS, GlobalSearchScope.allScope(project))
+                assertNotNull("the fixture must resolve $VENDOR_TEST_IMPORTS", importer)
+                assertTrue("$VENDOR_TEST_IMPORTS must carry @TestConfiguration", importer!!.hasAnnotation(TEST_CONFIGURATION))
+                assertNotNull(
+                    "precondition: $TEST_CONFIGURATION resolves from the test sources",
+                    JavaPsiFacade.getInstance(project).findClass(TEST_CONFIGURATION, module.getModuleWithDependenciesAndLibrariesScope(true))
+                )
+                assertEquals(
+                    "precondition: the bean model records the test configuration as the only importer",
+                    setOf(VENDOR_TEST_IMPORTS), importersOf(VENDOR_WEB_CONFIG)
+                )
+                val vendorConfig = JavaPsiFacade.getInstance(project)
+                    .findClass(VENDOR_WEB_CONFIG, GlobalSearchScope.allScope(project))!!
+                assertNull(
+                    "precondition: no production class references $VENDOR_WEB_CONFIG",
+                    ReferencesSearch.search(vendorConfig, module.getModuleScope(false)).findFirst()
+                )
+            }
+
+            assertDirectByDefault(pageSchemaOf("/orders/page"))
+        }
+    }
+
+    private suspend fun addApplication(target: Module, name: String, url: String) {
+        val packageName = "com.example.$name"
+        val path = packageName.replace('.', '/')
+        addFileToModule(target, "$path/Application.java", """
+            package $packageName;
+
+            import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+            @SpringBootApplication
+            public class Application {
+            }
+        """.trimIndent())
+        addFileToModule(target, "$path/OrderDto.java", """
+            package $packageName;
+
+            public class OrderDto {
+                public long getId() { return 0L; }
+            }
+        """.trimIndent())
+        addFileToModule(target, "$path/OrderController.java", """
+            package $packageName;
+
+            import org.springframework.data.domain.Page;
+            import org.springframework.web.bind.annotation.GetMapping;
+            import org.springframework.web.bind.annotation.RestController;
+
+            @RestController
+            public class OrderController {
+                @GetMapping("$url")
+                public Page<OrderDto> page() { return null; }
+            }
+        """.trimIndent())
+        assertEquals(
+            "the application stack of '${target.name}'",
+            WebApplicationStack.SERVLET,
+            readAction { WebApplicationStack.of(target) }
+        )
+        assertEquals(
+            "precondition: '${target.name}' declares its own application",
+            listOf(target.name to "$packageName.Application"),
+            readAction { applicationsIn(target) }
+        )
+    }
+
+    private fun dependsOn(dependent: Module, dependency: Module): Boolean =
+        ModuleRootManager.getInstance(dependent).isDependsOn(dependency)
+
+    private fun importersOf(fqn: String): Set<String> =
+        PackageScanService.getInstance(project).getAllPackages().importersByImported[fqn].orEmpty()
+
+    private fun assertCompiledLibraryClassSeenBy(fqn: String, vararg modules: Module) {
+        val declaration = JavaPsiFacade.getInstance(project).findClass(fqn, GlobalSearchScope.allScope(project))
+        assertNotNull("the fixture must resolve the library class $fqn, or the test proves nothing", declaration)
+        val file = declaration!!.containingFile.virtualFile
+        assertTrue("$fqn must come from compiled library classes", ProjectFileIndex.getInstance(project).isInLibraryClasses(file))
+        assertFalse("$fqn must be outside the project scope", ProjectScope.getProjectScope(project).contains(file))
+        assertTrue("$fqn must carry @EnableSpringDataWebSupport", declaration.hasAnnotation(ENABLE_WEB_SUPPORT))
+        modules.forEach {
+            assertTrue(
+                "precondition: '${it.name}' sees $fqn",
+                it.getModuleWithDependenciesAndLibrariesScope(false).contains(file)
+            )
+        }
+    }
+
+    private fun assertDirectByDefault(schema: JsonNode) {
+        assertEquals(schema.toString(), "org.springframework.data.domain.PageImpl", schema["className"]?.asText())
+        assertEquals(schema.toString(), "PAGE_DIRECT", schema["wireShape"]?.asText())
+        assertEquals(schema.toString(), "DEFAULT", schema["wireShapeSource"]?.asText())
+    }
+
     private fun assertPagedModelFrom(source: String, schema: JsonNode) {
         assertEquals(schema.toString(), "org.springframework.data.web.PagedModel", schema["className"]?.asText())
         assertEquals(schema.toString(), "PAGED_MODEL", schema["wireShape"]?.asText())
@@ -806,11 +958,13 @@ class SpringBootApplicationMcpToolsetPageSchemaModulesTest : ExplytMultiModuleTe
             .map { target.name to it.qualifiedName }
     }
 
-    private suspend fun handlerPageSchema(): JsonNode {
+    private suspend fun handlerPageSchema(): JsonNode = pageSchemaOf("/orders/page")
+
+    private suspend fun pageSchemaOf(url: String): JsonNode {
         val endpoints = mapper.readTree(
-            toolset.getEndpointContract(urlPattern = "/orders/page", projectPath = project.basePath, httpMethod = "GET")
+            toolset.getEndpointContract(urlPattern = url, projectPath = project.basePath, httpMethod = "GET")
         )["endpoints"]
-        assertEquals("exactly one handler for GET /orders/page: $endpoints", 1, endpoints.size())
+        assertEquals("exactly one handler for GET $url: $endpoints", 1, endpoints.size())
         val schema = endpoints.single()["responseSchema"]
         assertTrue("a response schema is expected, got $endpoints", schema != null && !schema.isNull)
         return schema
@@ -821,6 +975,50 @@ class SpringBootApplicationMcpToolsetPageSchemaModulesTest : ExplytMultiModuleTe
         const val SPRING_BOOT_APPLICATION = "org.springframework.boot.autoconfigure.SpringBootApplication"
         const val SERIALIZATION_MODE_KEY = "spring.data.web.pageable.serialization-mode"
         const val WEB_CONFIG = "com.example.config.WebConfig"
+        const val VENDOR_WEB_CONFIG = "com.vendor.web.VendorWebConfig"
+        const val VENDOR_WEB_CONFIG_PATH = "com/vendor/web/VendorWebConfig.java"
+        const val VENDOR_TEST_IMPORTS = "com.example.shop.VendorTestImports"
+        const val TEST_CONFIGURATION = "org.springframework.boot.test.context.TestConfiguration"
+        val SPRING_BOOT_TEST = TestLibrary("org.springframework.boot:spring-boot-test:3.1.1", false)
+
+        val VENDOR_WEB_CONFIG_SOURCE = """
+            package com.vendor.web;
+
+            import org.springframework.context.annotation.Configuration;
+            import org.springframework.data.web.config.EnableSpringDataWebSupport;
+            import org.springframework.data.web.config.EnableSpringDataWebSupport.PageSerializationMode;
+
+            @Configuration
+            @EnableSpringDataWebSupport(pageSerializationMode = PageSerializationMode.VIA_DTO)
+            public class VendorWebConfig {
+            }
+        """.trimIndent()
+
+        val ALPHA_VENDOR_IMPORTS = """
+            package com.example.alpha;
+
+            import com.vendor.web.VendorWebConfig;
+            import org.springframework.context.annotation.Configuration;
+            import org.springframework.context.annotation.Import;
+
+            @Configuration
+            @Import(VendorWebConfig.class)
+            public class VendorImports {
+            }
+        """.trimIndent()
+
+        fun vendorTestImports() = """
+            package com.example.shop;
+
+            import com.vendor.web.VendorWebConfig;
+            import org.springframework.boot.test.context.TestConfiguration;
+            import org.springframework.context.annotation.Import;
+
+            @TestConfiguration
+            @Import(VendorWebConfig.class)
+            public class VendorTestImports {
+            }
+        """.trimIndent()
 
         val ROOT_APPLICATION = """
             package com.example;

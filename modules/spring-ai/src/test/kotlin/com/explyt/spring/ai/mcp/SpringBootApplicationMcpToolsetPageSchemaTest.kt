@@ -1171,6 +1171,50 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         }
     }
 
+    fun testBootDataWebAutoConfigurationUnderADefaultPackageScanLeavesTheModeToTheProperty() =
+        runBlockingReleasingWriteIntent<Unit> {
+            addFile(
+                "DefaultPackageApplication.java", """
+                import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+                @SpringBootApplication
+                public class DefaultPackageApplication {
+                }
+                """.trimIndent()
+            )
+            addFile("application.properties", "$SERIALIZATION_MODE_KEY=via_dto")
+            assertResolves("DefaultPackageApplication")
+            val bootConfig = JavaPsiFacade.getInstance(project)
+                .findClass(BOOT_DATA_WEB_AUTO_CONFIGURATION, GlobalSearchScope.allScope(project))
+            assertNotNull("the fixture must resolve $BOOT_DATA_WEB_AUTO_CONFIGURATION", bootConfig)
+            val file = bootConfig!!.containingFile.virtualFile
+            assertTrue(
+                "$BOOT_DATA_WEB_AUTO_CONFIGURATION must come from library classes",
+                ProjectFileIndex.getInstance(project).isInLibraryClasses(file)
+            )
+            assertFalse("it must be outside the project scope", ProjectScope.getProjectScope(project).contains(file))
+            assertTrue("it carries @EnableSpringDataWebSupport", bootConfig.hasAnnotation(ENABLE_WEB_SUPPORT))
+            assertEmpty(
+                "it declares no mode, so the annotation alone would mean DIRECT",
+                bootConfig.getAnnotation(ENABLE_WEB_SUPPORT)!!.parameterList.attributes.toList()
+            )
+            assertTrue(
+                "it is an @AutoConfiguration",
+                bootConfig.hasAnnotation(SpringCoreClasses.BOOT_AUTO_CONFIGURATION)
+            )
+            val scanned = PackageScanService.getInstance(project).getAllPackages().getPackages(module)
+            assertTrue("precondition: the default-package application scans every package: $scanned", "" in scanned)
+            assertTrue(
+                "precondition: the scan covers $BOOT_DATA_WEB_AUTO_CONFIGURATION: $scanned",
+                scanned.any(BOOT_DATA_WEB_AUTO_CONFIGURATION::startsWith)
+            )
+
+            val schema = pageSchema("/orders/page")
+
+            assertPagedModel(schema)
+            assertSource(SERIALIZATION_MODE_KEY, schema)
+        }
+
     private fun attachVendorAutoConfiguration(mode: String) {
         TestCompiledLibrary.attach(
             module, testRootDisposable, "vendor-web-auto-configuration",
@@ -1309,6 +1353,8 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         const val ALLOW_BEAN_DEFINITION_OVERRIDING_KEY = "spring.main.allow-bean-definition-overriding"
         const val VENDOR_WEB_CONFIG = "com.vendor.web.VendorWebConfig"
         const val VENDOR_AUTO_CONFIGURATION = "com.vendor.web.VendorWebAutoConfiguration"
+        const val BOOT_DATA_WEB_AUTO_CONFIGURATION =
+            "org.springframework.boot.autoconfigure.data.web.SpringDataWebAutoConfiguration"
         const val AUTO_CONFIGURATION_IMPORTS_PATH =
             "META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports"
 

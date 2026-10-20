@@ -41,7 +41,17 @@ import kotlin.io.path.writeText
  * outside `ProjectScope`, resolve through stubs and have no attached sources - the shape that
  * [TestLibrarySourceRoot] cannot express, because its root is a sources root too.
  */
-class TestCompiledLibrary private constructor(val jarRoot: VirtualFile) {
+class TestCompiledLibrary private constructor(
+    val jarRoot: VirtualFile,
+    private val libraryName: String,
+    private val directory: Path,
+    private val jarName: String,
+) {
+
+    /** Attaches the same jar to [module] as well, the way two modules depending on one artifact see it. */
+    fun attachTo(module: Module, parentDisposable: Disposable) {
+        PsiTestUtil.addLibrary(parentDisposable, module, libraryName, directory.toString(), jarName)
+    }
 
     companion object {
 
@@ -72,7 +82,7 @@ class TestCompiledLibrary private constructor(val jarRoot: VirtualFile) {
             PsiTestUtil.addLibrary(parentDisposable, module, libraryName, rootPath.toString(), jarName)
             val jarRoot = JarFileSystem.getInstance().refreshAndFindFileByPath("${rootPath.resolve(jarName)}!/")
                 ?: error("No jar root for library '$libraryName'")
-            return TestCompiledLibrary(jarRoot)
+            return TestCompiledLibrary(jarRoot, libraryName, rootPath, jarName)
         }
 
         private fun classpathOf(module: Module): String = runReadActionBlocking {
