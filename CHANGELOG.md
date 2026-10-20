@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Spring Core
+- fix: Default bean names follow Spring's generator: names starting with two capitals stay unchanged, nested classes are named `outer.Inner`, lowercasing ignores the default locale (#758)
 - fix: Evaluate `@ConditionalOnProperty` and other condition attributes on compiled library classes instead of reporting them undecided because the property name cannot be resolved (#759)
 - fix: The abstract-component bean gutter also lists a generic `@Bean` factory whose type parameter is bounded by the abstract class, shows targets with equal names in a stable order, and the bean gutter of a library class in Native Context Mode lists only the constructors Spring injects through (#600)
 - fix: Library `@Controller`, `@Service` and other stereotype classes are beans only when a component scan of the application covers their package; previously every such class in a dependency was reported as an active bean; library configurations and `@ConfigurationProperties` classes are unchanged (#645)
