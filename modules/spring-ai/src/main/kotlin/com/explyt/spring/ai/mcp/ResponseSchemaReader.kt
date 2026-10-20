@@ -125,15 +125,18 @@ internal object ResponseSchemaReader {
     /**
      * A Spring HATEOAS model as the HAL document Boot writes by default: an `EntityModel` writes its content inline
      * next to `_links`, a `CollectionModel` its items under `_embedded` keyed by their collection relation, and the
-     * HATEOAS `PagedModel` adds `page`. A relation Evo Inflector would pluralise is not guessed: `_embedded` is then
-     * described by its map type alone, and the shape is assumed, as it is when HAL is not the default.
+     * HATEOAS `PagedModel` adds `page`. The content and the items are written without their `@JsonTypeInfo` type id,
+     * and the entries of a map content are unwrapped next to `_links`. A relation Evo Inflector would pluralise, or
+     * one the runtime class of an abstract, interface or polymorphic element decides, is not guessed: `_embedded` is
+     * then described by its map type alone, and the shape is assumed, as it is when HAL is not the default.
      */
     private fun halSchemaOf(type: PsiClassType, fqn: String, depth: Int, context: SchemaContext): DtoSchemaJson {
         val element = type.parameters.firstOrNull()
         val hal = context.halSerialization
         if (fqn == HateoasSchemas.ENTITY_MODEL) {
-            val content = element?.let { schemaOf(it, depth, context) }
-                ?: DtoSchemaJson(className = fqn, fields = null)
+            val mapContent = element != null && MAPS.any { InheritanceUtil.isInheritor(element, it) }
+            val content = element?.takeUnless { mapContent }?.let { halContentOf(it, depth, context) }
+                ?: DtoSchemaJson(className = fqn, fields = null, additionalProperties = true.takeIf { mapContent })
             val contentFields = content.fields.orEmpty()
             val links = HateoasSchemas.links().takeIf { link -> contentFields.none { it.name == link.name } }
             return content.copy(
@@ -159,10 +162,15 @@ internal object ResponseSchemaReader {
         val type = "${HateoasSchemas.MAP}<${HateoasSchemas.STRING},$items>"
         val embedded = if (element == null || relation == null || depth <= 1) null else DtoSchemaJson(
             className = HateoasSchemas.MAP,
-            fields = listOf(HateoasSchemas.field(relation, items, schemaOf(element, depth - 2, context))),
+            fields = listOf(HateoasSchemas.field(relation, items, halContentOf(element, depth - 2, context))),
         )
         return HateoasSchemas.field(HateoasSchemas.EMBEDDED, type, embedded).copy(nullable = null)
     }
+
+    private fun halContentOf(type: PsiType, depth: Int, context: SchemaContext): DtoSchemaJson? =
+        schemaOf(type, depth, context)?.let { content ->
+            content.copy(discriminator = null, variants = content.variants?.map { it.copy(typeId = null) })
+        }
 
     private fun projectFieldsOf(psiClass: PsiClass, depth: Int, names: Names): List<DtoFieldJson> =
         if (isJavaBean(psiClass)) {

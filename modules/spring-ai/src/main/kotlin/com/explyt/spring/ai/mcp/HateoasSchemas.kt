@@ -14,6 +14,7 @@ import com.intellij.openapi.module.Module
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiClassType
+import com.intellij.psi.PsiModifier
 import com.intellij.psi.PsiType
 import com.intellij.psi.PsiWildcardType
 import com.intellij.util.text.VersionComparatorUtil
@@ -39,17 +40,22 @@ internal object HateoasSchemas {
             className = PAGE_METADATA,
             fields = listOf("size", "totalElements", "totalPages", "number").map { field(keyOf(it), "long") },
         ).takeIf { depth > 1 },
-    )
+    ).copy(nullable = null)
 
     /**
      * The `_embedded` key of a collection of [element]: the `@Relation(collectionRelation)` of its content type, else
-     * `uncapitalize(simpleName) + "List"` - unless Evo Inflector [inflects] the default, which is then not derived.
+     * `uncapitalize(simpleName) + "List"` - unless Evo Inflector [inflects] the default, or the runtime class decides
+     * it for an abstract, interface or polymorphic element, when it is not derived.
      */
     fun collectionRelationOf(element: PsiType, inflects: Boolean): String? {
         val item = contentClassOf(element) ?: return null
         return declaredCollectionRelationOf(item)
-            ?: item.name?.takeUnless { inflects }?.let { it.replaceFirstChar(Char::lowercaseChar) + "List" }
+            ?: item.takeUnless { inflects || hasRuntimeRelation(it) }?.name
+                ?.let { it.replaceFirstChar(Char::lowercaseChar) + "List" }
     }
+
+    private fun hasRuntimeRelation(item: PsiClass): Boolean =
+        item.isInterface || item.hasModifierProperty(PsiModifier.ABSTRACT) || JacksonPolymorphism.of(item) != null
 
     private fun contentClassOf(type: PsiType): PsiClass? {
         val classType = (if (type is PsiWildcardType) type.bound else type) as? PsiClassType ?: return null
