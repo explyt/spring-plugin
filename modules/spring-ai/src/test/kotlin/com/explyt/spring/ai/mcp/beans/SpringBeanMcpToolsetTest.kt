@@ -112,6 +112,22 @@ class SpringBeanMcpToolsetTest : ExplytJavaLightTestCase() {
         assertEquals("com.explyt.demo.App", model["application"].asText())
     }
 
+    fun testLookupByTwoCapitalDefaultNameFindsTheComponent() = runBlockingReleasingWriteIntent {
+        copyBeanQueryFixture()
+        myFixture.addFileToProject(
+            "com/explyt/demo/ABTestController.java",
+            "package com.explyt.demo; @org.springframework.stereotype.Component public class ABTestController {}"
+        )
+        val byType = call(typeFqn = "com.explyt.demo.ABTestController")
+        assertEquals("Precondition: the component is a bean, got $byType", 1, byType["totalCount"].asInt())
+
+        val root = call(beanName = "ABTestController")
+
+        assertEquals("SINGLE", root["outcome"].asText())
+        assertEquals("ABTestController", root["candidates"][0]["name"].asText())
+        assertEquals("com.explyt.demo.ABTestController", root["candidates"][0]["type"].asText())
+    }
+
     fun testUnknownNameIsNoneWithinTheKnownNames() = runBlockingReleasingWriteIntent {
         copyBeanQueryFixture()
 
