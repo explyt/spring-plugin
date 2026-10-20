@@ -29,7 +29,6 @@ import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.util.ExplytPsiUtil.getMetaAnnotation
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.openapi.module.Module
-import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
@@ -175,18 +174,8 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
     private fun declaringModuleOf(endpoint: ActuatorEndpoint): Module? =
         ModuleUtilCore.findModuleForPsiElement(endpoint.psiClass)
 
-    private fun isReachedByApplication(module: Module): Boolean {
-        val moduleManager = ModuleManager.getInstance(project)
-        val visited = mutableSetOf(module)
-        val pending = ArrayDeque(moduleManager.getModuleDependentModules(module))
-        while (pending.isNotEmpty()) {
-            val dependent = pending.removeFirst()
-            if (!visited.add(dependent)) continue
-            if (applicationClassOf(dependent) != null) return true
-            pending += moduleManager.getModuleDependentModules(dependent)
-        }
-        return false
-    }
+    private fun isReachedByApplication(module: Module): Boolean =
+        ApplicationModules.dependentApplicationModules(module).any()
 
     /**
      * The Spring Boot application [module] declares, if any. Built-in endpoints belong to the context an application
