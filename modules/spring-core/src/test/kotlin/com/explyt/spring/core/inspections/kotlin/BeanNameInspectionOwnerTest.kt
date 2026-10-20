@@ -16,7 +16,11 @@ import com.intellij.lang.annotation.HighlightSeverity
 class BeanNameInspectionOwnerTest : ExplytInspectionKotlinTestCase() {
 
     override val libraries: Array<TestLibrary> =
-        arrayOf(TestLibrary.springContext_6_0_7, TestLibrary.springBoot_3_1_1)
+        arrayOf(
+            TestLibrary.springContext_6_0_7,
+            TestLibrary.springBoot_3_1_1,
+            TestLibrary.springBootAutoConfigure_3_1_1,
+        )
 
     override fun setUp() {
         super.setUp()
