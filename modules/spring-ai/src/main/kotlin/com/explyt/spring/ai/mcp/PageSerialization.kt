@@ -65,10 +65,10 @@ internal data class PageSerialization(val mode: PageSerializationMode, val sourc
             val webSupport = MetaAnnotationsHolder.of(module, ENABLE_WEB_SUPPORT)
             val modes = declarations.map { it to modeDeclaredBy(it, webSupport) }
             val viaDto = modes.filter { it.second == PageSerializationMode.VIA_DTO }
-            if (viaDto.size > 1 && !allowsBeanDefinitionOverriding(module)) return UNKNOWN
-            val (decisive, mode) = viaDto.firstOrNull()
-                ?: modes.firstOrNull { it.second == PageSerializationMode.UNKNOWN }
-                ?: modes.first()
+            val unreadable = modes.filter { it.second == PageSerializationMode.UNKNOWN }
+            val mayCompete = viaDto.isNotEmpty() && viaDto.size + unreadable.size > 1
+            if (mayCompete && !allowsBeanDefinitionOverriding(module)) return UNKNOWN
+            val (decisive, mode) = viaDto.firstOrNull() ?: unreadable.firstOrNull() ?: modes.first()
             return declared(mode, "@EnableSpringDataWebSupport on ${decisive.qualifiedName}")
         }
 
