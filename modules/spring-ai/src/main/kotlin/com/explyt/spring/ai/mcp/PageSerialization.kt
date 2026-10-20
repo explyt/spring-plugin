@@ -12,14 +12,11 @@ import com.explyt.spring.core.service.conditional.ConditionPropertyValue
 import com.explyt.spring.core.service.conditional.PropertyConditionValues
 import com.explyt.spring.web.util.WebApplicationStack
 import com.explyt.util.ExplytPsiUtil.resolveUAnnotationType
-import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.openapi.module.Module
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiEnumConstant
 import com.intellij.psi.search.GlobalSearchScope
-import com.intellij.psi.search.ProjectScope
-import com.intellij.psi.search.searches.AnnotatedElementsSearch
 import org.jetbrains.uast.UAnnotation
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UResolvable
@@ -28,11 +25,14 @@ import org.jetbrains.uast.toUElementOfType
 /**
  * How Spring Data writes a `PageImpl` returned by a handler of a module, and where that was decided.
  *
- * A project `@EnableSpringDataWebSupport` decides it on a servlet application: Boot's `SpringDataWebAutoConfiguration`,
+ * An `@EnableSpringDataWebSupport` class the context registers ([WebSupportDeclarations.reached]) decides it on a
+ * servlet application: Boot's `SpringDataWebAutoConfiguration`,
  * which binds `spring.data.web.pageable.serialization-mode`, backs off when the annotation registers its own argument
  * resolvers. Without the annotation the property decides, read by the rule `@ConditionalOnProperty` is evaluated
  * with, and its absence means `DIRECT`. A reactive application never binds the property, and fails to start with the
- * annotation unless Spring MVC is on the classpath, so the annotation there leaves the mode unknown.
+ * annotation unless Spring MVC is on the classpath, so the annotation there leaves the mode unknown. A library
+ * auto-configuration that declares a mode other than `DIRECT` and that project code does not reach leaves the mode
+ * unknown when registering it would change the answer.
  *
  * @property source `DEFAULT`, the property name, `@EnableSpringDataWebSupport on <class>`, or `UNKNOWN` whenever
  * [mode] is.
@@ -51,7 +51,17 @@ internal data class PageSerialization(val mode: PageSerializationMode, val sourc
 
         fun of(module: Module?): PageSerialization {
             module ?: return UNKNOWN
-            val declarations = webSupportDeclaredIn(module)
+            val declarations = WebSupportDeclarations.of(module)
+            val webSupport = MetaAnnotationsHolder.of(module, ENABLE_WEB_SUPPORT)
+            val decided = decidedBy(declarations.reached, module)
+            val mayRegister = declarations.unreachedAutoConfigurations
+                .filter { modeDeclaredBy(it, webSupport) != PageSerializationMode.DIRECT }
+            if (mayRegister.isEmpty()) return decided
+            val registered = decidedBy((declarations.reached + mayRegister).sortedBy { it.qualifiedName }, module)
+            return if (registered.mode == decided.mode) decided else UNKNOWN
+        }
+
+        private fun decidedBy(declarations: List<PsiClass>, module: Module): PageSerialization {
             val reactive = WebApplicationStack.of(module) == WebApplicationStack.REACTIVE
             return when {
                 declarations.isNotEmpty() && reactive -> UNKNOWN
@@ -88,17 +98,6 @@ internal data class PageSerialization(val mode: PageSerializationMode, val sourc
 
         private fun declared(mode: PageSerializationMode, source: String): PageSerialization =
             if (mode == PageSerializationMode.UNKNOWN) UNKNOWN else PageSerialization(mode, source)
-
-        private fun webSupportDeclaredIn(module: Module): List<PsiClass> {
-            val production = GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module, false)
-            JavaPsiFacade.getInstance(module.project).findClass(ENABLE_WEB_SUPPORT, production) ?: return emptyList()
-            val projectSources = production.intersectWith(ProjectScope.getProjectScope(module.project))
-            return MetaAnnotationUtil.getAnnotationTypesWithChildren(module, ENABLE_WEB_SUPPORT, false)
-                .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, projectSources) }
-                .filter { !it.isAnnotationType && it.qualifiedName != null }
-                .distinctBy { it.qualifiedName }
-                .sortedBy { it.qualifiedName }
-        }
 
         private fun modeDeclaredBy(psiClass: PsiClass, webSupport: MetaAnnotationsHolder): PageSerializationMode {
             val annotation = psiClass.toUElementOfType<UClass>()?.uAnnotations?.firstOrNull(webSupport::contains)
