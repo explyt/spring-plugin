@@ -79,10 +79,14 @@ internal class WebSupportDeclarations private constructor(
             isAutoConfiguration: (PsiClass) -> Boolean,
         ): (PsiClass) -> Boolean {
             val scan = PackageScanService.getInstance(serving.first().project).getAllPackages()
-            val scannedPackages = serving.flatMapTo(mutableSetOf(), scan::getPackages)
+            val packagesByServing = serving.associateWith(scan::getPackages)
+            val scannedPackages = packagesByServing.values.flatten().toSet()
+            fun isRegisteredBy(application: Module, importer: String): Boolean =
+                declaresInProduction(application, importer) &&
+                        (scan.isRootComponent(importer) || packagesByServing.getValue(application).any(importer::startsWith))
             val importedInProduction = { fqn: String ->
                 scan.importersByImported[fqn].orEmpty()
-                    .any { importer -> serving.any { declaresInProduction(it, importer) } }
+                    .any { importer -> serving.any { isRegisteredBy(it, importer) } }
             }
             return { psiClass ->
                 val fqn = psiClass.qualifiedName.orEmpty()
