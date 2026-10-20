@@ -49,8 +49,10 @@ class SpringAbstractComponentInspection : SpringBaseUastLocalInspectionTool() {
     }
 
     private fun problemKey(abstractClass: PsiClass, module: Module): String {
-        val beans = SpringSearchServiceFacade.getInstance(module.project).getAllActiveBeans(module)
-        return if (AbstractComponentLineMarker.implementationsOf(abstractClass, beans).isEmpty())
+        val facade = SpringSearchServiceFacade.getInstance(module.project)
+        val beans = facade.getAllActiveBeans(module)
+        val factories = facade.getActiveGenericBeanFactoryMethods(module)
+        return if (AbstractComponentLineMarker.implementationsOf(abstractClass, beans, factories).isEmpty())
             "explyt.spring.inspection.abstract.component.no.bean"
         else
             "explyt.spring.inspection.abstract.component.subclass.bean"
