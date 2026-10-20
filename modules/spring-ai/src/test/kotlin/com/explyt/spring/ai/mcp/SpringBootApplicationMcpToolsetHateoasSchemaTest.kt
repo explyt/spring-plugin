@@ -11,6 +11,8 @@ import com.explyt.spring.web.util.WebApplicationStack
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.ObjectNode
+import com.explyt.spring.core.util.SpringBootUtil
+import com.intellij.openapi.application.readAction
 import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiClass
@@ -56,6 +58,16 @@ abstract class HateoasSchemaTestCase : PageSchemaTestCase() {
         assertEquals("the HAL shape is assumed: $schema", true, schema["wireShapeAssumed"]?.asBoolean())
     }
 
+    protected fun assertNullabilityUnknown(schema: JsonNode, name: String) {
+        val field = field(schema, name)
+        assertTrue("$name may be absent, so its nullability is not false: $field", field["nullable"]?.isNull ?: true)
+    }
+
+    protected suspend fun assertBootLine(prefix: String) {
+        val version = readAction { SpringBootUtil.getSpringBootVersion(module) }
+        assertTrue("the fixture models Spring Boot $prefix*, got '$version'", version.startsWith(prefix))
+    }
+
     protected fun assertHalNotAssumed(schema: JsonNode) {
         assertNull("the HAL default is not an assumption: $schema", schema["wireShapeAssumed"])
     }
@@ -66,7 +78,7 @@ abstract class HateoasSchemaTestCase : PageSchemaTestCase() {
         assertTrue("$fqn must come from $jar: $file", jar in file.path)
     }
 
-    protected fun assertFromHateoasLibrary(fqn: String) = assertFromLibrary(fqn, HATEOAS_JAR)
+    protected open fun assertFromHateoasLibrary(fqn: String) = assertFromLibrary(fqn, HATEOAS_JAR)
 
     protected fun assertWithoutRelation(fqn: String) {
         assertFromHateoasLibrary(RELATION)
@@ -104,6 +116,8 @@ abstract class HateoasSchemaTestCase : PageSchemaTestCase() {
         const val RELATED_ORDER_DTO = "com.example.hal.related.OrderDto"
         const val KOTLIN_ORDER_DTO = "com.example.halkt.OrderDto"
         const val HAL_DEFAULT_KEY = "spring.hateoas.use-hal-as-default-json-media-type"
+        const val NAMING_STRATEGY_KEY = "spring.jackson.property-naming-strategy"
+        const val CAMEL_RELATED_DTO = "com.example.hal.camel.CamelRelatedDto"
         const val SHAPE = "com.example.hal.shape.Shape"
         const val OBJECT_NODE = "com.fasterxml.jackson.databind.node.ObjectNode"
         const val PROBLEM_DETAIL = "org.springframework.http.ProblemDetail"
@@ -322,6 +336,46 @@ class SpringBootApplicationMcpToolsetHateoasSchemaTest : HateoasSchemaTestCase()
         assertHalNotAssumed(schema)
     }
 
+    fun testHalLinksAndEmbeddedAreNotDeclaredNonNull() = runBlockingReleasingWriteIntent<Unit> {
+        val schema = schemaOf("/hal/collection", "$COLLECTION_MODEL<$ENTITY_MODEL<$HAL_ORDER_DTO>>")
+
+        assertNullabilityUnknown(schema, "_embedded")
+        assertNullabilityUnknown(schema, "_links")
+    }
+
+    fun testNamingStrategyOnBoot3MakesTheHalShapeAssumed() = runBlockingReleasingWriteIntent<Unit> {
+        assertBootLine("3.")
+        addFile("application.properties", "$NAMING_STRATEGY_KEY=SNAKE_CASE")
+
+        val schema = schemaOf("/hal/entity", "$ENTITY_MODEL<$HAL_ORDER_DTO>")
+
+        assertEquals("the contract reads the configured strategy: $schema", "SNAKE_CASE", schema["namingStrategy"]?.asText())
+        assertHalAssumed(schema)
+    }
+
+    fun testUnknownNamingStrategyMakesTheHalShapeAssumed() = runBlockingReleasingWriteIntent<Unit> {
+        addFile(
+            "com/example/config/JacksonConfig.java", """
+            package com.example.config;
+
+            import com.fasterxml.jackson.databind.ObjectMapper;
+            import org.springframework.context.annotation.Bean;
+            import org.springframework.context.annotation.Configuration;
+
+            @Configuration
+            public class JacksonConfig {
+                @Bean
+                public ObjectMapper objectMapper() { return new ObjectMapper(); }
+            }
+            """.trimIndent()
+        )
+
+        val schema = schemaOf("/hal/entity", "$ENTITY_MODEL<$HAL_ORDER_DTO>")
+
+        assertEquals("a project mapper bean makes the strategy unknown: $schema", "UNKNOWN", schema["namingStrategy"]?.asText())
+        assertHalAssumed(schema)
+    }
+
     fun testEntityModelKeepsThePolymorphismOfItsContent() = runBlockingReleasingWriteIntent<Unit> {
         addContentController(SHAPE, SHAPE_SOURCES)
         val plain = schemaOf("/content/plain", SHAPE)
@@ -388,6 +442,120 @@ class SpringBootApplicationMcpToolsetHateoasSchemaTest : HateoasSchemaTestCase()
     private fun withoutHal(schema: JsonNode): ObjectNode = withoutClassName(schema).apply {
         val fields = get("fields") as? ArrayNode ?: return@apply
         fields.indexOfFirst { it["name"].asText() == "_links" }.takeIf { it >= 0 }?.let(fields::remove)
+    }
+}
+
+class SpringBootApplicationMcpToolsetBoot4HateoasSchemaTest : HateoasSchemaTestCase() {
+
+    override val libraries: Array<TestLibrary> = arrayOf(
+        TestLibrary.springBootAutoConfigure_4_1_0,
+        TestLibrary.springWebMvc_7_0_8,
+        TestLibrary.springDataCommons_4_1_0,
+        TestLibrary.jacksonAnnotations_2_15_2,
+        TestLibrary.jacksonDatabind_2_15_2,
+        TestLibrary.kotlin_1_9_22,
+        TestLibrary.springHateoas_3_1_1,
+    )
+
+    override fun setUp() {
+        super.setUp()
+        myFixture.addFileToProject(
+            "com/example/hal/camel/CamelRelatedDto.java", """
+            package com.example.hal.camel;
+
+            import org.springframework.hateoas.server.core.Relation;
+
+            @Relation(collectionRelation = "orderItems")
+            public class CamelRelatedDto {
+                public long id;
+                public String orderNumber;
+            }
+            """.trimIndent()
+        )
+        myFixture.addFileToProject(
+            "com/example/hal/camel/CamelController.java", """
+            package com.example.hal.camel;
+
+            import org.springframework.hateoas.CollectionModel;
+            import org.springframework.hateoas.EntityModel;
+            import org.springframework.web.bind.annotation.GetMapping;
+            import org.springframework.web.bind.annotation.RestController;
+
+            @RestController
+            public class CamelController {
+                @GetMapping("/hal/camel-relation")
+                public CollectionModel<EntityModel<CamelRelatedDto>> relation() { return null; }
+            }
+            """.trimIndent()
+        )
+        myFixture.addFileToProject("application.properties", "$NAMING_STRATEGY_KEY=SNAKE_CASE")
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
+    }
+
+    override fun assertFromHateoasLibrary(fqn: String) = assertFromLibrary(fqn, BOOT4_HATEOAS_JAR)
+
+    fun testSnakeCaseRenamesTheDefaultCollectionRelation() = runBlockingReleasingWriteIntent<Unit> {
+        assertBootLine("4.")
+        assertWithoutRelation(HAL_ORDER_DTO)
+
+        val schema = schemaOf("/hal/collection", "$COLLECTION_MODEL<$ENTITY_MODEL<$HAL_ORDER_DTO>>")
+
+        assertSnakeCaseItems(schema)
+        assertEquals(schema.toString(), setOf("order_dto_list"), names(field(schema, "_embedded").path("nested")).toSet())
+    }
+
+    fun testSnakeCaseRenamesTheDeclaredCollectionRelation() = runBlockingReleasingWriteIntent<Unit> {
+        assertBootLine("4.")
+        assertFromHateoasLibrary(RELATION)
+
+        val schema = schemaOf("/hal/camel-relation", "$COLLECTION_MODEL<$ENTITY_MODEL<$CAMEL_RELATED_DTO>>")
+
+        assertSnakeCaseItems(schema)
+        assertEquals(schema.toString(), setOf("order_items"), names(field(schema, "_embedded").path("nested")).toSet())
+    }
+
+    fun testSnakeCaseRenamesThePageMetadata() = runBlockingReleasingWriteIntent<Unit> {
+        assertBootLine("4.")
+        assertFromHateoasLibrary(HATEOAS_PAGED_MODEL)
+
+        val schema = schemaOf("/hal/paged", "$HATEOAS_PAGED_MODEL<$ENTITY_MODEL<$HAL_ORDER_DTO>>")
+
+        assertSnakeCaseItems(schema)
+        assertEquals(
+            schema.toString(),
+            setOf("size", "total_elements", "total_pages", "number"),
+            names(field(schema, "page").path("nested")).toSet()
+        )
+    }
+
+    private fun assertSnakeCaseItems(schema: JsonNode) {
+        val items = field(schema, "_embedded").path("nested")["fields"]?.singleOrNull()?.path("nested")
+        assertEquals("the contract reads the configured strategy: $schema", "SNAKE_CASE", items?.get("namingStrategy")?.asText())
+    }
+
+    private companion object {
+        const val BOOT4_HATEOAS_JAR = "spring-hateoas-3.1.1.jar"
+    }
+}
+
+class SpringBootApplicationMcpToolsetReactiveHateoasSchemaTest : HateoasSchemaTestCase() {
+
+    override val stack = WebApplicationStack.REACTIVE
+
+    override val libraries: Array<TestLibrary> = arrayOf(
+        TestLibrary.springReactiveWeb_3_1_1,
+        TestLibrary.springDataJpa_3_4_0,
+        TestLibrary.kotlin_1_9_22,
+        TestLibrary.springHateoas_2_5_3,
+    )
+
+    fun testHalShapeIsAssumedOnAReactiveApplication() = runBlockingReleasingWriteIntent<Unit> {
+        assertFromHateoasLibrary(ENTITY_MODEL)
+
+        val schema = schemaOf("/hal/entity", "$ENTITY_MODEL<$HAL_ORDER_DTO>")
+
+        assertHalEntity(schema)
+        assertHalAssumed(schema)
     }
 }
 
