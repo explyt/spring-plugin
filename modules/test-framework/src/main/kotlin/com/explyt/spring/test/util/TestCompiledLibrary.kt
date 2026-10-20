@@ -46,8 +46,9 @@ class TestCompiledLibrary private constructor(val jarRoot: VirtualFile) {
     companion object {
 
         /**
-         * Compiles [sources] (relative path to Java text) and attaches the jar to [module] as [libraryName]. The
-         * library, the jar and its directory are removed when [parentDisposable] is disposed.
+         * Compiles [sources] (relative path to Java text), packs the classes with [resources] (relative path to text)
+         * and attaches the jar to [module] as [libraryName]. The library, the jar and its directory are removed when
+         * [parentDisposable] is disposed.
          */
         @OptIn(ExperimentalPathApi::class)
         fun attach(
@@ -55,12 +56,16 @@ class TestCompiledLibrary private constructor(val jarRoot: VirtualFile) {
             parentDisposable: Disposable,
             libraryName: String,
             sources: Map<String, String>,
+            resources: Map<String, String> = emptyMap(),
         ): TestCompiledLibrary {
             val rootPath = Files.createTempDirectory(libraryName).toRealPath()
             Disposer.register(parentDisposable) { rootPath.deleteRecursively() }
             VfsRootAccess.allowRootAccess(parentDisposable, rootPath.toString())
 
             val classes = compile(sources, rootPath, classpathOf(module))
+            resources.forEach { (relativePath, text) ->
+                classes.resolve(relativePath).also { it.parent.createDirectories() }.writeText(text)
+            }
             val jarName = "$libraryName.jar"
             pack(classes, rootPath.resolve(jarName))
 
