@@ -16,6 +16,7 @@ import com.intellij.openapi.application.readAction
 import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiModifier
 import com.intellij.psi.search.FilenameIndex
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.testFramework.IndexingTestUtil
@@ -100,7 +101,7 @@ abstract class HateoasSchemaTestCase : PageSchemaTestCase() {
 
     private fun relationOf(fqn: String) = classOf(fqn).getAnnotation(RELATION)
 
-    private fun classOf(fqn: String): PsiClass =
+    protected fun classOf(fqn: String): PsiClass =
         JavaPsiFacade.getInstance(project).findClass(fqn, GlobalSearchScope.allScope(project))
             ?: throw AssertionError("the fixture must resolve $fqn, or the test proves nothing")
 
@@ -122,6 +123,56 @@ abstract class HateoasSchemaTestCase : PageSchemaTestCase() {
         const val SHAPE = "com.example.hal.shape.Shape"
         const val OBJECT_NODE = "com.fasterxml.jackson.databind.node.ObjectNode"
         const val PROBLEM_DETAIL = "org.springframework.http.ProblemDetail"
+        const val RELATED_SHAPE = "com.example.hal.relshape.Shape"
+        const val FIGURE = "com.example.hal.figure.Figure"
+        const val JSON_TYPE_INFO = "com.fasterxml.jackson.annotation.JsonTypeInfo"
+
+        val RELATED_SHAPE_SOURCES = mapOf(
+            "com/example/hal/relshape/Shape.java" to """
+                package com.example.hal.relshape;
+
+                import com.fasterxml.jackson.annotation.JsonSubTypes;
+                import com.fasterxml.jackson.annotation.JsonTypeInfo;
+                import org.springframework.hateoas.server.core.Relation;
+
+                @Relation(collectionRelation = "shapes")
+                @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "kind")
+                @JsonSubTypes({
+                    @JsonSubTypes.Type(value = Circle.class, name = "circle"),
+                    @JsonSubTypes.Type(value = Square.class, name = "square")
+                })
+                public abstract class Shape {
+                    public String label;
+                }
+            """,
+            "com/example/hal/relshape/Circle.java" to """
+                package com.example.hal.relshape;
+
+                public class Circle extends Shape { public double radius; }
+            """,
+            "com/example/hal/relshape/Square.java" to """
+                package com.example.hal.relshape;
+
+                public class Square extends Shape { public double side; }
+            """,
+        )
+
+        val FIGURE_SOURCES = mapOf(
+            "com/example/hal/figure/Figure.java" to """
+                package com.example.hal.figure;
+
+                public interface Figure {
+                    String getLabel();
+                }
+            """,
+            "com/example/hal/figure/Triangle.java" to """
+                package com.example.hal.figure;
+
+                public class Triangle implements Figure {
+                    public String getLabel() { return "t"; }
+                }
+            """,
+        )
 
         val SHAPE_SOURCES = mapOf(
             "com/example/hal/shape/Shape.java" to """
@@ -354,8 +405,9 @@ class SpringBootApplicationMcpToolsetHateoasSchemaTest : HateoasSchemaTestCase()
         assertHalAssumed(schema)
     }
 
-    fun testEntityModelKeepsThePolymorphismOfItsContent() = runBlockingReleasingWriteIntent<Unit> {
+    fun testEntityModelWritesPolymorphicContentWithoutTheTypeId() = runBlockingReleasingWriteIntent<Unit> {
         addContentController(SHAPE, SHAPE_SOURCES)
+        assertAbstractWithTypeInfo(SHAPE)
         val plain = schemaOf("/content/plain", SHAPE)
         assertEquals("the plain contract is polymorphic: $plain", true, plain["polymorphic"]?.asBoolean())
         assertTrue("the plain contract has a discriminator: $plain", plain.hasNonNull("discriminator"))
@@ -363,7 +415,72 @@ class SpringBootApplicationMcpToolsetHateoasSchemaTest : HateoasSchemaTestCase()
 
         val entity = schemaOf("/content/entity", "$ENTITY_MODEL<$SHAPE>")
 
-        assertContentKept(plain, entity)
+        assertTrue("HATEOAS writes its links: $entity", "_links" in names(entity))
+        assertWithoutTypeId(entity)
+        assertEquals("the content schema survives without its type id", withoutTypeId(plain), withoutHal(entity))
+    }
+
+    fun testCollectionOfAnAbstractPolymorphicTypeDoesNotGuessTheRelation() = runBlockingReleasingWriteIntent<Unit> {
+        addCollectionController(SHAPE, SHAPE_SOURCES)
+        assertAbstractWithTypeInfo(SHAPE)
+        assertWithoutRelation(SHAPE)
+
+        val schema = schemaOf("/collection/items", "$COLLECTION_MODEL<$ENTITY_MODEL<$SHAPE>>")
+
+        assertRelationNotGuessed(schema)
+    }
+
+    fun testCollectionOfAnInterfaceDoesNotGuessTheRelation() = runBlockingReleasingWriteIntent<Unit> {
+        addCollectionController(FIGURE, FIGURE_SOURCES)
+        assertTrue("$FIGURE must be an interface", classOf(FIGURE).isInterface)
+        assertWithoutRelation(FIGURE)
+
+        val schema = schemaOf("/collection/items", "$COLLECTION_MODEL<$ENTITY_MODEL<$FIGURE>>")
+
+        assertRelationNotGuessed(schema)
+    }
+
+    fun testDeclaredRelationNamesTheItemsOfAPolymorphicCollection() = runBlockingReleasingWriteIntent<Unit> {
+        addCollectionController(RELATED_SHAPE, RELATED_SHAPE_SOURCES)
+        assertAbstractWithTypeInfo(RELATED_SHAPE)
+        assertEquals(
+            "the polymorphic element declares its collection relation",
+            "\"shapes\"",
+            classOf(RELATED_SHAPE).getAnnotation(RELATION)?.findDeclaredAttributeValue("collectionRelation")?.text
+        )
+
+        val schema = schemaOf("/collection/items", "$COLLECTION_MODEL<$ENTITY_MODEL<$RELATED_SHAPE>>")
+
+        assertEquals(schema.toString(), setOf("shapes"), names(field(schema, "_embedded").path("nested")).toSet())
+        assertHalNotAssumed(schema)
+    }
+
+    fun testPolymorphicCollectionItemsAreWrittenWithoutTheTypeId() = runBlockingReleasingWriteIntent<Unit> {
+        addCollectionController(RELATED_SHAPE, RELATED_SHAPE_SOURCES)
+        assertAbstractWithTypeInfo(RELATED_SHAPE)
+
+        val schema = schemaOf("/collection/items", "$COLLECTION_MODEL<$ENTITY_MODEL<$RELATED_SHAPE>>")
+
+        val item = field(field(schema, "_embedded").path("nested"), "shapes").path("nested")
+        assertEquals("the item is polymorphic: $item", true, item["polymorphic"]?.asBoolean())
+        assertWithoutTypeId(item)
+    }
+
+    fun testHateoasPageMetadataIsNotDeclaredNonNull() = runBlockingReleasingWriteIntent<Unit> {
+        assertWithoutRelation(HAL_ORDER_DTO)
+
+        val schema = schemaOf("/hal/paged", "$HATEOAS_PAGED_MODEL<$ENTITY_MODEL<$HAL_ORDER_DTO>>")
+
+        assertNullabilityUnknown(schema, "page")
+    }
+
+    fun testEntityModelUnwrapsMapContentNextToLinks() = runBlockingReleasingWriteIntent<Unit> {
+        addContentController("java.util.Map<String, Object>")
+
+        val entity = schemaOf("/content/entity", "$ENTITY_MODEL<java.util.Map<java.lang.String,java.lang.Object>>")
+
+        assertTrue("HATEOAS writes its links: $entity", "_links" in names(entity))
+        assertEquals("the map entries are written next to _links: $entity", true, entity["additionalProperties"]?.asBoolean())
     }
 
     fun testEntityModelKeepsTheOmittedSchemaOfItsContent() = runBlockingReleasingWriteIntent<Unit> {
@@ -407,6 +524,51 @@ class SpringBootApplicationMcpToolsetHateoasSchemaTest : HateoasSchemaTestCase()
             }
             """.trimIndent()
         )
+    }
+
+    private fun addCollectionController(element: String, sources: Map<String, String>) {
+        sources.forEach { (path, text) -> myFixture.addFileToProject(path, text.trimIndent()) }
+        addFile(
+            "com/example/hal/CollectionController.java", """
+            package com.example.hal;
+
+            import org.springframework.hateoas.CollectionModel;
+            import org.springframework.hateoas.EntityModel;
+            import org.springframework.web.bind.annotation.GetMapping;
+            import org.springframework.web.bind.annotation.RestController;
+
+            @RestController
+            public class CollectionController {
+                @GetMapping("/collection/items")
+                public CollectionModel<EntityModel<$element>> items() { return null; }
+            }
+            """.trimIndent()
+        )
+    }
+
+    private fun assertAbstractWithTypeInfo(fqn: String) {
+        val shape = classOf(fqn)
+        assertTrue("$fqn must be abstract", shape.hasModifierProperty(PsiModifier.ABSTRACT))
+        assertNotNull("$fqn must declare @JsonTypeInfo", shape.getAnnotation(JSON_TYPE_INFO))
+    }
+
+    private fun assertRelationNotGuessed(schema: JsonNode) {
+        assertEquals(schema.toString(), setOf("_embedded", "_links"), names(schema).toSet())
+        assertTrue(
+            "the relation comes from the runtime class, so _embedded names no key: $schema",
+            field(schema, "_embedded").path("nested").isNull
+        )
+        assertHalAssumed(schema)
+    }
+
+    private fun assertWithoutTypeId(schema: JsonNode) {
+        assertNull("HATEOAS content is written without the type id: $schema", schema["discriminator"])
+        schema["variants"]?.forEach { assertNull("no variant type id: $it", it["typeId"]) }
+    }
+
+    private fun withoutTypeId(schema: JsonNode): ObjectNode = withoutClassName(schema).apply {
+        remove("discriminator")
+        get("variants")?.forEach { (it as ObjectNode).remove("typeId") }
     }
 
     private fun assertContentKept(plain: JsonNode, entity: JsonNode) {
