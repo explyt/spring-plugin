@@ -126,6 +126,66 @@ abstract class HateoasSchemaTestCase : PageSchemaTestCase() {
         const val RELATED_SHAPE = "com.example.hal.relshape.Shape"
         const val FIGURE = "com.example.hal.figure.Figure"
         const val JSON_TYPE_INFO = "com.fasterxml.jackson.annotation.JsonTypeInfo"
+        const val JSON_SUB_TYPES = "com.fasterxml.jackson.annotation.JsonSubTypes"
+        const val ALL_SHAPE = "com.example.hal.allshape.Shape"
+        const val RELATED_FIGURE = "com.example.hal.relfigure.Figure"
+
+        val ALL_SHAPE_SOURCES = mapOf(
+            "com/example/hal/allshape/Shape.java" to """
+                package com.example.hal.allshape;
+
+                import com.fasterxml.jackson.annotation.JsonSubTypes;
+                import com.fasterxml.jackson.annotation.JsonTypeInfo;
+                import org.springframework.hateoas.server.core.Relation;
+
+                @Relation(collectionRelation = "shapes")
+                @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "kind")
+                @JsonSubTypes({
+                    @JsonSubTypes.Type(value = Circle.class, name = "circle"),
+                    @JsonSubTypes.Type(value = Square.class, name = "square")
+                })
+                public abstract class Shape {
+                    public String label;
+                }
+            """,
+            "com/example/hal/allshape/Circle.java" to """
+                package com.example.hal.allshape;
+
+                import org.springframework.hateoas.server.core.Relation;
+
+                @Relation(collectionRelation = "shapes")
+                public class Circle extends Shape { public double radius; }
+            """,
+            "com/example/hal/allshape/Square.java" to """
+                package com.example.hal.allshape;
+
+                import org.springframework.hateoas.server.core.Relation;
+
+                @Relation(collectionRelation = "shapes")
+                public class Square extends Shape { public double side; }
+            """,
+        )
+
+        val RELATED_FIGURE_SOURCES = mapOf(
+            "com/example/hal/relfigure/Figure.java" to """
+                package com.example.hal.relfigure;
+
+                import org.springframework.hateoas.server.core.Relation;
+
+                @Relation(collectionRelation = "figures")
+                public interface Figure {
+                    String getLabel();
+                }
+            """,
+            "com/example/hal/relfigure/Square.java" to """
+                package com.example.hal.relfigure;
+
+                public class Square implements Figure {
+                    public String getLabel() { return "s"; }
+                    public double getSide() { return 3.0; }
+                }
+            """,
+        )
 
         val RELATED_SHAPE_SOURCES = mapOf(
             "com/example/hal/relshape/Shape.java" to """
@@ -325,9 +385,14 @@ class SpringBootApplicationMcpToolsetHateoasSchemaTest : HateoasSchemaTestCase()
         assertFromHateoasLibrary(COLLECTION_MODEL)
         assertDeclaresItemsRelation(RELATED_ORDER_DTO)
 
+        val related = classOf(RELATED_ORDER_DTO)
+        assertFalse("$RELATED_ORDER_DTO must be concrete", related.isInterface || related.hasModifierProperty(PsiModifier.ABSTRACT))
+        assertNull("$RELATED_ORDER_DTO must not be polymorphic", related.getAnnotation(JSON_TYPE_INFO))
+
         val schema = schemaOf("/hal/relation", "$COLLECTION_MODEL<$ENTITY_MODEL<$RELATED_ORDER_DTO>>")
 
         assertHalCollection(schema, "items")
+        assertHalNotAssumed(schema)
     }
 
     fun testHateoasPagedModelEmbedsItemsNextToLinksAndPageMetadata() = runBlockingReleasingWriteIntent<Unit> {
@@ -440,26 +505,51 @@ class SpringBootApplicationMcpToolsetHateoasSchemaTest : HateoasSchemaTestCase()
         assertRelationNotGuessed(schema)
     }
 
-    fun testDeclaredRelationNamesTheItemsOfAPolymorphicCollection() = runBlockingReleasingWriteIntent<Unit> {
+    fun testRelationDeclaredOnlyOnAnAbstractSupertypeIsNotInherited() = runBlockingReleasingWriteIntent<Unit> {
         addCollectionController(RELATED_SHAPE, RELATED_SHAPE_SOURCES)
         assertAbstractWithTypeInfo(RELATED_SHAPE)
-        assertEquals(
-            "the polymorphic element declares its collection relation",
-            "\"shapes\"",
-            classOf(RELATED_SHAPE).getAnnotation(RELATION)?.findDeclaredAttributeValue("collectionRelation")?.text
-        )
+        assertSubTypes(RELATED_SHAPE, "com.example.hal.relshape.Circle", "com.example.hal.relshape.Square")
+        assertDeclaresRelation(RELATED_SHAPE, "shapes")
+        assertWithoutRelation("com.example.hal.relshape.Circle")
+        assertWithoutRelation("com.example.hal.relshape.Square")
 
         val schema = schemaOf("/collection/items", "$COLLECTION_MODEL<$ENTITY_MODEL<$RELATED_SHAPE>>")
+
+        assertRelationNotGuessed(schema)
+    }
+
+    fun testRelationDeclaredOnlyOnAnInterfaceIsNotInherited() = runBlockingReleasingWriteIntent<Unit> {
+        addCollectionController(RELATED_FIGURE, RELATED_FIGURE_SOURCES)
+        assertTrue("$RELATED_FIGURE must be an interface", classOf(RELATED_FIGURE).isInterface)
+        assertDeclaresRelation(RELATED_FIGURE, "figures")
+        assertWithoutRelation("com.example.hal.relfigure.Square")
+
+        val schema = schemaOf("/collection/items", "$COLLECTION_MODEL<$ENTITY_MODEL<$RELATED_FIGURE>>")
+
+        assertRelationNotGuessed(schema)
+    }
+
+    fun testRelationDeclaredOnTheSupertypeAndEverySubtypeNamesTheItems() = runBlockingReleasingWriteIntent<Unit> {
+        addCollectionController(ALL_SHAPE, ALL_SHAPE_SOURCES)
+        assertAbstractWithTypeInfo(ALL_SHAPE)
+        assertSubTypes(ALL_SHAPE, "com.example.hal.allshape.Circle", "com.example.hal.allshape.Square")
+        assertDeclaresRelation(ALL_SHAPE, "shapes")
+        assertDeclaresRelation("com.example.hal.allshape.Circle", "shapes")
+        assertDeclaresRelation("com.example.hal.allshape.Square", "shapes")
+
+        val schema = schemaOf("/collection/items", "$COLLECTION_MODEL<$ENTITY_MODEL<$ALL_SHAPE>>")
 
         assertEquals(schema.toString(), setOf("shapes"), names(field(schema, "_embedded").path("nested")).toSet())
         assertHalNotAssumed(schema)
     }
 
     fun testPolymorphicCollectionItemsAreWrittenWithoutTheTypeId() = runBlockingReleasingWriteIntent<Unit> {
-        addCollectionController(RELATED_SHAPE, RELATED_SHAPE_SOURCES)
-        assertAbstractWithTypeInfo(RELATED_SHAPE)
+        addCollectionController(ALL_SHAPE, ALL_SHAPE_SOURCES)
+        assertAbstractWithTypeInfo(ALL_SHAPE)
+        assertDeclaresRelation("com.example.hal.allshape.Circle", "shapes")
+        assertDeclaresRelation("com.example.hal.allshape.Square", "shapes")
 
-        val schema = schemaOf("/collection/items", "$COLLECTION_MODEL<$ENTITY_MODEL<$RELATED_SHAPE>>")
+        val schema = schemaOf("/collection/items", "$COLLECTION_MODEL<$ENTITY_MODEL<$ALL_SHAPE>>")
 
         val item = field(field(schema, "_embedded").path("nested"), "shapes").path("nested")
         assertEquals("the item is polymorphic: $item", true, item["polymorphic"]?.asBoolean())
@@ -550,6 +640,19 @@ class SpringBootApplicationMcpToolsetHateoasSchemaTest : HateoasSchemaTestCase()
         val shape = classOf(fqn)
         assertTrue("$fqn must be abstract", shape.hasModifierProperty(PsiModifier.ABSTRACT))
         assertNotNull("$fqn must declare @JsonTypeInfo", shape.getAnnotation(JSON_TYPE_INFO))
+    }
+
+    private fun assertDeclaresRelation(fqn: String, relation: String) {
+        assertEquals(
+            "$fqn declares its collection relation",
+            "\"$relation\"",
+            classOf(fqn).getAnnotation(RELATION)?.findDeclaredAttributeValue("collectionRelation")?.text
+        )
+    }
+
+    private fun assertSubTypes(fqn: String, vararg subtypes: String) {
+        val listed = classOf(fqn).getAnnotation(JSON_SUB_TYPES)?.findDeclaredAttributeValue("value")?.text.orEmpty()
+        subtypes.forEach { assertTrue("$fqn lists $it in @JsonSubTypes: $listed", "${it.substringAfterLast('.')}.class" in listed) }
     }
 
     private fun assertRelationNotGuessed(schema: JsonNode) {
