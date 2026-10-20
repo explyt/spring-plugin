@@ -1220,8 +1220,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "spring.hateoas.use-hal-as-default-json-media-type is false or unresolvable, with a Jackson naming " +
                 "strategy that is unknown, or any naming strategy below Spring Boot 4, or when '_embedded' is left " +
                 "unexpanded because Evo Inflector on the runtime classpath pluralises an undeclared relation or the " +
-                "element is abstract, an interface or polymorphic without @Relation, whose relation comes from " +
-                "the runtime class), " +
+                "element is abstract, an interface or polymorphic, whose relation comes from the runtime class, " +
+                "unless the element and every known subtype declare the same collectionRelation), " +
                 "produces/consumes media types, and " +
                 "'serviceCalls': every " +
                 "call the handler makes on an injected project bean - including a bean method passed as a callable " +

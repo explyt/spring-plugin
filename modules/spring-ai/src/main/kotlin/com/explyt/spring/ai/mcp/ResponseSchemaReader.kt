@@ -127,8 +127,9 @@ internal object ResponseSchemaReader {
      * next to `_links`, a `CollectionModel` its items under `_embedded` keyed by their collection relation, and the
      * HATEOAS `PagedModel` adds `page`. The content and the items are written without their `@JsonTypeInfo` type id,
      * and the entries of a map content are unwrapped next to `_links`. A relation Evo Inflector would pluralise, or
-     * one the runtime class of an abstract, interface or polymorphic element decides, is not guessed: `_embedded` is
-     * then described by its map type alone, and the shape is assumed, as it is when HAL is not the default.
+     * one the runtime class of an abstract, interface or polymorphic element decides unless the element and every known
+     * subtype declare the same collection relation, is not guessed: `_embedded` is then described by its map type
+     * alone, and the shape is assumed, as it is when HAL is not the default.
      */
     private fun halSchemaOf(type: PsiClassType, fqn: String, depth: Int, context: SchemaContext): DtoSchemaJson {
         val element = type.parameters.firstOrNull()

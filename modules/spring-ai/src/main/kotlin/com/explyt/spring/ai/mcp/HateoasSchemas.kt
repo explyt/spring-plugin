@@ -14,7 +14,7 @@ import com.intellij.openapi.module.Module
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiClassType
-import com.intellij.psi.PsiModifier
+
 import com.intellij.psi.PsiType
 import com.intellij.psi.PsiWildcardType
 import com.intellij.util.text.VersionComparatorUtil
@@ -44,18 +44,20 @@ internal object HateoasSchemas {
 
     /**
      * The `_embedded` key of a collection of [element]: the `@Relation(collectionRelation)` of its content type, else
-     * `uncapitalize(simpleName) + "List"` - unless Evo Inflector [inflects] the default, or the runtime class decides
-     * it for an abstract, interface or polymorphic element, when it is not derived.
+     * `uncapitalize(simpleName) + "List"` - unless Evo Inflector [inflects] the default. `@Relation` is not inherited and
+     * the runtime class decides it, so for an abstract, interface or polymorphic element it is derived only when the
+     * element and every known subtype declare the same collection relation.
      */
     fun collectionRelationOf(element: PsiType, inflects: Boolean): String? {
         val item = contentClassOf(element) ?: return null
-        return declaredCollectionRelationOf(item)
-            ?: item.takeUnless { inflects || hasRuntimeRelation(it) }?.name
-                ?.let { it.replaceFirstChar(Char::lowercaseChar) + "List" }
+        val declared = declaredCollectionRelationOf(item)
+        val polymorphism = JacksonPolymorphism.of(item)
+            ?: return declared ?: item.takeUnless { inflects }?.name?.let { it.replaceFirstChar(Char::lowercaseChar) + "List" }
+        return declared?.takeIf { relation ->
+            polymorphism.variants.isNotEmpty() &&
+                    polymorphism.variants.all { declaredCollectionRelationOf(it.psiClass) == relation }
+        }
     }
-
-    private fun hasRuntimeRelation(item: PsiClass): Boolean =
-        item.isInterface || item.hasModifierProperty(PsiModifier.ABSTRACT) || JacksonPolymorphism.of(item) != null
 
     private fun contentClassOf(type: PsiType): PsiClass? {
         val classType = (if (type is PsiWildcardType) type.bound else type) as? PsiClassType ?: return null
