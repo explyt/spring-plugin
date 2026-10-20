@@ -242,8 +242,7 @@ object SpringCoreUtil {
         return isInTestSources && this.onlyAllSupers().any { it.hasComponentAnnotation() }
     }
 
-    fun PsiClass.getBeanName(): String? =
-        name?.replaceFirstChar { it.lowercase(Locale.getDefault()) }
+    fun PsiClass.getBeanName(): String? = DefaultBeanNames.of(this)
 
     fun PsiClass.resolveBeanName(module: Module): String {
         return resolveBeanNameByPsiAnnotations(SpringSearchUtils.getComponentClassAnnotations(module))

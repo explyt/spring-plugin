@@ -36,6 +36,34 @@ class QualifierBeanReferenceTest : ExplytKotlinLightTestCase() {
         assertEquals(setOf("animal"), qualifierReference().variantNames())
     }
 
+    fun testCompletionOffersSpringDefaultNamesOfComponents() {
+        configureHandlers()
+        configureConsumer("@Autowired @Qualifier(\"<caret>\") lateinit var injected: Handler")
+        assertEquals(setOf("ABTestController", "otherHandler"), qualifierReference().variantNames())
+    }
+
+    private fun configureHandlers() {
+        myFixture.addFileToProject(
+            "com/explyt/demo/App.kt",
+            "package com.explyt.demo\n@org.springframework.boot.autoconfigure.SpringBootApplication class App"
+        )
+        myFixture.addFileToProject("com/explyt/demo/Handler.kt", "package com.explyt.demo\ninterface Handler")
+        myFixture.addFileToProject(
+            "com/explyt/demo/ABTestController.kt",
+            "package com.explyt.demo\n@org.springframework.stereotype.Component class ABTestController : Handler"
+        )
+        myFixture.addFileToProject(
+            "com/explyt/demo/OtherHandler.kt",
+            "package com.explyt.demo\n@org.springframework.stereotype.Component class OtherHandler : Handler"
+        )
+        val active = SpringSearchServiceFacade.getInstance(project).getAllActiveBeans(module)
+            .mapNotNullTo(mutableSetOf()) { it.psiClass.qualifiedName }
+        assertTrue(
+            "Precondition: both handlers are active beans, got $active",
+            active.containsAll(setOf("com.explyt.demo.ABTestController", "com.explyt.demo.OtherHandler"))
+        )
+    }
+
     fun testPropertyQualifierResolvesToBeanFactory() {
         val bean = configureBeans()
         configureConsumer("@Autowired @Qualifier(\"anim<caret>al\") lateinit var injected: Animal")
