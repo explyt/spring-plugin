@@ -24,20 +24,14 @@ import com.intellij.testFramework.IndexingTestUtil
  * `CollectionModel<T>` writes `_embedded` keyed by the collection relation of the element type - its
  * `@Relation(collectionRelation)`, else `uncapitalize(simpleName) + "List"` - next to `_links`; the HATEOAS `PagedModel`
  * adds `page` with `size`, `totalElements`, `totalPages` and `number`.
+ *
+ * The shape is only assumed where the run differs: with `spring.hateoas.use-hal-as-default-json-media-type=false`
+ * Boot 3 writes plain JSON and Boot 4 answers `406` for `application/json`, and Evo Inflector on the classpath
+ * pluralises the default collection relation (`orderDtoes`) while a declared `@Relation` still wins.
  */
-class SpringBootApplicationMcpToolsetHateoasSchemaTest : PageSchemaTestCase() {
+abstract class HateoasSchemaTestCase : PageSchemaTestCase() {
 
     override val stack = WebApplicationStack.SERVLET
-
-    override val libraries: Array<TestLibrary> = arrayOf(
-        TestLibrary.springBootAutoConfigure_3_1_1,
-        TestLibrary.springWebMvc_6_0_7,
-        TestLibrary.springDataJpa_3_4_0,
-        TestLibrary.jacksonAnnotations_2_15_2,
-        TestLibrary.jacksonDatabind_2_15_2,
-        TestLibrary.kotlin_1_9_22,
-        TestLibrary.springHateoas_2_5_3,
-    )
 
     override fun setUp() {
         super.setUp()
@@ -45,97 +39,49 @@ class SpringBootApplicationMcpToolsetHateoasSchemaTest : PageSchemaTestCase() {
         IndexingTestUtil.waitUntilIndexesAreReady(project)
     }
 
-    fun testEntityModelWritesTheContentInlineNextToLinks() = runBlockingReleasingWriteIntent<Unit> {
-        assertFromHateoasLibrary(ENTITY_MODEL)
-
-        val schema = schemaOf("/hal/entity", "$ENTITY_MODEL<$HAL_ORDER_DTO>")
-
-        assertHalEntity(schema)
-    }
-
-    fun testResponseEntityOfEntityModelWritesTheHalEntity() = runBlockingReleasingWriteIntent<Unit> {
-        assertFromHateoasLibrary(ENTITY_MODEL)
-
-        val schema = schemaOf("/hal/response", "$RESPONSE_ENTITY<$ENTITY_MODEL<$HAL_ORDER_DTO>>")
-
-        assertHalEntity(schema)
-    }
-
-    fun testCollectionModelEmbedsItemsUnderTheDefaultCollectionRelation() = runBlockingReleasingWriteIntent<Unit> {
-        assertFromHateoasLibrary(COLLECTION_MODEL)
-        assertWithoutRelation(HAL_ORDER_DTO)
-
-        val schema = schemaOf("/hal/collection", "$COLLECTION_MODEL<$ENTITY_MODEL<$HAL_ORDER_DTO>>")
-
-        assertHalCollection(schema, "orderDtoList")
-    }
-
-    fun testCollectionModelEmbedsItemsUnderTheDeclaredCollectionRelation() = runBlockingReleasingWriteIntent<Unit> {
-        assertFromHateoasLibrary(COLLECTION_MODEL)
-        assertFromHateoasLibrary(RELATION)
-        assertEquals(
-            "the element type declares its collection relation",
-            "\"items\"",
-            relationOf(RELATED_ORDER_DTO)?.findDeclaredAttributeValue("collectionRelation")?.text
-        )
-
-        val schema = schemaOf("/hal/relation", "$COLLECTION_MODEL<$ENTITY_MODEL<$RELATED_ORDER_DTO>>")
-
-        assertHalCollection(schema, "items")
-    }
-
-    fun testHateoasPagedModelEmbedsItemsNextToLinksAndPageMetadata() = runBlockingReleasingWriteIntent<Unit> {
-        assertFromHateoasLibrary(HATEOAS_PAGED_MODEL)
-        assertWithoutRelation(HAL_ORDER_DTO)
-
-        val schema = schemaOf("/hal/paged", "$HATEOAS_PAGED_MODEL<$ENTITY_MODEL<$HAL_ORDER_DTO>>")
-
-        assertHalCollection(schema, "orderDtoList", extraKeys = setOf("page"))
-        assertEquals(
-            schema.toString(),
-            setOf("size", "totalElements", "totalPages", "number"),
-            names(field(schema, "page").path("nested")).toSet()
-        )
-    }
-
-    fun testKotlinEntityModelWritesTheContentInlineNextToLinks() = runBlockingReleasingWriteIntent<Unit> {
-        assertFromHateoasLibrary(ENTITY_MODEL)
-
-        val schema = schemaOf("/hal/kotlin-entity", "$ENTITY_MODEL<$KOTLIN_ORDER_DTO>")
-
-        assertHalEntity(schema)
-    }
-
-    fun testKotlinCollectionModelEmbedsItemsUnderTheDefaultCollectionRelation() = runBlockingReleasingWriteIntent<Unit> {
-        assertFromHateoasLibrary(COLLECTION_MODEL)
-        assertWithoutRelation(KOTLIN_ORDER_DTO)
-
-        val schema = schemaOf("/hal/kotlin-collection", "$COLLECTION_MODEL<$ENTITY_MODEL<$KOTLIN_ORDER_DTO>>")
-
-        assertHalCollection(schema, "orderDtoList")
-    }
-
-    private fun assertHalEntity(schema: JsonNode) {
+    protected fun assertHalEntity(schema: JsonNode) {
         assertEquals(schema.toString(), ENTITY_KEYS, names(schema).toSet())
     }
 
-    private fun assertHalCollection(schema: JsonNode, relation: String, extraKeys: Set<String> = emptySet()) {
+    protected fun assertHalCollection(schema: JsonNode, relation: String, extraKeys: Set<String> = emptySet()) {
         assertEquals(schema.toString(), setOf("_embedded", "_links") + extraKeys, names(schema).toSet())
         val embedded = field(schema, "_embedded").path("nested")
         assertEquals(schema.toString(), setOf(relation), names(embedded).toSet())
         assertEquals(schema.toString(), ENTITY_KEYS, names(field(embedded, relation).path("nested")).toSet())
     }
 
-    private fun assertFromHateoasLibrary(fqn: String) {
-        val file = classOf(fqn).containingFile.virtualFile
-        assertTrue("$fqn must come from a library: $file", ProjectFileIndex.getInstance(project).isInLibraryClasses(file))
-        assertTrue("$fqn must come from spring-hateoas 2.5.3: $file", HATEOAS_JAR in file.path)
+    protected fun assertHalAssumed(schema: JsonNode) {
+        assertEquals("the HAL shape is assumed: $schema", true, schema["wireShapeAssumed"]?.asBoolean())
     }
 
-    private fun assertWithoutRelation(fqn: String) {
+    protected fun assertHalNotAssumed(schema: JsonNode) {
+        assertNull("the HAL default is not an assumption: $schema", schema["wireShapeAssumed"])
+    }
+
+    protected fun assertFromLibrary(fqn: String, jar: String) {
+        val file = classOf(fqn).containingFile.virtualFile
+        assertTrue("$fqn must come from a library: $file", ProjectFileIndex.getInstance(project).isInLibraryClasses(file))
+        assertTrue("$fqn must come from $jar: $file", jar in file.path)
+    }
+
+    protected fun assertFromHateoasLibrary(fqn: String) = assertFromLibrary(fqn, HATEOAS_JAR)
+
+    protected fun assertWithoutRelation(fqn: String) {
         assertFromHateoasLibrary(RELATION)
         assertNull("$fqn must take the default collection relation", relationOf(fqn))
     }
+
+    protected fun assertDeclaresItemsRelation(fqn: String) {
+        assertFromHateoasLibrary(RELATION)
+        assertEquals(
+            "the element type declares its collection relation",
+            "\"items\"",
+            relationOf(fqn)?.findDeclaredAttributeValue("collectionRelation")?.text
+        )
+    }
+
+    protected fun evoInflector(): PsiClass? =
+        JavaPsiFacade.getInstance(project).findClass(EVO_INFLECTOR, GlobalSearchScope.allScope(project))
 
     private fun relationOf(fqn: String) = classOf(fqn).getAnnotation(RELATION)
 
@@ -143,18 +89,31 @@ class SpringBootApplicationMcpToolsetHateoasSchemaTest : PageSchemaTestCase() {
         JavaPsiFacade.getInstance(project).findClass(fqn, GlobalSearchScope.allScope(project))
             ?: throw AssertionError("the fixture must resolve $fqn, or the test proves nothing")
 
-    private companion object {
+    protected companion object {
         const val HATEOAS_JAR = "spring-hateoas-2.5.3.jar"
+        const val EVO_INFLECTOR_JAR = "evo-inflector-1.3.jar"
         const val ENTITY_MODEL = "org.springframework.hateoas.EntityModel"
         const val COLLECTION_MODEL = "org.springframework.hateoas.CollectionModel"
         const val HATEOAS_PAGED_MODEL = "org.springframework.hateoas.PagedModel"
         const val RELATION = "org.springframework.hateoas.server.core.Relation"
+        const val EVO_INFLECTOR = "org.atteo.evo.inflector.English"
         const val RESPONSE_ENTITY = "org.springframework.http.ResponseEntity"
         const val HAL_ORDER_DTO = "com.example.hal.OrderDto"
         const val RELATED_ORDER_DTO = "com.example.hal.related.OrderDto"
         const val KOTLIN_ORDER_DTO = "com.example.halkt.OrderDto"
+        const val HAL_DEFAULT_KEY = "spring.hateoas.use-hal-as-default-json-media-type"
 
         val ENTITY_KEYS = setOf("id", "name", "_links")
+
+        val HATEOAS_LIBRARIES = arrayOf(
+            TestLibrary.springBootAutoConfigure_3_1_1,
+            TestLibrary.springWebMvc_6_0_7,
+            TestLibrary.springDataJpa_3_4_0,
+            TestLibrary.jacksonAnnotations_2_15_2,
+            TestLibrary.jacksonDatabind_2_15_2,
+            TestLibrary.kotlin_1_9_22,
+            TestLibrary.springHateoas_2_5_3,
+        )
 
         val HAL_SOURCES = mapOf(
             "com/example/hal/OrderDto.java" to """
@@ -230,5 +189,132 @@ class SpringBootApplicationMcpToolsetHateoasSchemaTest : PageSchemaTestCase() {
                 }
             """,
         )
+    }
+}
+
+class SpringBootApplicationMcpToolsetHateoasSchemaTest : HateoasSchemaTestCase() {
+
+    override val libraries: Array<TestLibrary> = HATEOAS_LIBRARIES
+
+    fun testEntityModelWritesTheContentInlineNextToLinks() = runBlockingReleasingWriteIntent<Unit> {
+        assertFromHateoasLibrary(ENTITY_MODEL)
+
+        val schema = schemaOf("/hal/entity", "$ENTITY_MODEL<$HAL_ORDER_DTO>")
+
+        assertHalEntity(schema)
+    }
+
+    fun testResponseEntityOfEntityModelWritesTheHalEntity() = runBlockingReleasingWriteIntent<Unit> {
+        assertFromHateoasLibrary(ENTITY_MODEL)
+
+        val schema = schemaOf("/hal/response", "$RESPONSE_ENTITY<$ENTITY_MODEL<$HAL_ORDER_DTO>>")
+
+        assertHalEntity(schema)
+    }
+
+    fun testCollectionModelEmbedsItemsUnderTheDefaultCollectionRelation() = runBlockingReleasingWriteIntent<Unit> {
+        assertFromHateoasLibrary(COLLECTION_MODEL)
+        assertWithoutRelation(HAL_ORDER_DTO)
+        assertNull("no Evo Inflector pluralises the default relation", evoInflector())
+
+        val schema = schemaOf("/hal/collection", "$COLLECTION_MODEL<$ENTITY_MODEL<$HAL_ORDER_DTO>>")
+
+        assertHalCollection(schema, "orderDtoList")
+    }
+
+    fun testCollectionModelEmbedsItemsUnderTheDeclaredCollectionRelation() = runBlockingReleasingWriteIntent<Unit> {
+        assertFromHateoasLibrary(COLLECTION_MODEL)
+        assertDeclaresItemsRelation(RELATED_ORDER_DTO)
+
+        val schema = schemaOf("/hal/relation", "$COLLECTION_MODEL<$ENTITY_MODEL<$RELATED_ORDER_DTO>>")
+
+        assertHalCollection(schema, "items")
+    }
+
+    fun testHateoasPagedModelEmbedsItemsNextToLinksAndPageMetadata() = runBlockingReleasingWriteIntent<Unit> {
+        assertFromHateoasLibrary(HATEOAS_PAGED_MODEL)
+        assertWithoutRelation(HAL_ORDER_DTO)
+
+        val schema = schemaOf("/hal/paged", "$HATEOAS_PAGED_MODEL<$ENTITY_MODEL<$HAL_ORDER_DTO>>")
+
+        assertHalCollection(schema, "orderDtoList", extraKeys = setOf("page"))
+        assertEquals(
+            schema.toString(),
+            setOf("size", "totalElements", "totalPages", "number"),
+            names(field(schema, "page").path("nested")).toSet()
+        )
+    }
+
+    fun testKotlinEntityModelWritesTheContentInlineNextToLinks() = runBlockingReleasingWriteIntent<Unit> {
+        assertFromHateoasLibrary(ENTITY_MODEL)
+
+        val schema = schemaOf("/hal/kotlin-entity", "$ENTITY_MODEL<$KOTLIN_ORDER_DTO>")
+
+        assertHalEntity(schema)
+    }
+
+    fun testKotlinCollectionModelEmbedsItemsUnderTheDefaultCollectionRelation() = runBlockingReleasingWriteIntent<Unit> {
+        assertFromHateoasLibrary(COLLECTION_MODEL)
+        assertWithoutRelation(KOTLIN_ORDER_DTO)
+
+        val schema = schemaOf("/hal/kotlin-collection", "$COLLECTION_MODEL<$ENTITY_MODEL<$KOTLIN_ORDER_DTO>>")
+
+        assertHalCollection(schema, "orderDtoList")
+    }
+
+    fun testHalNotTheDefaultJsonMediaTypeMakesTheShapeAssumed() = runBlockingReleasingWriteIntent<Unit> {
+        addFile("application.properties", "$HAL_DEFAULT_KEY=false")
+
+        val schema = schemaOf("/hal/entity", "$ENTITY_MODEL<$HAL_ORDER_DTO>")
+
+        assertHalEntity(schema)
+        assertHalAssumed(schema)
+    }
+
+    fun testUnresolvableHalDefaultMakesTheShapeAssumed() = runBlockingReleasingWriteIntent<Unit> {
+        addFile("application.properties", "$HAL_DEFAULT_KEY=\${UNSET_HAL}")
+
+        val schema = schemaOf("/hal/entity", "$ENTITY_MODEL<$HAL_ORDER_DTO>")
+
+        assertHalEntity(schema)
+        assertHalAssumed(schema)
+    }
+
+    fun testExplicitHalDefaultIsNotAnAssumption() = runBlockingReleasingWriteIntent<Unit> {
+        addFile("application.properties", "$HAL_DEFAULT_KEY=true")
+
+        val schema = schemaOf("/hal/entity", "$ENTITY_MODEL<$HAL_ORDER_DTO>")
+
+        assertHalEntity(schema)
+        assertHalNotAssumed(schema)
+    }
+}
+
+class SpringBootApplicationMcpToolsetEvoInflectorHateoasSchemaTest : HateoasSchemaTestCase() {
+
+    override val libraries: Array<TestLibrary> = HATEOAS_LIBRARIES + TestLibrary.evoInflector_1_3
+
+    fun testInflectedDefaultRelationIsNotGuessed() = runBlockingReleasingWriteIntent<Unit> {
+        assertFromLibrary(EVO_INFLECTOR, EVO_INFLECTOR_JAR)
+        assertWithoutRelation(HAL_ORDER_DTO)
+
+        val schema = schemaOf("/hal/collection", "$COLLECTION_MODEL<$ENTITY_MODEL<$HAL_ORDER_DTO>>")
+
+        assertEquals(schema.toString(), setOf("_embedded", "_links"), names(schema).toSet())
+        assertTrue(
+            "the pluralised relation is not derived, so _embedded names no key: $schema",
+            field(schema, "_embedded").path("nested").isNull
+        )
+        assertHalAssumed(schema)
+    }
+
+    fun testDeclaredRelationWinsOverEvoInflector() = runBlockingReleasingWriteIntent<Unit> {
+        assertFromLibrary(EVO_INFLECTOR, EVO_INFLECTOR_JAR)
+        assertDeclaresItemsRelation(RELATED_ORDER_DTO)
+
+        val schema = schemaOf("/hal/relation", "$COLLECTION_MODEL<$ENTITY_MODEL<$RELATED_ORDER_DTO>>")
+
+        assertHalCollection(schema, "items")
+        assertHalNotAssumed(schema)
     }
 }

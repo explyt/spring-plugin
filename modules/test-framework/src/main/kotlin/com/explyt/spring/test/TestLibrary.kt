@@ -63,6 +63,9 @@ data class TestLibrary(val mavenCoordinates: String, val includeTransitiveDepend
 
         /** The Spring HATEOAS line Boot 3.5 manages: `EntityModel`, `CollectionModel`, its own `PagedModel`, `@Relation`. */
         val springHateoas_2_5_3 = TestLibrary("org.springframework.hateoas:spring-hateoas:2.5.3", false)
+
+        /** On the classpath, Spring HATEOAS pluralises the default collection relation with it (`orderDtoes`). */
+        val evoInflector_1_3 = TestLibrary("org.atteo:evo-inflector:1.3", false)
         val springGraphQl_1_0_4 = TestLibrary("org.springframework.graphql:spring-graphql:1.0.4", true)
         val jakarta_annotation_2_1_1 = TestLibrary("jakarta.annotation:jakarta.annotation-api:2.1.1", true)
         val jakarta_inject_2_0_1 = TestLibrary("jakarta.inject:jakarta.inject-api:2.0.1", true)
