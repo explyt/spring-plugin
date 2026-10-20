@@ -820,6 +820,214 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         assertTrue(schema.toString(), schema["wireShapeSource"].asText().startsWith("@EnableSpringDataWebSupport on "))
     }
 
+    fun testTwoViaDtoDeclarationsFailStartupSoTheShapeIsUnknown() = runBlockingReleasingWriteIntent<Unit> {
+        addWebConfigNamed("AlphaWebConfig", "VIA_DTO")
+        addWebConfig("VIA_DTO")
+        assertDeclaresWebSupport(ALPHA_WEB_CONFIG, WEB_CONFIG)
+
+        val schema = pageSchema("/orders/page")
+
+        assertSource("UNKNOWN", schema)
+        assertDirectPage(schema)
+        assertPageAssumed(schema)
+    }
+
+    fun testTwoKotlinViaDtoDeclarationsFailStartupSoTheShapeIsUnknown() = runBlockingReleasingWriteIntent<Unit> {
+        addKotlinWebConfigNamed("AlphaKotlinWebConfig", "VIA_DTO")
+        addKotlinWebConfigNamed("BetaKotlinWebConfig", "VIA_DTO")
+
+        val schema = pageSchema("/orders/page")
+
+        assertSource("UNKNOWN", schema)
+        assertDirectPage(schema)
+        assertPageAssumed(schema)
+    }
+
+    fun testTwoViaDtoDeclarationsWithOverridingExplicitlyDisabledAreUnknown() = runBlockingReleasingWriteIntent<Unit> {
+        addFile("application.properties", "$ALLOW_BEAN_DEFINITION_OVERRIDING_KEY=false")
+        addWebConfigNamed("AlphaWebConfig", "VIA_DTO")
+        addWebConfig("VIA_DTO")
+        assertDeclaresWebSupport(ALPHA_WEB_CONFIG, WEB_CONFIG)
+
+        val schema = pageSchema("/orders/page")
+
+        assertSource("UNKNOWN", schema)
+        assertDirectPage(schema)
+    }
+
+    fun testTwoViaDtoDeclarationsWithBeanOverridingWritePagedModel() = runBlockingReleasingWriteIntent<Unit> {
+        addFile("application.properties", "$ALLOW_BEAN_DEFINITION_OVERRIDING_KEY=true")
+        addWebConfigNamed("AlphaWebConfig", "VIA_DTO")
+        addWebConfig("VIA_DTO")
+        assertDeclaresWebSupport(ALPHA_WEB_CONFIG, WEB_CONFIG)
+
+        val schema = pageSchema("/orders/page")
+
+        assertPagedModel(schema)
+        assertSourceIsOneOf(schema, ALPHA_WEB_CONFIG, WEB_CONFIG)
+    }
+
+    fun testTwoKotlinViaDtoDeclarationsWithBeanOverridingWritePagedModel() = runBlockingReleasingWriteIntent<Unit> {
+        addFile("application.properties", "$ALLOW_BEAN_DEFINITION_OVERRIDING_KEY=true")
+        addKotlinWebConfigNamed("AlphaKotlinWebConfig", "VIA_DTO")
+        addKotlinWebConfigNamed("BetaKotlinWebConfig", "VIA_DTO")
+
+        val schema = pageSchema("/orders/page")
+
+        assertPagedModel(schema)
+        assertSourceIsOneOf(schema, "$CONFIG_PACKAGE.AlphaKotlinWebConfig", "$CONFIG_PACKAGE.BetaKotlinWebConfig")
+    }
+
+    fun testKotlinViaDtoDeclarationWinsOverAKotlinDirectOne() = runBlockingReleasingWriteIntent<Unit> {
+        addKotlinWebConfigNamed("AlphaKotlinWebConfig", "DIRECT")
+        addKotlinWebConfigNamed("BetaKotlinWebConfig", "VIA_DTO")
+
+        val schema = pageSchema("/orders/page")
+
+        assertPagedModel(schema)
+        assertSource("@EnableSpringDataWebSupport on $CONFIG_PACKAGE.BetaKotlinWebConfig", schema)
+    }
+
+    fun testViaDtoBesideAnUnreadableModeIsUnknown() = runBlockingReleasingWriteIntent<Unit> {
+        addWebConfig("VIA_DTO")
+        addUnreadableModeWebConfig()
+        assertDeclaresWebSupport(WEB_CONFIG)
+
+        val schema = pageSchema("/orders/page")
+
+        assertSource("UNKNOWN", schema)
+        assertDirectPage(schema)
+        assertPageAssumed(schema)
+    }
+
+    fun testViaDtoBesideAnUnreadableModeWithBeanOverridingWritesPagedModel() = runBlockingReleasingWriteIntent<Unit> {
+        addFile("application.properties", "$ALLOW_BEAN_DEFINITION_OVERRIDING_KEY=true")
+        addWebConfig("VIA_DTO")
+        addUnreadableModeWebConfig()
+        assertDeclaresWebSupport(WEB_CONFIG)
+
+        val schema = pageSchema("/orders/page")
+
+        assertPagedModel(schema)
+        assertSource(WEB_CONFIG_SOURCE, schema)
+    }
+
+    fun testTwoViaDtoDeclarationsWithUnresolvableOverridingAreUnknown() = runBlockingReleasingWriteIntent<Unit> {
+        addFile("application.properties", "$ALLOW_BEAN_DEFINITION_OVERRIDING_KEY=\${UNSET_OVERRIDING}")
+        addWebConfigNamed("AlphaWebConfig", "VIA_DTO")
+        addWebConfig("VIA_DTO")
+        assertDeclaresWebSupport(ALPHA_WEB_CONFIG, WEB_CONFIG)
+
+        val schema = pageSchema("/orders/page")
+
+        assertSource("UNKNOWN", schema)
+        assertDirectPage(schema)
+    }
+
+    fun testOneViaDtoDeclarationIgnoresAnUnresolvableOverridingValue() = runBlockingReleasingWriteIntent<Unit> {
+        addFile("application.properties", "$ALLOW_BEAN_DEFINITION_OVERRIDING_KEY=\${UNSET_OVERRIDING}")
+        addWebConfig("VIA_DTO")
+        assertDeclaresWebSupport(WEB_CONFIG)
+
+        val schema = pageSchema("/orders/page")
+
+        assertPagedModel(schema)
+        assertSource(WEB_CONFIG_SOURCE, schema)
+    }
+
+    fun testUnreadableModeAloneIsUnknown() = runBlockingReleasingWriteIntent<Unit> {
+        addUnreadableModeWebConfig()
+
+        val schema = pageSchema("/orders/page")
+
+        assertSource("UNKNOWN", schema)
+        assertDirectPage(schema)
+        assertPageAssumed(schema)
+    }
+
+    private fun addUnreadableModeWebConfig() {
+        addFile(
+            "com/example/config/EnableComposedWeb.java", """
+            package com.example.config;
+
+            import java.lang.annotation.ElementType;
+            import java.lang.annotation.Retention;
+            import java.lang.annotation.RetentionPolicy;
+            import java.lang.annotation.Target;
+            import org.springframework.core.annotation.AliasFor;
+            import org.springframework.data.web.config.EnableSpringDataWebSupport;
+            import org.springframework.data.web.config.EnableSpringDataWebSupport.PageSerializationMode;
+
+            @Target(ElementType.TYPE)
+            @Retention(RetentionPolicy.RUNTIME)
+            @EnableSpringDataWebSupport
+            public @interface EnableComposedWeb {
+                @AliasFor(annotation = EnableSpringDataWebSupport.class, attribute = "pageSerializationMode")
+                PageSerializationMode mode() default PageSerializationMode.VIA_DTO;
+            }
+            """.trimIndent()
+        )
+        addFile(
+            "com/example/config/ComposedWebConfig.java", """
+            package com.example.config;
+
+            import org.springframework.context.annotation.Configuration;
+
+            @Configuration
+            @EnableComposedWeb
+            public class ComposedWebConfig {
+            }
+            """.trimIndent()
+        )
+        assertUsesAnAliasedModeDefault(COMPOSED_WEB_CONFIG)
+    }
+
+    private fun assertUsesAnAliasedModeDefault(fqn: String) {
+        val facade = JavaPsiFacade.getInstance(project)
+        val composed = facade.findClass(COMPOSED_WEB_SUPPORT, GlobalSearchScope.allScope(project))
+        assertNotNull("the fixture must resolve $COMPOSED_WEB_SUPPORT", composed)
+        assertTrue("$COMPOSED_WEB_SUPPORT is an annotation type", composed!!.isAnnotationType)
+        assertTrue("$COMPOSED_WEB_SUPPORT is meta-annotated", composed.hasAnnotation(ENABLE_WEB_SUPPORT))
+        val mode = composed.findMethodsByName("mode", false).singleOrNull()
+        assertNotNull("$COMPOSED_WEB_SUPPORT declares 'mode'", mode)
+        assertTrue("'mode' is an @AliasFor of pageSerializationMode", mode!!.hasAnnotation(ALIAS_FOR))
+        val using = facade.findClass(fqn, GlobalSearchScope.projectScope(project))
+        assertNotNull("the fixture must declare $fqn, or the test proves nothing", using)
+        val use = using!!.getAnnotation(COMPOSED_WEB_SUPPORT)
+        assertNotNull("$fqn uses $COMPOSED_WEB_SUPPORT", use)
+        assertEmpty("$fqn leaves the mode to the composed default", use!!.parameterList.attributes.toList())
+    }
+
+    private fun addKotlinWebConfigNamed(className: String, mode: String) {
+        addFile(
+            "com/example/config/$className.kt", """
+            package com.example.config
+
+            import org.springframework.context.annotation.Configuration
+            import org.springframework.data.web.config.EnableSpringDataWebSupport
+            import org.springframework.data.web.config.EnableSpringDataWebSupport.PageSerializationMode
+
+            @Configuration
+            @EnableSpringDataWebSupport(pageSerializationMode = PageSerializationMode.$mode)
+            class $className
+            """.trimIndent()
+        )
+        assertDeclaresWebSupport("$CONFIG_PACKAGE.$className")
+    }
+
+    private fun assertDeclaresWebSupport(vararg fqns: String) {
+        fqns.forEach { fqn ->
+            val declaration = JavaPsiFacade.getInstance(project).findClass(fqn, GlobalSearchScope.projectScope(project))
+            assertNotNull("the fixture must declare $fqn, or the test proves nothing", declaration)
+            assertTrue("$fqn must carry @EnableSpringDataWebSupport", declaration!!.hasAnnotation(ENABLE_WEB_SUPPORT))
+        }
+    }
+
+    private fun assertSourceIsOneOf(schema: JsonNode, vararg declarations: String) {
+        val sources = declarations.map { "@EnableSpringDataWebSupport on $it" }
+        assertTrue("$schema names one of $sources", schema["wireShapeSource"]?.asText() in sources)
+    }
+
     fun testCamelCaseModeValueIsReadLeniently() = runBlockingReleasingWriteIntent<Unit> {
         addFile("application.properties", "$SERIALIZATION_MODE_KEY=viaDto")
 
@@ -907,6 +1115,16 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
 
         assertEquals(listOf("className", "fields"), keys(schema))
         assertEquals(listOf("id", "note"), names(schema))
+    }
+
+    private companion object {
+        const val CONFIG_PACKAGE = "com.example.config"
+        const val WEB_CONFIG = "$CONFIG_PACKAGE.WebConfig"
+        const val ALPHA_WEB_CONFIG = "$CONFIG_PACKAGE.AlphaWebConfig"
+        const val COMPOSED_WEB_SUPPORT = "$CONFIG_PACKAGE.EnableComposedWeb"
+        const val COMPOSED_WEB_CONFIG = "$CONFIG_PACKAGE.ComposedWebConfig"
+        const val ALIAS_FOR = "org.springframework.core.annotation.AliasFor"
+        const val ALLOW_BEAN_DEFINITION_OVERRIDING_KEY = "spring.main.allow-bean-definition-overriding"
     }
 }
 
