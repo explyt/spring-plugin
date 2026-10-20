@@ -11,9 +11,14 @@ import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.explyt.spring.web.util.WebApplicationStack
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.explyt.spring.core.service.conditional.ConditionPropertyValue
+import com.explyt.spring.core.service.conditional.PropertyConditionValues
 import com.intellij.openapi.application.readAction
+import com.intellij.openapi.module.Module
+import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.search.searches.AnnotatedElementsSearch
 import com.intellij.testFramework.PsiTestUtil
 
 /**
@@ -731,7 +736,115 @@ class SpringBootApplicationMcpToolsetPageSchemaModulesTest : ExplytMultiModuleTe
         )
     }
 
+    fun testViaDtoConfigurationInADependentApplicationModuleControlsTheHandlerMode() =
+        runBlockingReleasingWriteIntent<Unit> {
+            val app = addApplicationModuleDependingOnTheHandlers()
+            addFileToModule(app, "com/example/config/WebConfig.java", VIA_DTO_WEB_CONFIG)
+            val declaration = readAction {
+                JavaPsiFacade.getInstance(project).findClass(WEB_CONFIG, GlobalSearchScope.moduleScope(app))
+            }
+            assertNotNull("$WEB_CONFIG must live in the application module 'app'", declaration)
+            assertTrue(
+                "$WEB_CONFIG must carry @EnableSpringDataWebSupport",
+                declaration!!.hasAnnotation(ENABLE_WEB_SUPPORT)
+            )
+
+            assertPagedModelFrom("@EnableSpringDataWebSupport on $WEB_CONFIG", handlerPageSchema())
+        }
+
+    fun testViaDtoPropertyOfADependentApplicationModuleControlsTheHandlerMode() =
+        runBlockingReleasingWriteIntent<Unit> {
+            val app = addApplicationModuleDependingOnTheHandlers()
+            addFileToModule(app, "application.properties", "$SERIALIZATION_MODE_KEY=via_dto")
+            assertEquals(
+                "precondition: the application module 'app' configures the mode",
+                ConditionPropertyValue.Known("via_dto"),
+                readAction { PropertyConditionValues(app).valueOf(SERIALIZATION_MODE_KEY) }
+            )
+
+            assertPagedModelFrom(SERIALIZATION_MODE_KEY, handlerPageSchema())
+        }
+
+    private fun assertPagedModelFrom(source: String, schema: JsonNode) {
+        assertEquals(schema.toString(), "org.springframework.data.web.PagedModel", schema["className"]?.asText())
+        assertEquals(schema.toString(), "PAGED_MODEL", schema["wireShape"]?.asText())
+        assertEquals(schema.toString(), source, schema["wireShapeSource"]?.asText())
+    }
+
+    private suspend fun addApplicationModuleDependingOnTheHandlers(): Module {
+        addFileToModule(module, "com/example/shop/OrderDto.java", ORDER_DTO_SOURCE)
+        addFileToModule(module, "com/example/shop/OrderController.java", PAGE_CONTROLLER)
+        val app = addDependentModule("app")
+        addFileToModule(app, "com/example/ShopApplication.java", ROOT_APPLICATION)
+
+        assertTrue(
+            "precondition: 'app' depends on the handler module",
+            ModuleRootManager.getInstance(app).isDependsOn(module)
+        )
+        assertFalse(
+            "precondition: the handler module does not depend on 'app'",
+            ModuleRootManager.getInstance(module).isDependsOn(app)
+        )
+        assertEquals(
+            "the application stack of the handler module",
+            WebApplicationStack.SERVLET,
+            readAction { WebApplicationStack.of(module) }
+        )
+        assertEquals(
+            "precondition: only 'app' declares the application",
+            listOf(app.name to "com.example.ShopApplication"),
+            readAction { applicationsIn(module) + applicationsIn(app) }
+        )
+        return app
+    }
+
+    private fun applicationsIn(target: Module): List<Pair<String, String?>> {
+        val annotation = JavaPsiFacade.getInstance(project)
+            .findClass(SPRING_BOOT_APPLICATION, GlobalSearchScope.allScope(project))
+            ?: throw AssertionError("the fixture must resolve $SPRING_BOOT_APPLICATION")
+        return AnnotatedElementsSearch.searchPsiClasses(annotation, GlobalSearchScope.moduleScope(target)).findAll()
+            .map { target.name to it.qualifiedName }
+    }
+
+    private suspend fun handlerPageSchema(): JsonNode {
+        val endpoints = mapper.readTree(
+            toolset.getEndpointContract(urlPattern = "/orders/page", projectPath = project.basePath, httpMethod = "GET")
+        )["endpoints"]
+        assertEquals("exactly one handler for GET /orders/page: $endpoints", 1, endpoints.size())
+        val schema = endpoints.single()["responseSchema"]
+        assertTrue("a response schema is expected, got $endpoints", schema != null && !schema.isNull)
+        return schema
+    }
+
     private companion object {
+        const val ENABLE_WEB_SUPPORT = "org.springframework.data.web.config.EnableSpringDataWebSupport"
+        const val SPRING_BOOT_APPLICATION = "org.springframework.boot.autoconfigure.SpringBootApplication"
+        const val SERIALIZATION_MODE_KEY = "spring.data.web.pageable.serialization-mode"
+        const val WEB_CONFIG = "com.example.config.WebConfig"
+
+        val ROOT_APPLICATION = """
+            package com.example;
+
+            import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+            @SpringBootApplication
+            public class ShopApplication {
+            }
+        """.trimIndent()
+
+        val VIA_DTO_WEB_CONFIG = """
+            package com.example.config;
+
+            import org.springframework.context.annotation.Configuration;
+            import org.springframework.data.web.config.EnableSpringDataWebSupport;
+            import org.springframework.data.web.config.EnableSpringDataWebSupport.PageSerializationMode;
+
+            @Configuration
+            @EnableSpringDataWebSupport(pageSerializationMode = PageSerializationMode.VIA_DTO)
+            public class WebConfig {
+            }
+        """.trimIndent()
+
         val SHOP_APPLICATION = """
             package com.example.shop;
 

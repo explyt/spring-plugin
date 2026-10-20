@@ -5,14 +5,19 @@
 
 package com.explyt.spring.ai.mcp
 
+import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.test.util.TestCompiledLibrary
 import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.explyt.spring.web.util.WebApplicationStack
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.search.ProjectScope
+import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PsiTestUtil
 
@@ -1055,6 +1060,67 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         assertSource("UNKNOWN", schema)
     }
 
+    fun testLibraryViaDtoConfigurationImportedByTheApplicationWritesPagedModel() {
+        attachVendorWebSupportLibrary()
+        runBlockingReleasingWriteIntent<Unit> {
+            addFile("com/example/shop/VendorImports.java", VENDOR_IMPORTS_SOURCE)
+            assertLibraryDeclaresViaDto(VENDOR_WEB_CONFIG)
+            assertTrue(
+                "precondition: the bean model lists the imported $VENDOR_WEB_CONFIG as an active bean",
+                isActiveBean(VENDOR_WEB_CONFIG)
+            )
+
+            val schema = pageSchema("/orders/page")
+
+            assertPagedModel(schema)
+            assertSource("@EnableSpringDataWebSupport on $VENDOR_WEB_CONFIG", schema)
+        }
+    }
+
+    fun testLibraryViaDtoConfigurationNeitherImportedNorScannedLeavesThePageDirect() {
+        attachVendorWebSupportLibrary()
+        runBlockingReleasingWriteIntent<Unit> {
+            assertLibraryDeclaresViaDto(VENDOR_WEB_CONFIG)
+            val vendorConfig = JavaPsiFacade.getInstance(project)
+                .findClass(VENDOR_WEB_CONFIG, GlobalSearchScope.allScope(project))!!
+            assertNull(
+                "precondition: no project class imports $VENDOR_WEB_CONFIG",
+                ReferencesSearch.search(vendorConfig, GlobalSearchScope.projectScope(project)).findFirst()
+            )
+
+            val schema = pageSchema("/orders/page")
+
+            assertDirectPage(schema)
+            assertSource("DEFAULT", schema)
+        }
+    }
+
+    private fun attachVendorWebSupportLibrary() {
+        TestCompiledLibrary.attach(
+            module, testRootDisposable, "vendor-web-support",
+            mapOf("com/vendor/web/VendorWebConfig.java" to VENDOR_WEB_CONFIG_SOURCE)
+        )
+    }
+
+    private fun assertLibraryDeclaresViaDto(fqn: String) {
+        val declaration = JavaPsiFacade.getInstance(project).findClass(fqn, GlobalSearchScope.allScope(project))
+        assertNotNull("the fixture must resolve the library class $fqn, or the test proves nothing", declaration)
+        val file = declaration!!.containingFile.virtualFile
+        assertTrue(
+            "$fqn must come from compiled library classes",
+            ProjectFileIndex.getInstance(project).isInLibraryClasses(file)
+        )
+        assertFalse("$fqn must be outside the project scope", ProjectScope.getProjectScope(project).contains(file))
+        val webSupport = declaration.getAnnotation(ENABLE_WEB_SUPPORT)
+        assertNotNull("$fqn must carry @EnableSpringDataWebSupport", webSupport)
+        val mode = webSupport!!.findDeclaredAttributeValue("pageSerializationMode")?.text.orEmpty()
+        assertTrue("$fqn must declare VIA_DTO, got '$mode'", mode.endsWith("VIA_DTO"))
+    }
+
+    private fun isActiveBean(fqn: String): Boolean =
+        SpringSearchServiceFacade.getInstance(project).getAllActiveBeans(module)
+            .any { it.psiClass.qualifiedName == fqn }
+
     private fun assertPageableAndSortAsWritten(schema: JsonNode) {
         val sort = field(schema, "sort")["nested"]
         assertNotNull("sort carries its written properties: $schema", sort?.takeUnless { it.isNull })
@@ -1125,6 +1191,33 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         const val COMPOSED_WEB_CONFIG = "$CONFIG_PACKAGE.ComposedWebConfig"
         const val ALIAS_FOR = "org.springframework.core.annotation.AliasFor"
         const val ALLOW_BEAN_DEFINITION_OVERRIDING_KEY = "spring.main.allow-bean-definition-overriding"
+        const val VENDOR_WEB_CONFIG = "com.vendor.web.VendorWebConfig"
+
+        val VENDOR_WEB_CONFIG_SOURCE = """
+            package com.vendor.web;
+
+            import org.springframework.context.annotation.Configuration;
+            import org.springframework.data.web.config.EnableSpringDataWebSupport;
+            import org.springframework.data.web.config.EnableSpringDataWebSupport.PageSerializationMode;
+
+            @Configuration
+            @EnableSpringDataWebSupport(pageSerializationMode = PageSerializationMode.VIA_DTO)
+            public class VendorWebConfig {
+            }
+        """.trimIndent()
+
+        val VENDOR_IMPORTS_SOURCE = """
+            package com.example.shop;
+
+            import com.vendor.web.VendorWebConfig;
+            import org.springframework.context.annotation.Configuration;
+            import org.springframework.context.annotation.Import;
+
+            @Configuration
+            @Import(VendorWebConfig.class)
+            public class VendorImports {
+            }
+        """.trimIndent()
     }
 }
 
