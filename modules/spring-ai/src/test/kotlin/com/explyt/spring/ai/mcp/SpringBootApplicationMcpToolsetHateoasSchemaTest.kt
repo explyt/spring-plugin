@@ -9,6 +9,8 @@ import com.explyt.spring.test.TestLibrary
 import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.explyt.spring.web.util.WebApplicationStack
 import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.node.ArrayNode
+import com.fasterxml.jackson.databind.node.ObjectNode
 import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiClass
@@ -102,6 +104,37 @@ abstract class HateoasSchemaTestCase : PageSchemaTestCase() {
         const val RELATED_ORDER_DTO = "com.example.hal.related.OrderDto"
         const val KOTLIN_ORDER_DTO = "com.example.halkt.OrderDto"
         const val HAL_DEFAULT_KEY = "spring.hateoas.use-hal-as-default-json-media-type"
+        const val SHAPE = "com.example.hal.shape.Shape"
+        const val OBJECT_NODE = "com.fasterxml.jackson.databind.node.ObjectNode"
+        const val PROBLEM_DETAIL = "org.springframework.http.ProblemDetail"
+
+        val SHAPE_SOURCES = mapOf(
+            "com/example/hal/shape/Shape.java" to """
+                package com.example.hal.shape;
+
+                import com.fasterxml.jackson.annotation.JsonSubTypes;
+                import com.fasterxml.jackson.annotation.JsonTypeInfo;
+
+                @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "kind")
+                @JsonSubTypes({
+                    @JsonSubTypes.Type(value = Circle.class, name = "circle"),
+                    @JsonSubTypes.Type(value = Square.class, name = "square")
+                })
+                public abstract class Shape {
+                    public String label;
+                }
+            """,
+            "com/example/hal/shape/Circle.java" to """
+                package com.example.hal.shape;
+
+                public class Circle extends Shape { public double radius; }
+            """,
+            "com/example/hal/shape/Square.java" to """
+                package com.example.hal.shape;
+
+                public class Square extends Shape { public double side; }
+            """,
+        )
 
         val ENTITY_KEYS = setOf("id", "name", "_links")
 
@@ -287,6 +320,74 @@ class SpringBootApplicationMcpToolsetHateoasSchemaTest : HateoasSchemaTestCase()
 
         assertHalEntity(schema)
         assertHalNotAssumed(schema)
+    }
+
+    fun testEntityModelKeepsThePolymorphismOfItsContent() = runBlockingReleasingWriteIntent<Unit> {
+        addContentController(SHAPE, SHAPE_SOURCES)
+        val plain = schemaOf("/content/plain", SHAPE)
+        assertEquals("the plain contract is polymorphic: $plain", true, plain["polymorphic"]?.asBoolean())
+        assertTrue("the plain contract has a discriminator: $plain", plain.hasNonNull("discriminator"))
+        assertEquals("the plain contract lists both variants: $plain", 2, plain["variants"]?.size())
+
+        val entity = schemaOf("/content/entity", "$ENTITY_MODEL<$SHAPE>")
+
+        assertContentKept(plain, entity)
+    }
+
+    fun testEntityModelKeepsTheOmittedSchemaOfItsContent() = runBlockingReleasingWriteIntent<Unit> {
+        addContentController(OBJECT_NODE)
+        val plain = schemaOf("/content/plain", OBJECT_NODE)
+        assertEquals("the plain contract omits a JSON tree: $plain", "JSON_TREE", plain["schemaOmitted"]?.asText())
+
+        val entity = schemaOf("/content/entity", "$ENTITY_MODEL<$OBJECT_NODE>")
+
+        assertEquals(entity.toString(), "JSON_TREE", entity["schemaOmitted"]?.asText())
+        assertTrue("HATEOAS writes its links: $entity", "_links" in names(entity))
+    }
+
+    fun testEntityModelKeepsTheAdditionalPropertiesOfItsContent() = runBlockingReleasingWriteIntent<Unit> {
+        addContentController(PROBLEM_DETAIL)
+        val plain = schemaOf("/content/plain", PROBLEM_DETAIL)
+        assertEquals("the plain contract writes any-getter entries: $plain", true, plain["additionalProperties"]?.asBoolean())
+
+        val entity = schemaOf("/content/entity", "$ENTITY_MODEL<$PROBLEM_DETAIL>")
+
+        assertContentKept(plain, entity)
+    }
+
+    private fun addContentController(content: String, sources: Map<String, String> = emptyMap()) {
+        sources.forEach { (path, text) -> myFixture.addFileToProject(path, text.trimIndent()) }
+        addFile(
+            "com/example/hal/ContentController.java", """
+            package com.example.hal;
+
+            import org.springframework.hateoas.EntityModel;
+            import org.springframework.web.bind.annotation.GetMapping;
+            import org.springframework.web.bind.annotation.RestController;
+
+            @RestController
+            public class ContentController {
+                @GetMapping("/content/plain")
+                public $content plain() { return null; }
+
+                @GetMapping("/content/entity")
+                public EntityModel<$content> entity() { return null; }
+            }
+            """.trimIndent()
+        )
+    }
+
+    private fun assertContentKept(plain: JsonNode, entity: JsonNode) {
+        assertTrue("HATEOAS writes its links: $entity", "_links" in names(entity))
+        assertEquals("the content schema survives the EntityModel", withoutClassName(plain), withoutHal(entity))
+    }
+
+    private fun withoutClassName(schema: JsonNode): ObjectNode =
+        (schema.deepCopy<JsonNode>() as ObjectNode).apply { remove("className") }
+
+    private fun withoutHal(schema: JsonNode): ObjectNode = withoutClassName(schema).apply {
+        val fields = get("fields") as? ArrayNode ?: return@apply
+        fields.indexOfFirst { it["name"].asText() == "_links" }.takeIf { it >= 0 }?.let(fields::remove)
     }
 }
 
