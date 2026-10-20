@@ -60,6 +60,9 @@ data class TestLibrary(val mavenCoordinates: String, val includeTransitiveDepend
             TestLibrary("org.springframework.boot:spring-boot-test-autoconfigure:3.1.1")
         val springDataJpa_3_1_0 = TestLibrary("org.springframework.data:spring-data-jpa:3.1.0", true)
         val springDataJpa_3_4_0 = TestLibrary("org.springframework.data:spring-data-jpa:3.4.0", true)
+
+        /** The Spring HATEOAS line Boot 3.5 manages: `EntityModel`, `CollectionModel`, its own `PagedModel`, `@Relation`. */
+        val springHateoas_2_5_3 = TestLibrary("org.springframework.hateoas:spring-hateoas:2.5.3", false)
         val springGraphQl_1_0_4 = TestLibrary("org.springframework.graphql:spring-graphql:1.0.4", true)
         val jakarta_annotation_2_1_1 = TestLibrary("jakarta.annotation:jakarta.annotation-api:2.1.1", true)
         val jakarta_inject_2_0_1 = TestLibrary("jakarta.inject:jakarta.inject-api:2.0.1", true)
