@@ -12,13 +12,11 @@ import com.explyt.spring.core.service.conditional.ConditionPropertyValue
 import com.explyt.spring.core.service.conditional.PropertyConditionValues
 import com.explyt.spring.web.util.WebApplicationStack
 import com.explyt.util.ExplytPsiUtil.resolveUAnnotationType
-
 import com.intellij.openapi.module.Module
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiEnumConstant
 import com.intellij.psi.search.GlobalSearchScope
-
 import org.jetbrains.uast.UAnnotation
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UResolvable
@@ -100,7 +98,6 @@ internal data class PageSerialization(val mode: PageSerializationMode, val sourc
 
         private fun declared(mode: PageSerializationMode, source: String): PageSerialization =
             if (mode == PageSerializationMode.UNKNOWN) UNKNOWN else PageSerialization(mode, source)
-
 
         private fun modeDeclaredBy(psiClass: PsiClass, webSupport: MetaAnnotationsHolder): PageSerializationMode {
             val annotation = psiClass.toUElementOfType<UClass>()?.uAnnotations?.firstOrNull(webSupport::contains)

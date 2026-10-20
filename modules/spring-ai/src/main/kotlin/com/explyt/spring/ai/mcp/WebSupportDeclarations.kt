@@ -23,9 +23,10 @@ import com.intellij.psi.search.searches.AnnotatedElementsSearch
  * The `@EnableSpringDataWebSupport` classes the context serving a handler module can register.
  *
  * The serving modules are the handler module and every module depending on it that declares an application. Project
- * classes are [reached]; a library class is reached when a project `@Import` names it or a project component scan
- * covers its package. A library auto-configuration that is not reached may still be registered by Boot, so it is kept
- * apart in [unreachedAutoConfigurations]; any other library class never enters the context.
+ * classes are [reached]; a library class is reached when a production class of a serving module `@Import`s it, or when
+ * a serving module's component scan covers its package and it is not an auto-configuration, which Boot's scan filter
+ * excludes. A library auto-configuration that is not reached may still be registered by Boot, so it is kept apart in
+ * [unreachedAutoConfigurations]; any other library class never enters the context.
  */
 internal class WebSupportDeclarations private constructor(
     val reached: List<PsiClass>,
@@ -44,13 +45,16 @@ internal class WebSupportDeclarations private constructor(
             val libraryClasses = annotatedIn(searched, ProjectScope.getLibrariesScope(project))
             if (libraryClasses.isEmpty()) return WebSupportDeclarations(projectClasses, emptyList())
 
-            val (reachedLibraryClasses, unreached) = libraryClasses.partition(projectReachIn(serving))
             val importedByBoot by lazy { autoConfigurationNamesIn(serving) }
+            val isAutoConfiguration = { psiClass: PsiClass ->
+                psiClass.isMetaAnnotatedBy(SpringCoreClasses.BOOT_AUTO_CONFIGURATION) ||
+                        psiClass.qualifiedName in importedByBoot
+            }
+            val (reachedLibraryClasses, unreached) =
+                libraryClasses.partition(projectReachIn(serving, isAutoConfiguration))
             return WebSupportDeclarations(
                 (projectClasses + reachedLibraryClasses).sortedBy { it.qualifiedName },
-                unreached.filter {
-                    it.isMetaAnnotatedBy(SpringCoreClasses.BOOT_AUTO_CONFIGURATION) || it.qualifiedName in importedByBoot
-                },
+                unreached.filter(isAutoConfiguration),
             )
         }
 
@@ -70,13 +74,25 @@ internal class WebSupportDeclarations private constructor(
                 .distinctBy { it.qualifiedName }
                 .sortedBy { it.qualifiedName }
 
-        private fun projectReachIn(serving: List<Module>): (PsiClass) -> Boolean {
+        private fun projectReachIn(
+            serving: List<Module>,
+            isAutoConfiguration: (PsiClass) -> Boolean,
+        ): (PsiClass) -> Boolean {
             val scan = PackageScanService.getInstance(serving.first().project).getAllPackages()
             val scannedPackages = serving.flatMapTo(mutableSetOf(), scan::getPackages)
+            val importedInProduction = { fqn: String ->
+                scan.importersByImported[fqn].orEmpty()
+                    .any { importer -> serving.any { declaresInProduction(it, importer) } }
+            }
             return { psiClass ->
                 val fqn = psiClass.qualifiedName.orEmpty()
-                fqn in scan.importQualified || scannedPackages.any(fqn::startsWith)
+                importedInProduction(fqn) || !isAutoConfiguration(psiClass) && scannedPackages.any(fqn::startsWith)
             }
+        }
+
+        private fun declaresInProduction(module: Module, qualifiedName: String): Boolean {
+            val productionSources = productionScopeOf(module).intersectWith(ProjectScope.getProjectScope(module.project))
+            return JavaPsiFacade.getInstance(module.project).findClass(qualifiedName, productionSources) != null
         }
 
         private fun autoConfigurationNamesIn(serving: List<Module>): Set<String> {
