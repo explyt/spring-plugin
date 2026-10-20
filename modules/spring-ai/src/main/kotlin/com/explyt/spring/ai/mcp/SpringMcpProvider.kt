@@ -1209,7 +1209,20 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "pageSerializationMode without @AliasFor, or a mode alias that neither its use site nor anything above it sets, " +
                 "and 'wireShapeAssumed': true when a declared Page or Slice is taken for " +
                 "PageImpl or SliceImpl, and on the 'pageable' schema, which Pageable.unpaged() writes as the " +
-                "string INSTANCE), produces/consumes media types, and " +
+                "string INSTANCE; a Spring HATEOAS EntityModel, CollectionModel or PagedModel is described as the " +
+                "HAL document Boot writes by default - the content's fields next to '_links', or '_embedded' keyed " +
+                "by the @Relation collectionRelation, else the uncapitalized class name plus 'List', next to " +
+                "'_links' and, for a PagedModel, 'page'; the relation and page keys follow the configured Jackson " +
+                "naming strategy; '_embedded' is left out for an empty collection and " +
+                "'_links' when there are no links; the content and the items are written without their " +
+                "@JsonTypeInfo type id, and a Map content's entries are written next to '_links' " +
+                "('additionalProperties') - with 'wireShapeAssumed': true on a reactive application, when " +
+                "spring.hateoas.use-hal-as-default-json-media-type is false or unresolvable, with a Jackson naming " +
+                "strategy that is unknown, or any naming strategy below Spring Boot 4, or when '_embedded' is left " +
+                "unexpanded because Evo Inflector on the runtime classpath pluralises an undeclared relation or the " +
+                "element is abstract, an interface or polymorphic, whose relation comes from the runtime class, " +
+                "unless the element and every known subtype declare the same collectionRelation), " +
+                "produces/consumes media types, and " +
                 "'serviceCalls': every " +
                 "call the handler makes on an injected project bean - including a bean method passed as a callable " +
                 "reference, such as 'validator::validate', a repository method the bean's interface inherits, " +
