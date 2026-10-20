@@ -1203,7 +1203,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "spring.data.web.pageable.serialization-mode on a servlet application - or UNKNOWN with the " +
                 "PAGE_DIRECT shape when the property is unresolvable, the annotation is on a reactive " +
                 "application, a VIA_DTO declaration meets another VIA_DTO or unreadable one while bean definition " +
-                "overriding is not enabled, which can fail startup, " +
+                "overriding is not enabled, which can fail startup, a library auto-configuration that the " +
+                "project neither imports nor scans declares a mode that would change the answer, " +
                 "or an annotation composing @EnableSpringDataWebSupport declares a " +
                 "pageSerializationMode without @AliasFor, or a mode alias that neither its use site nor anything above it sets, " +
                 "and 'wireShapeAssumed': true when a declared Page or Slice is taken for " +
