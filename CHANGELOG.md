@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Spring Core
+- fix: The abstract-component bean gutter also lists a generic `@Bean` factory whose type parameter is bounded by the abstract class, shows targets with equal names in a stable order, and the bean gutter of a library class in Native Context Mode lists only the constructors Spring injects through (#600)
 - fix: Library `@Controller`, `@Service` and other stereotype classes are beans only when a component scan of the application covers their package; previously every such class in a dependency was reported as an active bean; library configurations and `@ConfigurationProperties` classes are unchanged (#645)
 - fix: A class outside the component scan that a project configuration registers by `@Import` or `@EnableConfigurationProperties` follows the conditions of that configuration, and a class named only in `@EnableConfigurationProperties` is now a bean; a class registered by any active configuration stays a bean; library configurations and `@ConfigurationProperties` classes from dependencies are not affected yet (#496)
 - fix: Bean conditions on the web application type follow Spring Boot's deduction: a servlet app with WebFlux on the classpath, a reactive app and a client-only app are told apart, `spring.main.web-application-type` is honoured, and `@ConditionalOnNotWebApplication` is evaluated (#496)
