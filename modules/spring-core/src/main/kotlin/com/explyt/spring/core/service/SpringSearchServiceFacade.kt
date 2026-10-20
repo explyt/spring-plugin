@@ -20,6 +20,7 @@ import com.explyt.spring.core.util.SpringCoreUtil.isCandidate
 import com.explyt.util.ExplytPsiUtil
 import com.explyt.util.ExplytPsiUtil.allSupers
 import com.explyt.util.ExplytPsiUtil.isAnnotatedBy
+import com.explyt.util.ExplytPsiUtil.resolvedPsiClass
 import com.intellij.lang.Language
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
@@ -74,6 +75,16 @@ class SpringSearchServiceFacade(private val project: Project) {
             nativeSearchService.getBeanPsiMethods().associateWith { it }
         } else {
             springSearchService.getComponentBeanFactoryMethods(module)
+        }
+    }
+
+    fun getActiveGenericBeanFactoryMethods(module: Module): Map<PsiMethod, PsiMethod> {
+        return if (isExternalProjectExist(project)) {
+            nativeSearchService.getBeanPsiMethods()
+                .filter { it.returnType?.resolvedPsiClass is PsiTypeParameter }
+                .associateWith { it }
+        } else {
+            springSearchService.getActiveGenericBeanFactoryMethods(module)
         }
     }
 
