@@ -1215,6 +1215,49 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
             assertSource(SERIALIZATION_MODE_KEY, schema)
         }
 
+    fun testLibraryViaDtoAutoConfigurationImportedByTheApplicationWritesPagedModel() {
+        attachVendorAutoConfiguration("VIA_DTO")
+        runBlockingReleasingWriteIntent<Unit> {
+            addFile(
+                "com/example/shop/VendorAutoConfigurationImports.java", """
+                package com.example.shop;
+
+                import com.vendor.web.VendorWebAutoConfiguration;
+                import org.springframework.context.annotation.Configuration;
+                import org.springframework.context.annotation.Import;
+
+                @Configuration
+                @Import(VendorWebAutoConfiguration.class)
+                public class VendorAutoConfigurationImports {
+                }
+                """.trimIndent()
+            )
+            val declaration = JavaPsiFacade.getInstance(project)
+                .findClass(VENDOR_AUTO_CONFIGURATION, GlobalSearchScope.allScope(project))
+            assertNotNull("the fixture must resolve $VENDOR_AUTO_CONFIGURATION", declaration)
+            val file = declaration!!.containingFile.virtualFile
+            assertTrue(
+                "$VENDOR_AUTO_CONFIGURATION must come from compiled library classes",
+                ProjectFileIndex.getInstance(project).isInLibraryClasses(file)
+            )
+            assertFalse("it must be outside the project scope", ProjectScope.getProjectScope(project).contains(file))
+            assertTrue(
+                "it is an @AutoConfiguration",
+                declaration.isMetaAnnotatedBy(SpringCoreClasses.BOOT_AUTO_CONFIGURATION)
+            )
+            assertEquals(
+                "precondition: the application's own configuration is the only importer",
+                setOf("com.example.shop.VendorAutoConfigurationImports"),
+                PackageScanService.getInstance(project).getAllPackages().importersByImported[VENDOR_AUTO_CONFIGURATION]
+            )
+
+            val schema = pageSchema("/orders/page")
+
+            assertPagedModel(schema)
+            assertSource("@EnableSpringDataWebSupport on $VENDOR_AUTO_CONFIGURATION", schema)
+        }
+    }
+
     private fun attachVendorAutoConfiguration(mode: String) {
         TestCompiledLibrary.attach(
             module, testRootDisposable, "vendor-web-auto-configuration",

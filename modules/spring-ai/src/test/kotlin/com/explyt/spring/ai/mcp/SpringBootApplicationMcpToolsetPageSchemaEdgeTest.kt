@@ -20,6 +20,7 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.roots.DependencyScope
 import com.intellij.openapi.roots.ModuleRootManager
+import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.search.GlobalSearchScope
@@ -846,8 +847,51 @@ class SpringBootApplicationMcpToolsetPageSchemaModulesTest : ExplytMultiModuleTe
         }
     }
 
-    private suspend fun addApplication(target: Module, name: String, url: String) {
-        val packageName = "com.example.$name"
+    fun testSharedModuleImporterReachedOnlyByAnotherApplicationLeavesThisApplicationDirect() {
+        val vendor = TestCompiledLibrary.attach(
+            module, testRootDisposable, "vendor-web-support", mapOf(VENDOR_WEB_CONFIG_PATH to VENDOR_WEB_CONFIG_SOURCE)
+        )
+        val common = addDependencyModule("common")
+        val b = addStandaloneModule("b")
+        ModuleRootModificationUtil.addDependency(b, common)
+        vendor.attachTo(common, testRootDisposable)
+        vendor.attachTo(b, testRootDisposable)
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
+        runBlockingReleasingWriteIntent<Unit> {
+            addFileToModule(common, "com/company/common/CommonWeb.java", COMMON_WEB_SOURCE)
+            addApplication(module, "a", "/a/orders/page", applicationPackage = "com.company")
+            addApplication(b, "b", "/b/orders/page", applicationPackage = "com.company.b")
+
+            assertTrue("precondition: the main module (app A) depends on 'common'", dependsOn(module, common))
+            assertTrue("precondition: 'b' depends on 'common'", dependsOn(b, common))
+            assertFalse("precondition: 'b' does not depend on the main module", dependsOn(b, module))
+            assertFalse("precondition: the main module does not depend on 'b'", dependsOn(module, b))
+            assertFalse("precondition: 'common' depends on no application", dependsOn(common, module) || dependsOn(common, b))
+            readAction {
+                assertCompiledLibraryClassSeenBy(VENDOR_WEB_CONFIG, module, common, b)
+                assertEquals(
+                    "precondition: only the shared configuration imports $VENDOR_WEB_CONFIG",
+                    setOf(COMMON_WEB), importersOf(VENDOR_WEB_CONFIG)
+                )
+                val importer = JavaPsiFacade.getInstance(project).findClass(COMMON_WEB, GlobalSearchScope.allScope(project))!!
+                assertEquals(common, ModuleUtilCore.findModuleForPsiElement(importer))
+                val scan = PackageScanService.getInstance(project).getAllPackages()
+                val scannedByA = scan.getPackages(module)
+                val scannedByB = scan.getPackages(b)
+                assertTrue("precondition: app A's scan covers $COMMON_WEB: $scannedByA", scannedByA.any(COMMON_WEB::startsWith))
+                assertTrue("precondition: app B scans its own package: $scannedByB", scannedByB.isNotEmpty())
+                assertFalse("precondition: app B's scan misses $COMMON_WEB: $scannedByB", scannedByB.any(COMMON_WEB::startsWith))
+            }
+
+            assertPagedModelFrom("@EnableSpringDataWebSupport on $VENDOR_WEB_CONFIG", pageSchemaOf("/a/orders/page"))
+            assertDirectByDefault(pageSchemaOf("/b/orders/page"))
+        }
+    }
+
+    private suspend fun addApplication(
+        target: Module, name: String, url: String, applicationPackage: String = "com.example.$name",
+    ) {
+        val packageName = applicationPackage
         val path = packageName.replace('.', '/')
         addFileToModule(target, "$path/Application.java", """
             package $packageName;
@@ -991,6 +1035,21 @@ class SpringBootApplicationMcpToolsetPageSchemaModulesTest : ExplytMultiModuleTe
             @Configuration
             @EnableSpringDataWebSupport(pageSerializationMode = PageSerializationMode.VIA_DTO)
             public class VendorWebConfig {
+            }
+        """.trimIndent()
+
+        const val COMMON_WEB = "com.company.common.CommonWeb"
+
+        val COMMON_WEB_SOURCE = """
+            package com.company.common;
+
+            import com.vendor.web.VendorWebConfig;
+            import org.springframework.context.annotation.Configuration;
+            import org.springframework.context.annotation.Import;
+
+            @Configuration
+            @Import(VendorWebConfig.class)
+            public class CommonWeb {
             }
         """.trimIndent()
 
