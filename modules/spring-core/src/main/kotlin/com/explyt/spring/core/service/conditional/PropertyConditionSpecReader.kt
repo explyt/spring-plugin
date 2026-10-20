@@ -63,7 +63,7 @@ class PropertyConditionSpecReader(private val propertyAnnotations: MetaAnnotatio
         val source = annotation.toUElementOfType<UAnnotation>() ?: return false
         return propertyAnnotations.getAnnotationMemberValues(source, attributes)
             .flatMap { MetaAnnotationsHolder.getValues(it) }
-            .any { it.evaluate() !is String }
+            .any { it.stringValue == null }
     }
 
     private fun booleanSpec(annotation: PsiAnnotation) = PropertyConditionSpec.of(
