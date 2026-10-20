@@ -1209,7 +1209,13 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "pageSerializationMode without @AliasFor, or a mode alias that neither its use site nor anything above it sets, " +
                 "and 'wireShapeAssumed': true when a declared Page or Slice is taken for " +
                 "PageImpl or SliceImpl, and on the 'pageable' schema, which Pageable.unpaged() writes as the " +
-                "string INSTANCE), produces/consumes media types, and " +
+                "string INSTANCE; a Spring HATEOAS EntityModel, CollectionModel or PagedModel is described as the " +
+                "HAL document Boot writes by default - the content's fields next to '_links', or '_embedded' keyed " +
+                "by the @Relation collectionRelation, else the uncapitalized class name plus 'List', next to " +
+                "'_links' and, for a PagedModel, 'page' - with 'wireShapeAssumed': true when " +
+                "spring.hateoas.use-hal-as-default-json-media-type is false or unresolvable, or when Evo Inflector " +
+                "on the runtime classpath pluralises an undeclared relation and '_embedded' is left unexpanded), " +
+                "produces/consumes media types, and " +
                 "'serviceCalls': every " +
                 "call the handler makes on an injected project bean - including a bean method passed as a callable " +
                 "reference, such as 'validator::validate', a repository method the bean's interface inherits, " +

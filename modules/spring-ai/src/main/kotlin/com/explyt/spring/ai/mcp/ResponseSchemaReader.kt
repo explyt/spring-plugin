@@ -70,6 +70,9 @@ internal object ResponseSchemaReader {
             return pagedModelOf(type.parameters.firstOrNull(), depth, context, null, PageWireShape.DECLARED_TYPE)
         }
         if (isPageImplSubclass(resolved)) return pageImplSubclassSchemaOf(type, resolved, fqn, depth, context)
+        if (fqn in HateoasSchemas.MODELS && !ProjectSources.declares(resolved)) {
+            return halSchemaOf(type, fqn, depth, context)
+        }
         if (isContainer(resolved, fqn)) {
             return type.parameters.firstOrNull()?.let { schemaOf(it, depth, context) }
         }
@@ -117,6 +120,48 @@ internal object ResponseSchemaReader {
             wireShapeSource = serialization.source,
             wireShapeAssumed = assumed,
         )
+    }
+
+    /**
+     * A Spring HATEOAS model as the HAL document Boot writes by default: an `EntityModel` writes its content inline
+     * next to `_links`, a `CollectionModel` its items under `_embedded` keyed by their collection relation, and the
+     * HATEOAS `PagedModel` adds `page`. A relation Evo Inflector would pluralise is not guessed: `_embedded` is then
+     * described by its map type alone, and the shape is assumed, as it is when HAL is not the default.
+     */
+    private fun halSchemaOf(type: PsiClassType, fqn: String, depth: Int, context: SchemaContext): DtoSchemaJson {
+        val element = type.parameters.firstOrNull()
+        val hal = context.halSerialization
+        if (fqn == HateoasSchemas.ENTITY_MODEL) {
+            val content = element?.let { schemaOf(it, depth, context) }
+            return DtoSchemaJson(
+                className = fqn,
+                fields = content?.fields.orEmpty() + HateoasSchemas.links(),
+                namingStrategy = content?.namingStrategy,
+                namingStrategySource = content?.namingStrategySource,
+                wireShapeAssumed = true.takeIf { hal.halAssumed },
+            )
+        }
+        val relation = element?.let { HateoasSchemas.collectionRelationOf(it, hal.inflectsRelations) }
+        return DtoSchemaJson(
+            className = fqn,
+            fields = listOfNotNull(
+                embeddedOf(element, relation, depth, context),
+                HateoasSchemas.links(),
+                HateoasSchemas.pageMetadata(depth).takeIf { fqn == HateoasSchemas.PAGED_MODEL },
+            ),
+            wireShapeAssumed = true.takeIf { hal.halAssumed || relation == null },
+        )
+    }
+
+    private fun embeddedOf(element: PsiType?, relation: String?, depth: Int, context: SchemaContext): DtoFieldJson {
+        val items = element?.let { "$LIST<${it.canonicalText}>" } ?: LIST
+        val type = "${HateoasSchemas.MAP}<${HateoasSchemas.STRING},$items>"
+        if (element == null || relation == null) return HateoasSchemas.field(HateoasSchemas.EMBEDDED, type)
+        val embedded = DtoSchemaJson(
+            className = HateoasSchemas.MAP,
+            fields = listOf(HateoasSchemas.field(relation, items, schemaOf(element, depth - 2, context))),
+        )
+        return HateoasSchemas.field(HateoasSchemas.EMBEDDED, type, embedded.takeIf { depth > 1 })
     }
 
     private fun projectFieldsOf(psiClass: PsiClass, depth: Int, names: Names): List<DtoFieldJson> =
@@ -415,6 +460,7 @@ internal object ResponseSchemaReader {
     /** What the handler module configures for every class of one schema, read once and only when needed. */
     private class SchemaContext(val configured: JacksonNaming?, module: Module?) {
         val pageSerialization: PageSerialization by lazy { PageSerialization.of(module) }
+        val halSerialization: HalSerialization by lazy { HalSerialization.of(module) }
     }
 
     private fun isWrittenField(field: PsiField): Boolean =
