@@ -5,14 +5,23 @@
 
 package com.explyt.spring.ai.mcp
 
+import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.core.completion.properties.SpringConfigurationPropertiesSearch
+import com.explyt.spring.core.service.PackageScanService
+import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.test.util.TestCompiledLibrary
 import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.explyt.spring.web.util.WebApplicationStack
+import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.search.ProjectScope
+import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PsiTestUtil
 
@@ -1055,6 +1064,266 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         assertSource("UNKNOWN", schema)
     }
 
+    fun testLibraryViaDtoConfigurationImportedByTheApplicationWritesPagedModel() {
+        attachVendorWebSupportLibrary()
+        runBlockingReleasingWriteIntent<Unit> {
+            addFile("com/example/shop/VendorImports.java", VENDOR_IMPORTS_SOURCE)
+            assertLibraryDeclaresViaDto(VENDOR_WEB_CONFIG)
+            assertTrue(
+                "precondition: the bean model lists the imported $VENDOR_WEB_CONFIG as an active bean",
+                isActiveBean(VENDOR_WEB_CONFIG)
+            )
+
+            val schema = pageSchema("/orders/page")
+
+            assertPagedModel(schema)
+            assertSource("@EnableSpringDataWebSupport on $VENDOR_WEB_CONFIG", schema)
+        }
+    }
+
+    fun testLibraryViaDtoConfigurationNeitherImportedNorScannedLeavesThePageDirect() {
+        attachVendorWebSupportLibrary()
+        runBlockingReleasingWriteIntent<Unit> {
+            assertLibraryDeclaresViaDto(VENDOR_WEB_CONFIG)
+            val vendorConfig = JavaPsiFacade.getInstance(project)
+                .findClass(VENDOR_WEB_CONFIG, GlobalSearchScope.allScope(project))!!
+            assertNull(
+                "precondition: no project class imports $VENDOR_WEB_CONFIG",
+                ReferencesSearch.search(vendorConfig, GlobalSearchScope.projectScope(project)).findFirst()
+            )
+
+            val schema = pageSchema("/orders/page")
+
+            assertDirectPage(schema)
+            assertSource("DEFAULT", schema)
+        }
+    }
+
+    fun testUnreachedLibraryViaDtoAutoConfigurationLeavesTheShapeUnknown() {
+        attachVendorAutoConfiguration("VIA_DTO")
+        runBlockingReleasingWriteIntent<Unit> {
+            assertUnreachedAutoConfigurationCandidate(VENDOR_AUTO_CONFIGURATION, "VIA_DTO", annotated = true)
+
+            val schema = pageSchema("/orders/page")
+
+            assertSource("UNKNOWN", schema)
+            assertDirectPage(schema)
+            assertPageAssumed(schema)
+        }
+    }
+
+    fun testUnreachedLibraryViaDtoConfigurationListedInAutoConfigurationImportsLeavesTheShapeUnknown() {
+        TestCompiledLibrary.attach(
+            module, testRootDisposable, "vendor-listed-web-support",
+            mapOf("com/vendor/web/VendorWebConfig.java" to VENDOR_WEB_CONFIG_SOURCE),
+            mapOf(AUTO_CONFIGURATION_IMPORTS_PATH to "$VENDOR_WEB_CONFIG\n"),
+        )
+        runBlockingReleasingWriteIntent<Unit> {
+            assertUnreachedAutoConfigurationCandidate(VENDOR_WEB_CONFIG, "VIA_DTO", annotated = false)
+
+            val schema = pageSchema("/orders/page")
+
+            assertSource("UNKNOWN", schema)
+            assertDirectPage(schema)
+            assertPageAssumed(schema)
+        }
+    }
+
+    fun testUnreachedLibraryViaDtoAutoConfigurationBesideAProjectViaDtoLeavesTheShapeUnknown() {
+        attachVendorAutoConfiguration("VIA_DTO")
+        runBlockingReleasingWriteIntent<Unit> {
+            addWebConfig("VIA_DTO")
+            assertDeclaresWebSupport(WEB_CONFIG)
+            assertUnreachedAutoConfigurationCandidate(VENDOR_AUTO_CONFIGURATION, "VIA_DTO", annotated = true)
+
+            val schema = pageSchema("/orders/page")
+
+            assertSource("UNKNOWN", schema)
+            assertDirectPage(schema)
+            assertPageAssumed(schema)
+        }
+    }
+
+    fun testUnreachedLibraryViaDtoAutoConfigurationBesideAProjectViaDtoWithBeanOverridingWritesPagedModel() {
+        attachVendorAutoConfiguration("VIA_DTO")
+        runBlockingReleasingWriteIntent<Unit> {
+            addFile("application.properties", "$ALLOW_BEAN_DEFINITION_OVERRIDING_KEY=true")
+            addWebConfig("VIA_DTO")
+            assertDeclaresWebSupport(WEB_CONFIG)
+            assertUnreachedAutoConfigurationCandidate(VENDOR_AUTO_CONFIGURATION, "VIA_DTO", annotated = true)
+
+            val schema = pageSchema("/orders/page")
+
+            assertPagedModel(schema)
+            assertSource(WEB_CONFIG_SOURCE, schema)
+        }
+    }
+
+    fun testUnreachedLibraryDirectAutoConfigurationLeavesThePageDirect() {
+        attachVendorAutoConfiguration("DIRECT")
+        runBlockingReleasingWriteIntent<Unit> {
+            assertUnreachedAutoConfigurationCandidate(VENDOR_AUTO_CONFIGURATION, "DIRECT", annotated = true)
+
+            val schema = pageSchema("/orders/page")
+
+            assertDirectPage(schema)
+            assertSource("DEFAULT", schema)
+        }
+    }
+
+    fun testBootDataWebAutoConfigurationUnderADefaultPackageScanLeavesTheModeToTheProperty() =
+        runBlockingReleasingWriteIntent<Unit> {
+            addFile(
+                "DefaultPackageApplication.java", """
+                import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+                @SpringBootApplication
+                public class DefaultPackageApplication {
+                }
+                """.trimIndent()
+            )
+            addFile("application.properties", "$SERIALIZATION_MODE_KEY=via_dto")
+            assertResolves("DefaultPackageApplication")
+            val bootConfig = JavaPsiFacade.getInstance(project)
+                .findClass(BOOT_DATA_WEB_AUTO_CONFIGURATION, GlobalSearchScope.allScope(project))
+            assertNotNull("the fixture must resolve $BOOT_DATA_WEB_AUTO_CONFIGURATION", bootConfig)
+            val file = bootConfig!!.containingFile.virtualFile
+            assertTrue(
+                "$BOOT_DATA_WEB_AUTO_CONFIGURATION must come from library classes",
+                ProjectFileIndex.getInstance(project).isInLibraryClasses(file)
+            )
+            assertFalse("it must be outside the project scope", ProjectScope.getProjectScope(project).contains(file))
+            assertTrue("it carries @EnableSpringDataWebSupport", bootConfig.hasAnnotation(ENABLE_WEB_SUPPORT))
+            assertEmpty(
+                "it declares no mode, so the annotation alone would mean DIRECT",
+                bootConfig.getAnnotation(ENABLE_WEB_SUPPORT)!!.parameterList.attributes.toList()
+            )
+            assertTrue(
+                "it is an @AutoConfiguration",
+                bootConfig.hasAnnotation(SpringCoreClasses.BOOT_AUTO_CONFIGURATION)
+            )
+            val scanned = PackageScanService.getInstance(project).getAllPackages().getPackages(module)
+            assertTrue("precondition: the default-package application scans every package: $scanned", "" in scanned)
+            assertTrue(
+                "precondition: the scan covers $BOOT_DATA_WEB_AUTO_CONFIGURATION: $scanned",
+                scanned.any(BOOT_DATA_WEB_AUTO_CONFIGURATION::startsWith)
+            )
+
+            val schema = pageSchema("/orders/page")
+
+            assertPagedModel(schema)
+            assertSource(SERIALIZATION_MODE_KEY, schema)
+        }
+
+    fun testLibraryViaDtoAutoConfigurationImportedByTheApplicationWritesPagedModel() {
+        attachVendorAutoConfiguration("VIA_DTO")
+        runBlockingReleasingWriteIntent<Unit> {
+            addFile(
+                "com/example/shop/VendorAutoConfigurationImports.java", """
+                package com.example.shop;
+
+                import com.vendor.web.VendorWebAutoConfiguration;
+                import org.springframework.context.annotation.Configuration;
+                import org.springframework.context.annotation.Import;
+
+                @Configuration
+                @Import(VendorWebAutoConfiguration.class)
+                public class VendorAutoConfigurationImports {
+                }
+                """.trimIndent()
+            )
+            val declaration = JavaPsiFacade.getInstance(project)
+                .findClass(VENDOR_AUTO_CONFIGURATION, GlobalSearchScope.allScope(project))
+            assertNotNull("the fixture must resolve $VENDOR_AUTO_CONFIGURATION", declaration)
+            val file = declaration!!.containingFile.virtualFile
+            assertTrue(
+                "$VENDOR_AUTO_CONFIGURATION must come from compiled library classes",
+                ProjectFileIndex.getInstance(project).isInLibraryClasses(file)
+            )
+            assertFalse("it must be outside the project scope", ProjectScope.getProjectScope(project).contains(file))
+            assertTrue(
+                "it is an @AutoConfiguration",
+                declaration.isMetaAnnotatedBy(SpringCoreClasses.BOOT_AUTO_CONFIGURATION)
+            )
+            assertEquals(
+                "precondition: the application's own configuration is the only importer",
+                setOf("com.example.shop.VendorAutoConfigurationImports"),
+                PackageScanService.getInstance(project).getAllPackages().importersByImported[VENDOR_AUTO_CONFIGURATION]
+            )
+
+            val schema = pageSchema("/orders/page")
+
+            assertPagedModel(schema)
+            assertSource("@EnableSpringDataWebSupport on $VENDOR_AUTO_CONFIGURATION", schema)
+        }
+    }
+
+    private fun attachVendorAutoConfiguration(mode: String) {
+        TestCompiledLibrary.attach(
+            module, testRootDisposable, "vendor-web-auto-configuration",
+            mapOf("com/vendor/web/VendorWebAutoConfiguration.java" to vendorAutoConfigurationSource(mode))
+        )
+    }
+
+    private fun assertUnreachedAutoConfigurationCandidate(fqn: String, mode: String, annotated: Boolean) {
+        val declaration = JavaPsiFacade.getInstance(project).findClass(fqn, GlobalSearchScope.allScope(project))
+        assertNotNull("the fixture must resolve the library class $fqn, or the test proves nothing", declaration)
+        val file = declaration!!.containingFile.virtualFile
+        assertTrue(
+            "$fqn must come from compiled library classes",
+            ProjectFileIndex.getInstance(project).isInLibraryClasses(file)
+        )
+        assertFalse("$fqn must be outside the project scope", ProjectScope.getProjectScope(project).contains(file))
+        val declaredMode = declaration.getAnnotation(ENABLE_WEB_SUPPORT)
+            ?.findDeclaredAttributeValue("pageSerializationMode")?.text.orEmpty()
+        assertTrue("$fqn must declare $mode, got '$declaredMode'", declaredMode.endsWith(mode))
+
+        assertNull(
+            "precondition: no project class references $fqn",
+            ReferencesSearch.search(declaration, GlobalSearchScope.projectScope(project)).findFirst()
+        )
+        val scan = PackageScanService.getInstance(project).getAllPackages()
+        assertFalse("precondition: no @Import names $fqn", fqn in scan.importQualified)
+        val scanned = scan.getPackages(module)
+        assertTrue("precondition: the project scans packages, got $scanned", scanned.isNotEmpty())
+        assertTrue("precondition: no scanned package covers $fqn: $scanned", scanned.none(fqn::startsWith))
+
+        assertEquals(
+            "precondition: $fqn is meta-annotated with @AutoConfiguration",
+            annotated, declaration.isMetaAnnotatedBy(SpringCoreClasses.BOOT_AUTO_CONFIGURATION)
+        )
+        assertEquals(
+            "precondition: $fqn is listed in $AUTO_CONFIGURATION_IMPORTS_PATH",
+            !annotated, fqn in SpringConfigurationPropertiesSearch.getInstance(project).getAllFactoriesNames(module)
+        )
+    }
+
+    private fun attachVendorWebSupportLibrary() {
+        TestCompiledLibrary.attach(
+            module, testRootDisposable, "vendor-web-support",
+            mapOf("com/vendor/web/VendorWebConfig.java" to VENDOR_WEB_CONFIG_SOURCE)
+        )
+    }
+
+    private fun assertLibraryDeclaresViaDto(fqn: String) {
+        val declaration = JavaPsiFacade.getInstance(project).findClass(fqn, GlobalSearchScope.allScope(project))
+        assertNotNull("the fixture must resolve the library class $fqn, or the test proves nothing", declaration)
+        val file = declaration!!.containingFile.virtualFile
+        assertTrue(
+            "$fqn must come from compiled library classes",
+            ProjectFileIndex.getInstance(project).isInLibraryClasses(file)
+        )
+        assertFalse("$fqn must be outside the project scope", ProjectScope.getProjectScope(project).contains(file))
+        val webSupport = declaration.getAnnotation(ENABLE_WEB_SUPPORT)
+        assertNotNull("$fqn must carry @EnableSpringDataWebSupport", webSupport)
+        val mode = webSupport!!.findDeclaredAttributeValue("pageSerializationMode")?.text.orEmpty()
+        assertTrue("$fqn must declare VIA_DTO, got '$mode'", mode.endsWith("VIA_DTO"))
+    }
+
+    private fun isActiveBean(fqn: String): Boolean =
+        SpringSearchServiceFacade.getInstance(project).getAllActiveBeans(module)
+            .any { it.psiClass.qualifiedName == fqn }
+
     private fun assertPageableAndSortAsWritten(schema: JsonNode) {
         val sort = field(schema, "sort")["nested"]
         assertNotNull("sort carries its written properties: $schema", sort?.takeUnless { it.isNull })
@@ -1125,6 +1394,51 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         const val COMPOSED_WEB_CONFIG = "$CONFIG_PACKAGE.ComposedWebConfig"
         const val ALIAS_FOR = "org.springframework.core.annotation.AliasFor"
         const val ALLOW_BEAN_DEFINITION_OVERRIDING_KEY = "spring.main.allow-bean-definition-overriding"
+        const val VENDOR_WEB_CONFIG = "com.vendor.web.VendorWebConfig"
+        const val VENDOR_AUTO_CONFIGURATION = "com.vendor.web.VendorWebAutoConfiguration"
+        const val BOOT_DATA_WEB_AUTO_CONFIGURATION =
+            "org.springframework.boot.autoconfigure.data.web.SpringDataWebAutoConfiguration"
+        const val AUTO_CONFIGURATION_IMPORTS_PATH =
+            "META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports"
+
+        fun vendorAutoConfigurationSource(mode: String) = """
+            package com.vendor.web;
+
+            import org.springframework.boot.autoconfigure.AutoConfiguration;
+            import org.springframework.data.web.config.EnableSpringDataWebSupport;
+            import org.springframework.data.web.config.EnableSpringDataWebSupport.PageSerializationMode;
+
+            @AutoConfiguration
+            @EnableSpringDataWebSupport(pageSerializationMode = PageSerializationMode.$mode)
+            public class VendorWebAutoConfiguration {
+            }
+        """.trimIndent()
+
+        val VENDOR_WEB_CONFIG_SOURCE = """
+            package com.vendor.web;
+
+            import org.springframework.context.annotation.Configuration;
+            import org.springframework.data.web.config.EnableSpringDataWebSupport;
+            import org.springframework.data.web.config.EnableSpringDataWebSupport.PageSerializationMode;
+
+            @Configuration
+            @EnableSpringDataWebSupport(pageSerializationMode = PageSerializationMode.VIA_DTO)
+            public class VendorWebConfig {
+            }
+        """.trimIndent()
+
+        val VENDOR_IMPORTS_SOURCE = """
+            package com.example.shop;
+
+            import com.vendor.web.VendorWebConfig;
+            import org.springframework.context.annotation.Configuration;
+            import org.springframework.context.annotation.Import;
+
+            @Configuration
+            @Import(VendorWebConfig.class)
+            public class VendorImports {
+            }
+        """.trimIndent()
     }
 }
 
