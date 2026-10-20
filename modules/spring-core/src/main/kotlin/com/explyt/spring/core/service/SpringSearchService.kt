@@ -418,6 +418,25 @@ class SpringSearchService(private val project: Project) {
     @Deprecated("Don use directly. Use SpringSearchServiceFacade")
     fun getComponentBeanFactoryMethods(module: Module): Map<PsiMethod, PsiMethod> = getComponentBeanFactories(module)
 
+    @Deprecated("Don use directly. Use SpringSearchServiceFacade")
+    fun getActiveGenericBeanFactoryMethods(module: Module): Map<PsiMethod, PsiMethod> {
+        val genericFactories = getComponentBeanFactories(module)
+            .filterValues { it.returnType?.resolvedPsiClass is PsiTypeParameter }
+        if (genericFactories.isEmpty() || !SpringToolRunConfigurationsSettingsState.getInstance().isBeanFilterEnabled) {
+            return genericFactories
+        }
+        val foundBeans = getAllBeansClasses(module)
+        val excludedCarriers: Set<PsiMember?> = foundBeans.excludedByCondition.mapTo(HashSet()) { it.psiMember }
+        val strategies = conditionStrategies(module)
+        return genericFactories.filter { (factory, effectiveFactory) ->
+            (factory.containingClass as PsiMember?) !in excludedCarriers
+                    && (effectiveFactory.containingClass as PsiMember?) !in excludedCarriers
+                    && strategies.asSequence()
+                .map { it.verdictOf(factory, foundBeans.active) }
+                .combined() !is ConditionVerdict.Inactive
+        }
+    }
+
     private fun getComponentBeanFactories(module: Module): Map<PsiMethod, PsiMethod> = beanFactories(module).active
 
     private fun beanFactories(module: Module): BeanFactories {
