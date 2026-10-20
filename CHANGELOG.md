@@ -262,6 +262,7 @@
 - fix: Show the full route of a Java router builder route nested under `path()` or `nest()` in the `explyt_trace_spring_call_chain` trace, and list the test requests that call it (#612)
 
 ### Other
+- fix: Keep the plugin change notes under the Marketplace and Plugin Verifier size limit and link to the full changelog (#739)
 - fix: Keep a repeated action in the Sentry trail when unrecorded editor input separates it from the first, and count suppressed repeats in the collapsed breadcrumb
 - fix: Collapsed action breadcrumbs no longer read Sentry's internal breadcrumb data API, which release plugin verification rejects (#739)
 - fix: Do not freeze the UI on the first action after the IDE starts: error-reporting setup no longer runs while an action is being recorded (#307)
