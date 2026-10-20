@@ -7,6 +7,7 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.core.service.conditional.ConditionPropertyValue
 import com.explyt.spring.core.service.conditional.PropertyConditionValues
+import com.explyt.spring.web.util.WebApplicationStack
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.openapi.module.Module
 import com.intellij.psi.JavaPsiFacade
@@ -28,7 +29,7 @@ internal object HateoasSchemas {
 
     val MODELS = setOf(ENTITY_MODEL, COLLECTION_MODEL, PAGED_MODEL)
 
-    fun links(): DtoFieldJson = field("_links", "$MAP<$STRING,$LINK>")
+    fun links(): DtoFieldJson = field("_links", "$MAP<$STRING,$LINK>").copy(nullable = null)
 
     fun pageMetadata(depth: Int): DtoFieldJson = field(
         "page", PAGE_METADATA,
@@ -69,8 +70,9 @@ internal object HateoasSchemas {
  *
  * Boot makes HAL the default for any `Accept` and for `application/json`; with
  * `spring.hateoas.use-hal-as-default-json-media-type` set to `false`, `application/json` gets plain JSON on Boot 3
- * and `406` on Boot 4, so the HAL shape is then only assumed. Evo Inflector on the runtime classpath pluralises the
- * default collection relation by English rules that are not reproduced here.
+ * and `406` on Boot 4, so the HAL shape is then only assumed, as it is on a reactive application, where Boot's
+ * hypermedia auto-configuration, which needs Spring MVC, does not apply. Evo Inflector on the runtime classpath
+ * pluralises the default collection relation by English rules that are not reproduced here.
  */
 internal data class HalSerialization(val halAssumed: Boolean, val inflectsRelations: Boolean) {
 
@@ -80,7 +82,8 @@ internal data class HalSerialization(val halAssumed: Boolean, val inflectsRelati
 
         fun of(module: Module?): HalSerialization {
             module ?: return HalSerialization(halAssumed = true, inflectsRelations = true)
-            return HalSerialization(halAssumed = !isHalDefault(module), inflectsRelations = inflects(module))
+            val reactive = WebApplicationStack.of(module) == WebApplicationStack.REACTIVE
+            return HalSerialization(halAssumed = reactive || !isHalDefault(module), inflectsRelations = inflects(module))
         }
 
         private fun isHalDefault(module: Module): Boolean =

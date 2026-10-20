@@ -133,12 +133,13 @@ internal object ResponseSchemaReader {
         val hal = context.halSerialization
         if (fqn == HateoasSchemas.ENTITY_MODEL) {
             val content = element?.let { schemaOf(it, depth, context) }
-            return DtoSchemaJson(
+                ?: DtoSchemaJson(className = fqn, fields = null)
+            val contentFields = content.fields.orEmpty()
+            val links = HateoasSchemas.links().takeIf { link -> contentFields.none { it.name == link.name } }
+            return content.copy(
                 className = fqn,
-                fields = content?.fields.orEmpty() + HateoasSchemas.links(),
-                namingStrategy = content?.namingStrategy,
-                namingStrategySource = content?.namingStrategySource,
-                wireShapeAssumed = true.takeIf { hal.halAssumed },
+                fields = contentFields + listOfNotNull(links),
+                wireShapeAssumed = true.takeIf { hal.halAssumed } ?: content.wireShapeAssumed,
             )
         }
         val relation = element?.let { HateoasSchemas.collectionRelationOf(it, hal.inflectsRelations) }
@@ -156,12 +157,11 @@ internal object ResponseSchemaReader {
     private fun embeddedOf(element: PsiType?, relation: String?, depth: Int, context: SchemaContext): DtoFieldJson {
         val items = element?.let { "$LIST<${it.canonicalText}>" } ?: LIST
         val type = "${HateoasSchemas.MAP}<${HateoasSchemas.STRING},$items>"
-        if (element == null || relation == null) return HateoasSchemas.field(HateoasSchemas.EMBEDDED, type)
-        val embedded = DtoSchemaJson(
+        val embedded = if (element == null || relation == null || depth <= 1) null else DtoSchemaJson(
             className = HateoasSchemas.MAP,
             fields = listOf(HateoasSchemas.field(relation, items, schemaOf(element, depth - 2, context))),
         )
-        return HateoasSchemas.field(HateoasSchemas.EMBEDDED, type, embedded.takeIf { depth > 1 })
+        return HateoasSchemas.field(HateoasSchemas.EMBEDDED, type, embedded).copy(nullable = null)
     }
 
     private fun projectFieldsOf(psiClass: PsiClass, depth: Int, names: Names): List<DtoFieldJson> =
