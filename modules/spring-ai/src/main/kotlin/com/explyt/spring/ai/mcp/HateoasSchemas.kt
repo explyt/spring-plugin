@@ -7,6 +7,7 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.core.service.conditional.ConditionPropertyValue
 import com.explyt.spring.core.service.conditional.PropertyConditionValues
+import com.explyt.spring.core.util.SpringBootUtil
 import com.explyt.spring.web.util.WebApplicationStack
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.openapi.module.Module
@@ -15,6 +16,7 @@ import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiClassType
 import com.intellij.psi.PsiType
 import com.intellij.psi.PsiWildcardType
+import com.intellij.util.text.VersionComparatorUtil
 
 internal object HateoasSchemas {
     const val ENTITY_MODEL = "org.springframework.hateoas.EntityModel"
@@ -31,11 +33,11 @@ internal object HateoasSchemas {
 
     fun links(): DtoFieldJson = field("_links", "$MAP<$STRING,$LINK>").copy(nullable = null)
 
-    fun pageMetadata(depth: Int): DtoFieldJson = field(
+    fun pageMetadata(depth: Int, keyOf: (String) -> String): DtoFieldJson = field(
         "page", PAGE_METADATA,
         DtoSchemaJson(
             className = PAGE_METADATA,
-            fields = listOf("size", "totalElements", "totalPages", "number").map { field(it, "long") },
+            fields = listOf("size", "totalElements", "totalPages", "number").map { field(keyOf(it), "long") },
         ).takeIf { depth > 1 },
     )
 
@@ -73,17 +75,32 @@ internal object HateoasSchemas {
  * and `406` on Boot 4, so the HAL shape is then only assumed, as it is on a reactive application, where Boot's
  * hypermedia auto-configuration, which needs Spring MVC, does not apply. Evo Inflector on the runtime classpath
  * pluralises the default collection relation by English rules that are not reproduced here.
+ *
+ * A global Jackson naming strategy renames the collection relations and the page keys from Spring Boot 4 on; below
+ * it, Spring HATEOAS fails to write HAL under any strategy, and a strategy that cannot be read leaves the keys unknown,
+ * so the HAL shape is then only assumed.
  */
-internal data class HalSerialization(val halAssumed: Boolean, val inflectsRelations: Boolean) {
+internal class HalSerialization private constructor(
+    val halAssumed: Boolean,
+    val inflectsRelations: Boolean,
+    private val keyNaming: JacksonNaming?,
+) {
+    fun keyOf(name: String): String = keyNaming?.translate(name) ?: name
 
     companion object {
         const val PROPERTY = "spring.hateoas.use-hal-as-default-json-media-type"
         private const val EVO_INFLECTOR = "org.atteo.evo.inflector.English"
+        private const val SPRING_BOOT_4 = "4.0"
 
-        fun of(module: Module?): HalSerialization {
-            module ?: return HalSerialization(halAssumed = true, inflectsRelations = true)
+        fun of(module: Module?, naming: JacksonNaming?): HalSerialization {
+            module ?: return HalSerialization(halAssumed = true, inflectsRelations = true, keyNaming = null)
             val reactive = WebApplicationStack.of(module) == WebApplicationStack.REACTIVE
-            return HalSerialization(halAssumed = reactive || !isHalDefault(module), inflectsRelations = inflects(module))
+            val keyNaming = naming?.takeIf { it.isReadable && rendersHalUnderNaming(module) }
+            return HalSerialization(
+                halAssumed = reactive || !isHalDefault(module) || (naming != null && keyNaming == null),
+                inflectsRelations = inflects(module),
+                keyNaming = keyNaming,
+            )
         }
 
         private fun isHalDefault(module: Module): Boolean =
@@ -92,6 +109,11 @@ internal data class HalSerialization(val halAssumed: Boolean, val inflectsRelati
                 ConditionPropertyValue.Unresolvable -> false
                 is ConditionPropertyValue.Known -> value.text.isBlank() || value.text.trim().equals("true", ignoreCase = true)
             }
+
+        private fun rendersHalUnderNaming(module: Module): Boolean {
+            val bootVersion = SpringBootUtil.getSpringBootVersion(module)
+            return bootVersion.isNotEmpty() && VersionComparatorUtil.compare(bootVersion, SPRING_BOOT_4) >= 0
+        }
 
         private fun inflects(module: Module): Boolean =
             JavaPsiFacade.getInstance(module.project).findClass(EVO_INFLECTOR, module.getModuleRuntimeScope(false)) != null

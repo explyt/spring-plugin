@@ -1212,9 +1212,11 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "string INSTANCE; a Spring HATEOAS EntityModel, CollectionModel or PagedModel is described as the " +
                 "HAL document Boot writes by default - the content's fields next to '_links', or '_embedded' keyed " +
                 "by the @Relation collectionRelation, else the uncapitalized class name plus 'List', next to " +
-                "'_links' and, for a PagedModel, 'page'; '_embedded' is left out for an empty collection and " +
+                "'_links' and, for a PagedModel, 'page'; the relation and page keys follow the configured Jackson " +
+                "naming strategy; '_embedded' is left out for an empty collection and " +
                 "'_links' when there are no links - with 'wireShapeAssumed': true on a reactive application, when " +
-                "spring.hateoas.use-hal-as-default-json-media-type is false or unresolvable, or when Evo Inflector " +
+                "spring.hateoas.use-hal-as-default-json-media-type is false or unresolvable, with a Jackson naming " +
+                "strategy that is unknown, or any naming strategy below Spring Boot 4, or when Evo Inflector " +
                 "on the runtime classpath pluralises an undeclared relation and '_embedded' is left unexpanded), " +
                 "produces/consumes media types, and " +
                 "'serviceCalls': every " +

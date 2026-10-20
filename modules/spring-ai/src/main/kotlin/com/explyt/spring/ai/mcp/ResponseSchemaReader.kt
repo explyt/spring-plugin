@@ -142,13 +142,13 @@ internal object ResponseSchemaReader {
                 wireShapeAssumed = true.takeIf { hal.halAssumed } ?: content.wireShapeAssumed,
             )
         }
-        val relation = element?.let { HateoasSchemas.collectionRelationOf(it, hal.inflectsRelations) }
+        val relation = element?.let { HateoasSchemas.collectionRelationOf(it, hal.inflectsRelations) }?.let(hal::keyOf)
         return DtoSchemaJson(
             className = fqn,
             fields = listOfNotNull(
                 embeddedOf(element, relation, depth, context),
                 HateoasSchemas.links(),
-                HateoasSchemas.pageMetadata(depth).takeIf { fqn == HateoasSchemas.PAGED_MODEL },
+                HateoasSchemas.pageMetadata(depth, hal::keyOf).takeIf { fqn == HateoasSchemas.PAGED_MODEL },
             ),
             wireShapeAssumed = true.takeIf { hal.halAssumed || relation == null },
         )
@@ -460,7 +460,7 @@ internal object ResponseSchemaReader {
     /** What the handler module configures for every class of one schema, read once and only when needed. */
     private class SchemaContext(val configured: JacksonNaming?, module: Module?) {
         val pageSerialization: PageSerialization by lazy { PageSerialization.of(module) }
-        val halSerialization: HalSerialization by lazy { HalSerialization.of(module) }
+        val halSerialization: HalSerialization by lazy { HalSerialization.of(module, configured) }
     }
 
     private fun isWrittenField(field: PsiField): Boolean =
