@@ -44,6 +44,7 @@ internal data class PageSerialization(val mode: PageSerializationMode, val sourc
         const val ENABLE_WEB_SUPPORT = "org.springframework.data.web.config.EnableSpringDataWebSupport"
 
         private const val MODE_ATTRIBUTE = "pageSerializationMode"
+        private const val ALLOW_BEAN_DEFINITION_OVERRIDING = "spring.main.allow-bean-definition-overriding"
 
         private val DEFAULT = PageSerialization(PageSerializationMode.DIRECT, "DEFAULT")
         private val UNKNOWN = PageSerialization(PageSerializationMode.UNKNOWN, "UNKNOWN")
@@ -54,19 +55,28 @@ internal data class PageSerialization(val mode: PageSerializationMode, val sourc
             val reactive = WebApplicationStack.of(module) == WebApplicationStack.REACTIVE
             return when {
                 declarations.isNotEmpty() && reactive -> UNKNOWN
-                declarations.isNotEmpty() -> decisiveOf(declarations, MetaAnnotationsHolder.of(module, ENABLE_WEB_SUPPORT))
+                declarations.isNotEmpty() -> decisiveOf(declarations, module)
                 reactive -> DEFAULT
                 else -> configuredIn(module)
             }
         }
 
-        private fun decisiveOf(declarations: List<PsiClass>, webSupport: MetaAnnotationsHolder): PageSerialization {
+        private fun decisiveOf(declarations: List<PsiClass>, module: Module): PageSerialization {
+            val webSupport = MetaAnnotationsHolder.of(module, ENABLE_WEB_SUPPORT)
             val modes = declarations.map { it to modeDeclaredBy(it, webSupport) }
-            val (decisive, mode) = modes.firstOrNull { it.second == PageSerializationMode.VIA_DTO }
-                ?: modes.firstOrNull { it.second == PageSerializationMode.UNKNOWN }
-                ?: modes.first()
+            val viaDto = modes.filter { it.second == PageSerializationMode.VIA_DTO }
+            val unreadable = modes.filter { it.second == PageSerializationMode.UNKNOWN }
+            val mayCompete = viaDto.isNotEmpty() && viaDto.size + unreadable.size > 1
+            if (mayCompete && !allowsBeanDefinitionOverriding(module)) return UNKNOWN
+            val (decisive, mode) = viaDto.firstOrNull() ?: unreadable.firstOrNull() ?: modes.first()
             return declared(mode, "@EnableSpringDataWebSupport on ${decisive.qualifiedName}")
         }
+
+        private fun allowsBeanDefinitionOverriding(module: Module): Boolean =
+            when (val value = PropertyConditionValues(module).valueOf(ALLOW_BEAN_DEFINITION_OVERRIDING)) {
+                is ConditionPropertyValue.Known -> value.text.trim().equals("true", ignoreCase = true)
+                ConditionPropertyValue.Missing, ConditionPropertyValue.Unresolvable -> false
+            }
 
         private fun configuredIn(module: Module): PageSerialization =
             when (val value = PropertyConditionValues(module).valueOf(PROPERTY)) {
