@@ -653,7 +653,8 @@ class SpringBootApplicationMcpToolsetPageSchemaEdgeTest : PageSchemaTestCase() {
         assertFalse(schema.toString(), schema["className"]?.asText() == PAGED_MODEL)
         assertNull("HATEOAS writes _embedded/_links, not the Spring Data shape: $schema", schema["wireShape"])
         assertNull(schema.toString(), schema["wireShapeSource"])
-        assertFalse("no Spring Data page metadata: $schema", "page" in names(schema))
+        assertFalse("no Spring Data content: $schema", "content" in names(schema))
+        assertTrue("HATEOAS writes its links: $schema", "_links" in names(schema))
     }
 
     private fun addController(className: String, methods: String) {
