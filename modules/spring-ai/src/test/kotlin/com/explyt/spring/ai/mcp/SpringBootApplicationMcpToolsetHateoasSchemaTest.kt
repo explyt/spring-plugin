@@ -16,6 +16,7 @@ import com.intellij.openapi.application.readAction
 import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiClass
+import com.intellij.psi.search.FilenameIndex
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.testFramework.IndexingTestUtil
 
@@ -353,29 +354,6 @@ class SpringBootApplicationMcpToolsetHateoasSchemaTest : HateoasSchemaTestCase()
         assertHalAssumed(schema)
     }
 
-    fun testUnknownNamingStrategyMakesTheHalShapeAssumed() = runBlockingReleasingWriteIntent<Unit> {
-        addFile(
-            "com/example/config/JacksonConfig.java", """
-            package com.example.config;
-
-            import com.fasterxml.jackson.databind.ObjectMapper;
-            import org.springframework.context.annotation.Bean;
-            import org.springframework.context.annotation.Configuration;
-
-            @Configuration
-            public class JacksonConfig {
-                @Bean
-                public ObjectMapper objectMapper() { return new ObjectMapper(); }
-            }
-            """.trimIndent()
-        )
-
-        val schema = schemaOf("/hal/entity", "$ENTITY_MODEL<$HAL_ORDER_DTO>")
-
-        assertEquals("a project mapper bean makes the strategy unknown: $schema", "UNKNOWN", schema["namingStrategy"]?.asText())
-        assertHalAssumed(schema)
-    }
-
     fun testEntityModelKeepsThePolymorphismOfItsContent() = runBlockingReleasingWriteIntent<Unit> {
         addContentController(SHAPE, SHAPE_SOURCES)
         val plain = schemaOf("/content/plain", SHAPE)
@@ -488,14 +466,42 @@ class SpringBootApplicationMcpToolsetBoot4HateoasSchemaTest : HateoasSchemaTestC
             }
             """.trimIndent()
         )
-        myFixture.addFileToProject("application.properties", "$NAMING_STRATEGY_KEY=SNAKE_CASE")
         IndexingTestUtil.waitUntilIndexesAreReady(project)
     }
 
     override fun assertFromHateoasLibrary(fqn: String) = assertFromLibrary(fqn, BOOT4_HATEOAS_JAR)
 
+    fun testUnknownNamingStrategyMakesTheHalShapeAssumed() = runBlockingReleasingWriteIntent<Unit> {
+        assertBootLine("4.")
+        addFile(
+            "com/example/config/JacksonConfig.java", """
+            package com.example.config;
+
+            import com.fasterxml.jackson.databind.ObjectMapper;
+            import org.springframework.context.annotation.Bean;
+            import org.springframework.context.annotation.Configuration;
+
+            @Configuration
+            public class JacksonConfig {
+                @Bean
+                public ObjectMapper objectMapper() { return new ObjectMapper(); }
+            }
+            """.trimIndent()
+        )
+        val propertyFiles = readAction {
+            FilenameIndex.getVirtualFilesByName("application.properties", GlobalSearchScope.projectScope(project))
+        }
+        assertEmpty("no $NAMING_STRATEGY_KEY may decide the strategy", propertyFiles)
+
+        val schema = schemaOf("/hal/entity", "$ENTITY_MODEL<$HAL_ORDER_DTO>")
+
+        assertEquals("a project mapper bean makes the strategy unknown: $schema", "UNKNOWN", schema["namingStrategy"]?.asText())
+        assertHalAssumed(schema)
+    }
+
     fun testSnakeCaseRenamesTheDefaultCollectionRelation() = runBlockingReleasingWriteIntent<Unit> {
         assertBootLine("4.")
+        configureSnakeCase()
         assertWithoutRelation(HAL_ORDER_DTO)
 
         val schema = schemaOf("/hal/collection", "$COLLECTION_MODEL<$ENTITY_MODEL<$HAL_ORDER_DTO>>")
@@ -506,6 +512,7 @@ class SpringBootApplicationMcpToolsetBoot4HateoasSchemaTest : HateoasSchemaTestC
 
     fun testSnakeCaseRenamesTheDeclaredCollectionRelation() = runBlockingReleasingWriteIntent<Unit> {
         assertBootLine("4.")
+        configureSnakeCase()
         assertFromHateoasLibrary(RELATION)
 
         val schema = schemaOf("/hal/camel-relation", "$COLLECTION_MODEL<$ENTITY_MODEL<$CAMEL_RELATED_DTO>>")
@@ -516,6 +523,7 @@ class SpringBootApplicationMcpToolsetBoot4HateoasSchemaTest : HateoasSchemaTestC
 
     fun testSnakeCaseRenamesThePageMetadata() = runBlockingReleasingWriteIntent<Unit> {
         assertBootLine("4.")
+        configureSnakeCase()
         assertFromHateoasLibrary(HATEOAS_PAGED_MODEL)
 
         val schema = schemaOf("/hal/paged", "$HATEOAS_PAGED_MODEL<$ENTITY_MODEL<$HAL_ORDER_DTO>>")
@@ -527,6 +535,8 @@ class SpringBootApplicationMcpToolsetBoot4HateoasSchemaTest : HateoasSchemaTestC
             names(field(schema, "page").path("nested")).toSet()
         )
     }
+
+    private fun configureSnakeCase() = addFile("application.properties", "$NAMING_STRATEGY_KEY=SNAKE_CASE")
 
     private fun assertSnakeCaseItems(schema: JsonNode) {
         val items = field(schema, "_embedded").path("nested")["fields"]?.singleOrNull()?.path("nested")
