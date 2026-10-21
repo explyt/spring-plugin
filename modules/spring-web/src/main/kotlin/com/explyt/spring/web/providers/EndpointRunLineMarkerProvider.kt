@@ -136,13 +136,7 @@ class EndpointRunLineMarkerProvider : RunLineMarkerContributor() {
             val ports = (DefinedConfigurationPropertiesSearch.getInstance(psiElement.project)
                 .findProperties(module, "server.port").asSequence()
                 .mapNotNull { it.value } + listOf("8080"))
-                .map {
-                    if (it.contains("{")) {
-                        it.substringAfter("{").substringBefore("}").substringAfter(":")
-                    } else {
-                        it
-                    }
-                }
+                .mapNotNull { MappingPathPlaceholders.resolve(module, it).trim().toIntOrNull() }
                 .map { DEFAULT_SERVER_HOST + it + basePath }
                 .distinct()
                 .toList()
