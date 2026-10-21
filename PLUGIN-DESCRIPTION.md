@@ -112,8 +112,7 @@ Use **Generate (Alt+Insert / Command+N)**:
 
 ## Support & community
 - **Issues/feature requests**: https://github.com/explyt/spring-plugin/issues
-- **Telegram (EN)**: https://t.me/explytspring_en
-- **Telegram (RU)**: https://t.me/explytspring
+- **Discord**: https://discord.gg/NMThzdNB9
 
 ## License
 - Licensed under the [Apache License 2.0](https://github.com/explyt/spring-plugin/blob/main/LICENSE.md).
