@@ -54,7 +54,7 @@ object ModuleUtil {
     }
 
     fun getRuntimeLibrarySearchScope(module: Module): GlobalSearchScope =
-        module.getModuleRuntimeScope(false).intersectWith(ProjectScope.getLibrariesScope(module.project))
+        module.getModuleRuntimeScope(true).intersectWith(ProjectScope.getLibrariesScope(module.project))
 
     fun isKotlinModule(module: Module): Boolean {
         val scope = module.getModuleWithDependenciesAndLibrariesScope(false)

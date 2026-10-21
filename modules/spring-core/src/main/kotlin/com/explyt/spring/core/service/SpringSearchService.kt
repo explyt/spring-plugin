@@ -1085,7 +1085,7 @@ object SpringSearchUtils {
     }
 
     fun getRuntimeBeanClassAnnotations(module: Module): Collection<PsiClass> {
-        val runtimeScope = module.getModuleRuntimeScope(false)
+        val runtimeScope = module.getModuleRuntimeScope(true)
         val runtimeAnnotations = listOf(SpringCoreClasses.COMPONENT, SpringCoreClasses.CONFIGURATION_PROPERTIES)
             .mapNotNull { JavaPsiFacade.getInstance(module.project).findClass(it, runtimeScope) }
             .flatMap { ActuatorEndpointKeys.annotationWithChildren(it, runtimeScope) }
