@@ -297,7 +297,7 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
 
         val qualifier = element.getQualifierAnnotation() ?: return ProblemDescriptor.EMPTY_ARRAY
         val beanDeclarations = SpringSearchServiceFacade.getInstance(module.project)
-            .findActiveBeanDeclarations(module, element.name ?: "", element.language, element.type, qualifier)
+            .findActiveBeanDeclarations(module, element.name ?: "", element.language, element.type, qualifier, element)
 
         if (beanDeclarations.isNotEmpty()) {
             return ProblemDescriptor.EMPTY_ARRAY
