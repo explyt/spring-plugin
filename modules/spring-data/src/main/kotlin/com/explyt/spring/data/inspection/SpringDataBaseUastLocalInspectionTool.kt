@@ -7,14 +7,12 @@ package com.explyt.spring.data.inspection
 
 import com.explyt.inspection.InspectionAvailability
 import com.explyt.inspection.SpringBaseUastLocalInspectionTool
-import com.explyt.plugin.PluginIds
 import com.explyt.spring.data.SpringDataClasses
 import com.intellij.psi.PsiFile
 
 abstract class SpringDataBaseUastLocalInspectionTool : SpringBaseUastLocalInspectionTool() {
 
     override fun isAvailableForFile(file: PsiFile): Boolean {
-        return PluginIds.SPRING_DATA_JB.isNotEnabled()
-                && InspectionAvailability.hasLibraryClass(file, SpringDataClasses.REPOSITORY)
+        return InspectionAvailability.hasLibraryClass(file, SpringDataClasses.REPOSITORY)
     }
 }
