@@ -8,6 +8,7 @@ package com.explyt.spring.web.providers
 import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.web.SpringWebBundle
 import com.explyt.spring.web.SpringWebClasses
+import com.explyt.spring.web.util.HandlerMethods
 import com.explyt.spring.web.editor.openapi.OpenApiUtils.isAbsolutePath
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
@@ -34,12 +35,7 @@ class ControllerRunLineMarkerProvider : RunLineMarkerContributor() {
         if (!isController && !isFeignClient) return null
         val requestMappingMah = MetaAnnotationsHolder.of(module, SpringWebClasses.REQUEST_MAPPING)
 
-        val prefixes = if (psiClass.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING)) {
-            requestMappingMah.getAnnotationMemberValues(psiClass, setOf("path", "value"))
-                .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
-        } else {
-            emptyList()
-        }
+        val prefixes = HandlerMethods.requestMappingPrefixes(psiClass, requestMappingMah)
         val requestMappingServers = prefixes.filter { isAbsolutePath(it) }
         val feignClientServers = if (isFeignClient) {
             val feignClientMah = MetaAnnotationsHolder.of(module, SpringWebClasses.FEIGN_CLIENT)

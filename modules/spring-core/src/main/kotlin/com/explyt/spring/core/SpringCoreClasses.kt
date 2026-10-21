@@ -7,6 +7,31 @@ package com.explyt.spring.core
 
 object SpringCoreClasses {
     const val SPRING_BOOT_APPLICATION = "org.springframework.boot.autoconfigure.SpringBootApplication"
+    const val ENABLE_AUTO_CONFIGURATION = "org.springframework.boot.autoconfigure.EnableAutoConfiguration"
+    const val ACTUATOR_ENDPOINT = "org.springframework.boot.actuate.endpoint.annotation.Endpoint"
+    const val ACTUATOR_ENDPOINT_ACCESS = "org.springframework.boot.actuate.endpoint.Access"
+    const val ACTUATOR_JMX_ENDPOINT = "org.springframework.boot.actuate.endpoint.jmx.annotation.JmxEndpoint"
+    const val ACTUATOR_READ_OPERATION = "org.springframework.boot.actuate.endpoint.annotation.ReadOperation"
+    const val ACTUATOR_WRITE_OPERATION = "org.springframework.boot.actuate.endpoint.annotation.WriteOperation"
+    const val ACTUATOR_DELETE_OPERATION = "org.springframework.boot.actuate.endpoint.annotation.DeleteOperation"
+    const val ACTUATOR_SELECTOR = "org.springframework.boot.actuate.endpoint.annotation.Selector"
+    const val ACTUATOR_SELECTOR_MATCH = "match"
+    const val ACTUATOR_SELECTOR_MATCH_ALL_REMAINING = "ALL_REMAINING"
+    const val ACTUATOR_PRODUCIBLE = "org.springframework.boot.actuate.endpoint.Producible"
+    const val ACTUATOR_ENDPOINT_MEDIA_TYPES = "org.springframework.boot.actuate.endpoint.web.EndpointMediaTypes"
+    const val ACTUATOR_WEB_ENDPOINT_RESPONSE =
+        "org.springframework.boot.actuate.endpoint.web.WebEndpointResponse"
+    const val ACTUATOR_CONTROLLER_ENDPOINT =
+        "org.springframework.boot.actuate.endpoint.web.annotation.ControllerEndpoint"
+    const val ACTUATOR_REST_CONTROLLER_ENDPOINT =
+        "org.springframework.boot.actuate.endpoint.web.annotation.RestControllerEndpoint"
+    const val ACTUATOR_SERVLET_ENDPOINT =
+        "org.springframework.boot.actuate.endpoint.web.annotation.ServletEndpoint"
+    const val ACTUATOR_ENDPOINT_WEB_EXTENSION =
+        "org.springframework.boot.actuate.endpoint.web.annotation.EndpointWebExtension"
+    const val ACTUATOR_ENDPOINT_EXTENSION = "org.springframework.boot.actuate.endpoint.annotation.EndpointExtension"
+    const val ACTUATOR_ENDPOINT_AUTO_CONFIGURATION =
+        "org.springframework.boot.actuate.autoconfigure.endpoint.EndpointAutoConfiguration"
     const val SPRING_APPLICATION = "org.springframework.boot.SpringApplication"
     const val BOOT_AUTO_CONFIGURATION = "org.springframework.boot.autoconfigure.AutoConfiguration"
 
@@ -14,6 +39,7 @@ object SpringCoreClasses {
     const val EVENT_LISTENER = "org.springframework.context.event.EventListener"
     const val APPLICATION_LISTENER = "org.springframework.context.ApplicationListener"
     const val EVENT_PUBLISHER = "org.springframework.context.ApplicationEventPublisher"
+    const val APPLICATION_EVENT = "org.springframework.context.ApplicationEvent"
     const val APPLICATION_CONTEXT = "org.springframework.context.ApplicationContext"
 
     const val COMPONENT_SCAN = "org.springframework.context.annotation.ComponentScan"
@@ -39,11 +65,13 @@ object SpringCoreClasses {
     const val SERVICE = "org.springframework.stereotype.Service"
     const val CONTROLLER = "org.springframework.stereotype.Controller"
     const val REPOSITORY = "org.springframework.stereotype.Repository"
+    const val CONTROLLER_ADVICE = "org.springframework.web.bind.annotation.ControllerAdvice"
 
     const val BOOTSTRAP_WITH = "org.springframework.test.context.BootstrapWith"
     const val DYNAMIC_PROPERTY_REGISTRY = "org.springframework.test.context.DynamicPropertyRegistry"
 
     const val IO_RESOURCE = "org.springframework.core.io.Resource"
+    const val JAVA_LANG_VOID = "java.lang.Void"
     const val ALIAS_FOR = "org.springframework.core.annotation.AliasFor"
 
     const val MIME_TYPE = "org.springframework.util.MimeType"
@@ -69,8 +97,15 @@ object SpringCoreClasses {
     const val CONDITIONAL_ON_CLASS = "org.springframework.boot.autoconfigure.condition.ConditionalOnClass"
     const val CONDITIONAL_ON_MISSING_CLASS = "org.springframework.boot.autoconfigure.condition.ConditionalOnMissingClass"
     const val CONDITIONAL_ON_PROPERTY = "org.springframework.boot.autoconfigure.condition.ConditionalOnProperty"
+    const val CONDITIONAL_ON_PROPERTIES = "org.springframework.boot.autoconfigure.condition.ConditionalOnProperties"
+    const val CONDITIONAL_ON_BOOLEAN_PROPERTY =
+        "org.springframework.boot.autoconfigure.condition.ConditionalOnBooleanProperty"
+    const val CONDITIONAL_ON_BOOLEAN_PROPERTIES =
+        "org.springframework.boot.autoconfigure.condition.ConditionalOnBooleanProperties"
     const val CONDITIONAL_ON_WEB_APPLICATION =
         "org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication"
+    const val CONDITIONAL_ON_NOT_WEB_APPLICATION =
+        "org.springframework.boot.autoconfigure.condition.ConditionalOnNotWebApplication"
 
     const val CONFIGURATION_PROPERTIES = "org.springframework.boot.context.properties.ConfigurationProperties"
     const val NESTED_CONFIGURATION_PROPERTIES = "org.springframework.boot.context.properties.NestedConfigurationProperty"
@@ -130,6 +165,8 @@ object SpringCoreClasses {
 
     const val MOCK_BEAN = "org.springframework.boot.test.mock.mockito.MockBean"
     const val SPY_BEAN = "org.springframework.boot.test.mock.mockito.SpyBean"
+    const val MOCKITO_BEAN = "org.springframework.test.context.bean.override.mockito.MockitoBean"
+    const val MOCKITO_SPY_BEAN = "org.springframework.test.context.bean.override.mockito.MockitoSpyBean"
 
     const val HIBERNATE_CFG_AVAILABLE_SETTING = "org.hibernate.cfg.AvailableSettings"
 
@@ -142,4 +179,5 @@ object SpringCoreClasses {
 
     val QUALIFIERS = listOf(QUALIFIER) + JavaEeClasses.QUALIFIER.allFqns
     val AOP_ANNOTATION = listOf(TRANSACTIONAL, ASYNC) + ANNOTATIONS_CACHE
+    val MOCK_BEANS_ANNOTATIONS = listOf(MOCK_BEAN, SPY_BEAN, MOCKITO_BEAN, MOCKITO_SPY_BEAN)
 }

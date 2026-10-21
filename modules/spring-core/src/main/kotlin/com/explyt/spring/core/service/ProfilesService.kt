@@ -5,17 +5,29 @@
 
 package com.explyt.spring.core.service
 
+import com.explyt.spring.core.SpringCoreClasses.PROFILE
+import com.explyt.spring.core.profile.ProfileGroups
 import com.explyt.spring.core.profile.SpringProfilesService
 import com.explyt.spring.core.runconfiguration.RunConfigurationUtil
 import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.intellij.execution.RunnerAndConfigurationSettings
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
+import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.modules
+import com.intellij.psi.PsiMember
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
+import org.jetbrains.uast.UAnnotated
+import org.jetbrains.uast.toUElement
 import java.util.*
+
+enum class ProfileActivation {
+    ACTIVE,
+    INACTIVE,
+    UNDECIDED
+}
 
 @Service(Service.Level.PROJECT)
 class ProfilesService(private val project: Project) {
@@ -39,7 +51,25 @@ class ProfilesService(private val project: Project) {
         return profileChanged || mainClassChanged
     }
 
+    /**
+     * The profile inputs a bean query was answered under, for fingerprinting only.
+     *
+     * Read-only by design: a query must never change which profiles are active, and the origin is reported so a
+     * static answer can say whether the profiles came from a selected run configuration or from the sources.
+     */
+    fun beanQueryProfileInputs(): List<String> {
+        val fromRunConfiguration = activeProfilesFromRunConfiguration.isNotEmpty()
+        val origin = if (fromRunConfiguration) "RUN_CONFIGURATION" else "CODE_AND_CONFIG"
+        return getActiveProfiles().sorted() + listOf("main:${currentMainClass ?: ""}", "origin:$origin")
+    }
+
     private fun getActiveProfiles(): Set<String> {
+        val collected = collectedActiveProfiles()
+        if (DumbService.isDumb(project)) return collected
+        return ProfileGroups.of(project).expand(collected)
+    }
+
+    private fun collectedActiveProfiles(): Set<String> {
         if (activeProfilesFromRunConfiguration.isNotEmpty()) return activeProfilesFromRunConfiguration
 
         return CachedValuesManager.getManager(project).getCachedValue(project) {
@@ -57,9 +87,32 @@ class ProfilesService(private val project: Project) {
             .ifEmpty { DEFAULT_PROFILES }
     }
 
-    /**
-     * Parses expression, with current [ProfilesService.activeProfiles] computes result
-     */
+    fun activationOf(member: PsiMember, annotations: MetaAnnotationsHolder): ProfileActivation {
+        val profileValues = profileValuesOf(member, annotations)
+        if (profileValues.isEmpty()) return ProfileActivation.ACTIVE
+
+        var undecided = false
+        for (expression in profileValues) {
+            if (expression == null) {
+                undecided = true
+            } else if (compute(expression)) {
+                return ProfileActivation.ACTIVE
+            }
+        }
+        return if (undecided) ProfileActivation.UNDECIDED else ProfileActivation.INACTIVE
+    }
+
+    fun profileExpressionsOf(member: PsiMember, annotations: MetaAnnotationsHolder): List<String> =
+        profileValuesOf(member, annotations).filterNotNull()
+
+    private fun profileValuesOf(member: PsiMember, annotations: MetaAnnotationsHolder): List<String?> {
+        val annotated = member.toUElement() as? UAnnotated ?: return listOf(null)
+        return annotated.uAnnotations
+            .filter { it.qualifiedName == PROFILE || annotations.contains(it) }
+            .flatMap { annotations.getAnnotationMemberValues(it, setOf("value")) }
+            .map { it.evaluate() as? String }
+    }
+
     fun compute(profilesExpression: String): Boolean {
         val tokens = tokenize(profilesExpression) ?: return false
         val postfixExpression = toPostfix(tokens)

@@ -28,7 +28,9 @@ import org.jetbrains.uast.UMethod
 class SpringBoot4BootstrapPackageInspection : Spring4UastLocalInspectionTool() {
 
     override fun isAvailableForFile(file: PsiFile): Boolean {
-        return super.isAvailableForFile(file) && isAnyClassAvailable(file, *MOVED_TYPES.keys.toTypedArray())
+        // Only the replacements have to be resolvable: the Boot 4 upgrade relocates the legacy types, and the stale
+        // source that still references the old package is exactly what must be reported.
+        return super.isAvailableForFile(file) && isAnyClassAvailable(file, *MOVED_TYPES.values.toTypedArray())
     }
 
     override fun checkField(field: UField, manager: InspectionManager, isOnTheFly: Boolean): Array<ProblemDescriptor> {
@@ -53,14 +55,15 @@ class SpringBoot4BootstrapPackageInspection : Spring4UastLocalInspectionTool() {
         manager: InspectionManager,
         isOnTheFly: Boolean
     ): ProblemDescriptor? {
-        if (typeSourcePsi == null || canonicalText == null) return null
-        val target = MOVED_TYPES[canonicalText] ?: return null
+        if (typeSourcePsi == null) return null
+        val legacyFqn = legacyTypeFqn(typeSourcePsi, canonicalText, MOVED_TYPES) ?: return null
+        val target = MOVED_TYPES[legacyFqn] ?: return null
 
         return manager.createProblemDescriptor(
             typeSourcePsi,
             message("explyt.spring.inspection.boot4.bootstrap"),
             isOnTheFly,
-            arrayOf<LocalQuickFix>(MigrateImportQuickFix(canonicalText, target)),
+            arrayOf<LocalQuickFix>(MigrateImportQuickFix(legacyFqn, target)),
             ProblemHighlightType.LIKE_DEPRECATED
         )
     }

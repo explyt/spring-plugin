@@ -11,6 +11,7 @@ import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.SpringCoreClasses.CACHE_KEY_GENERATOR
 import com.explyt.spring.core.SpringCoreClasses.CACHE_MANAGER
 import com.explyt.spring.core.SpringCoreClasses.CACHE_RESOLVER
+import com.explyt.spring.core.service.SpringBeanOwner
 import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedByOrSelf
 import com.explyt.util.ExplytPsiUtil.isPublic
@@ -19,6 +20,7 @@ import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.psi.ElementManipulators
+import com.intellij.psi.PsiClass
 import com.intellij.psi.util.InheritanceUtil
 import org.jetbrains.uast.UAnnotation
 import org.jetbrains.uast.UClass
@@ -31,7 +33,7 @@ class SpringCacheableAnnotationInspection : SpringBaseUastLocalInspectionTool() 
         uClass: UClass, manager: InspectionManager, isOnTheFly: Boolean
     ): Array<ProblemDescriptor> {
         val holder = ProblemsHolder(manager, uClass.javaPsi.containingFile, isOnTheFly)
-        checkCacheParams(uClass.uAnnotations, holder)
+        checkCacheParams(uClass.uAnnotations, holder, uClass.javaPsi)
         return holder.resultsArray
     }
 
@@ -39,7 +41,7 @@ class SpringCacheableAnnotationInspection : SpringBaseUastLocalInspectionTool() 
         method: UMethod, manager: InspectionManager, isOnTheFly: Boolean
     ): Array<ProblemDescriptor> {
         val holder = ProblemsHolder(manager, method.javaPsi.containingFile, isOnTheFly)
-        val cacheAnnotationIsFound = checkCacheParams(method.uAnnotations, holder)
+        val cacheAnnotationIsFound = checkCacheParams(method.uAnnotations, holder, method.javaPsi.containingClass)
 
         if (cacheAnnotationIsFound && !method.isPublic) {
             val sourcePsi = method.uastAnchor?.sourcePsi ?: return holder.resultsArray
@@ -48,20 +50,26 @@ class SpringCacheableAnnotationInspection : SpringBaseUastLocalInspectionTool() 
         return holder.resultsArray
     }
 
-    private fun checkCacheParams(uAnnotations: List<UAnnotation>, holder: ProblemsHolder): Boolean {
-        return uAnnotations.map { checkCacheParams(it, holder) }.find { it } == true
+    private fun checkCacheParams(uAnnotations: List<UAnnotation>, holder: ProblemsHolder, owner: PsiClass?): Boolean {
+        val cacheAnnotations = uAnnotations.filter { it.isCacheAnnotation() }
+        if (cacheAnnotations.isNotEmpty() && owner != null && isProcessedBySpring(owner)) {
+            cacheAnnotations.forEach { checkCacheParams(it, holder) }
+        }
+        return cacheAnnotations.isNotEmpty()
     }
 
-    /**
-     * return true if one of cache annotations is found.
-     */
-    private fun checkCacheParams(uAnnotation: UAnnotation, holder: ProblemsHolder): Boolean {
-        val psiAnnotation = uAnnotation.javaPsi ?: return false
-        if (!psiAnnotation.isMetaAnnotatedByOrSelf(SpringCoreClasses.ANNOTATIONS_CACHE)) return false
+    private fun UAnnotation.isCacheAnnotation(): Boolean =
+        javaPsi?.isMetaAnnotatedByOrSelf(SpringCoreClasses.ANNOTATIONS_CACHE) == true
+
+    private fun isProcessedBySpring(owner: PsiClass): Boolean {
+        val module = ModuleUtilCore.findModuleForPsiElement(owner) ?: return false
+        return SpringBeanOwner.isProcessedBySpring(module, owner)
+    }
+
+    private fun checkCacheParams(uAnnotation: UAnnotation, holder: ProblemsHolder) {
         processCacheParameter("cacheResolver", uAnnotation, holder)
         processCacheParameter("cacheManager", uAnnotation, holder)
         processCacheParameter("keyGenerator", uAnnotation, holder)
-        return true
     }
 
     private fun processCacheParameter(parameterName: String, uAnnotation: UAnnotation, holder: ProblemsHolder) {

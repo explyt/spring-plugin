@@ -7,25 +7,53 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.jpa.JpaClasses
 import com.explyt.spring.core.SpringCoreClasses
+
 import com.explyt.spring.core.service.PackageScanService
 import com.explyt.spring.core.service.SpringSearchService
+import com.explyt.spring.ai.mcp.beans.BeanConditionJson
+import com.explyt.spring.ai.mcp.beans.BeanOrigin
+import com.explyt.spring.ai.mcp.beans.BeanQueryRevision
+import com.explyt.spring.ai.mcp.entities.EntityInventory
+import com.explyt.spring.ai.mcp.entities.EntityRecord
+import com.explyt.spring.ai.mcp.entities.EntitySchema
+import com.explyt.spring.ai.mcp.entities.SqlIdentifier
+import com.explyt.spring.core.service.beans.ApplicationClassName
+import com.explyt.spring.core.service.beans.BeanQueryException
+import com.explyt.spring.core.service.beans.BeanSourcePreference
+import com.explyt.spring.core.service.conditional.ConditionVerdict
 import com.explyt.spring.core.util.SpringBootUtil
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.loader.EndpointElement
+import com.explyt.spring.web.loader.EndpointType
 import com.explyt.spring.web.service.SpringWebEndpointsSearcher
+import com.explyt.spring.web.util.ApplicationBasePath
+import com.explyt.spring.web.util.EndpointPathPatterns
+import com.explyt.spring.web.util.HandlerMethods
+import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedByOrSelf
+import com.intellij.psi.PsiAnnotation
+import com.explyt.spring.web.util.HandlerSignature
+import com.explyt.spring.web.util.EndpointPathPatterns.PathReading
 import com.explyt.spring.web.util.SpringWebUtil
+import com.explyt.spring.web.util.WebApplicationStack
 import com.explyt.util.ExplytAnnotationUtil.findFirstAnnotation
 import com.explyt.util.ExplytAnnotationUtil.getBooleanAttribute
+import com.explyt.util.ExplytAnnotationUtil.getBooleanValue
 import com.explyt.util.ExplytAnnotationUtil.getMemberValues
 import com.explyt.util.ExplytAnnotationUtil.getStringAttribute
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
+import com.explyt.util.MultiVendorClass
+import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.node.ObjectNode
+import com.intellij.codeInspection.isInheritorOf
 import com.intellij.mcpserver.McpToolset
 import com.intellij.mcpserver.annotations.McpDescription
 import com.intellij.mcpserver.annotations.McpTool
 import com.intellij.mcpserver.mcpFail
-import com.intellij.openapi.application.readAction
+
 import com.intellij.openapi.application.smartReadAction
+import com.intellij.openapi.editor.Document
+import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
@@ -35,35 +63,102 @@ import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
 import com.intellij.psi.search.searches.MethodReferencesSearch
+import com.intellij.psi.util.InheritanceUtil
+import java.util.IdentityHashMap
+import kotlin.math.abs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.VisibleForTesting
-import org.jetbrains.kotlin.idea.base.psi.getLineNumber
+
 import org.jetbrains.kotlin.idea.base.util.projectScope
 import org.jetbrains.uast.UCallExpression
+import org.jetbrains.uast.UCallableReferenceExpression
 import org.jetbrains.uast.UMethod
+import org.jetbrains.uast.UParameter
+import org.jetbrains.uast.UResolvable
 import org.jetbrains.uast.visitor.AbstractUastVisitor
-import org.jetbrains.uast.evaluateString
+
+import org.jetbrains.uast.getParentOfType
 import org.jetbrains.uast.getUastParentOfType
 import org.jetbrains.uast.toUElement
 
+/**
+ * What every tool of this family says about its project argument.
+ *
+ * One text for all of them: a caller who learns the rule from one tool can rely on it for the rest.
+ */
+private const val PROJECT_PATH_DESCRIPTION =
+    "Path to the project root. Omit it when a single project is open; when several are, it is required, " +
+            "and a path naming none of them is refused rather than answered from another one."
+
+private val HTTP_METHODS = listOf("GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS")
+
+private const val HTTP_METHOD_DESCRIPTION =
+    "Optional HTTP method filter, case-insensitive: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS. Leave empty to " +
+            "match all methods. Any other value is rejected with the list of valid values. " +
+            "A route that answers every HTTP method (httpMethods [\"ALL\"]) matches every value."
+
+/** The values `explyt_get_spring_http_endpoints` can filter by: the endpoint types it lists at all. */
+private val WEB_ENDPOINT_TYPES = EndpointType.entries.filter { it.isWeb }.map { it.name }
+
+private const val ENDPOINT_OFFSET_DESCRIPTION =
+    "Index of the first endpoint to return: the 'nextOffset' of the previous page"
+private const val EXPECTED_REVISION_DESCRIPTION =
+    "The 'revision' of the first page, required to continue that same answer"
+private const val LISTING_REVISION_DESCRIPTION =
+    "Pass the 'revision' from the previous page to keep continuing the same answer; a different revision answers RESULT_CHANGED"
+private const val FIND_PAGE_CHARS = 8000
+private const val CONTRACT_PAGE_CHARS = BoundedPageWriter.MAX_CHARS
+private const val LIST_PAGE_CHARS = BoundedPageWriter.MAX_CHARS
+private const val LOOKUP_PAGE_DESCRIPTION =
+    "A page holds at most 50 endpoints within 'maxChars' of compact JSON and can end earlier, because the budget " +
+            "is measured on the finished document. When 'truncated' is true, repeat the call with 'offset' = " +
+            "'nextOffset' and 'expectedRevision' = 'revision' to continue the same answer; 'nextOffset' is null on " +
+            "the last page, and another urlPattern or httpMethod, or an edited project, answers RESULT_CHANGED. One " +
+            "endpoint larger than 'maxChars' answers RESPONSE_TOO_LARGE naming the maxChars that fetches it. " +
+            "'nearestByPrefix' is served on the first page only, nearest routes first and as many as fit; " +
+            "'nearestByPrefixTruncated' is true when some were left out and absent otherwise. "
+private const val FIELD_BASE_PATH = "basePath"
+private const val FIELD_ASSUMED_PREFIX = "assumedPrefix"
+private const val FIELD_SHARED_PREFIX = "sharedPrefix"
+
+private const val BEAN_PAGE_LIMIT = 8
+private const val BEAN_PAGE_MAX_CHARS = 1800
+private const val FIELD_BEANS = "beans"
+private const val FIELD_UNKNOWN_ORIGIN_COUNT = "unknownOriginCount"
+private const val FIELD_INACTIVE_LIBRARY_COUNT = "inactiveLibraryCount"
+private const val FIELD_LIMITATIONS = "limitations"
+private const val FIELD_CONDITION = "condition"
+
+private val BEAN_LISTING_ORDER: Comparator<SpringBean> = compareBy<SpringBean>(
+    { it.inactive },
+    { it.origin?.ordinal ?: BeanOrigin.entries.size },
+    { it.beanName },
+    { it.className },
+    { it.moduleName },
+)
 
 class SpringBootApplicationMcpToolset : McpToolset {
 
     @McpTool("explyt_get_spring_boot_applications")
-    @McpDescription(description = "Returns all SpringBootApplications - fully-qualified (e.g. 'java.util.List') Java class names in the project")
+    @McpDescription(
+        description = "Call first when entering a Spring workspace you do not know, and before any " +
+                "explyt_get_spring_beans call, which needs one of these class names. " +
+                "A multi-module workspace can hold several @SpringBootApplication classes, and guessing the wrong one " +
+                "scopes every later bean question to the wrong module. " +
+                "Returns each application's fully-qualified class name, Spring Boot version, starters, module and " +
+                "build tool - the version and starters answer 'which Boot line and which features are on the " +
+                "classpath' without opening the build file. " +
+                "Test-source applications carry testSource: true and are listed after production ones; annotation types are never applications."
+    )
     suspend fun getAllSpringBootApplications(
-        @McpDescription("Path to the project root")
-        projectPath: String
+        @McpDescription(PROJECT_PATH_DESCRIPTION)
+        projectPath: String? = null
     ): String {
-        val project = getCurrentProject(projectPath) ?: mcpFail("project not found")
+        val project = getCurrentProject(projectPath) ?: mcpFail(projectProblem(projectPath))
         val applications = withContext(Dispatchers.IO) {
             smartReadAction(project) {
-                val springBootAppAnnotations = PackageScanService.getInstance(project).getSpringBootAppAnnotations()
-                springBootAppAnnotations.asSequence()
-                    .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, project.projectScope()) }
-                    .distinctBy { it.qualifiedName }
-                    .toList()
+                PackageScanService.getInstance(project).applicationClasses(project.projectScope())
                     .mapNotNull { toSpringBootApplicationDto(it) }
             }
         }
@@ -71,13 +166,53 @@ class SpringBootApplicationMcpToolset : McpToolset {
         return mapper.writeValueAsString(applications)
     }
 
-    @McpTool("explyt_get_project_beans_by_spring_boot_application")
-    @McpDescription(description = "Returns all project's Spring Beans in SpringBootApplication by bean type")
+    @McpTool("explyt_get_spring_beans")
+    @McpDescription(
+        description = "Call before adding a component, to see which beans of that stereotype already exist and " +
+                "what they are named; before injecting by type, to check that exactly one candidate exists; and " +
+                "when asked what a module contributes to the context. " +
+                "Lists the beans of one Spring Boot application, filtered by stereotype, from the IDE's bean " +
+                "model: it includes @Bean factory methods, meta-annotated stereotypes and @Import-ed configurations, " +
+                "which a text search for '@Service' or '@Component' never finds. " +
+                "Returns {status, revision, totalCount, offset, truncated, nextOffset, beans}: each row of 'beans' " +
+                "carries the bean's name, fully-qualified class and module, one row per name a bean answers to. " +
+                "'origin' is PROJECT or LIBRARY, read from where the bean is declared rather than from its type - " +
+                "a project @Bean returning java.time.Clock is PROJECT; it is absent when the model has no " +
+                "declaration to read it from. Rows come PROJECT first, then LIBRARY, then those of unknown origin, " +
+                "each by beanName and className. Pass origin=PROJECT or origin=LIBRARY to keep one of them: rows " +
+                "of unknown origin are then left out and counted in 'unknownOriginCount', absent when none was. " +
+                "Project beans (and those of unknown origin) excluded by a @Conditional or an inactive @Profile " +
+                "are listed after all the others with 'condition': {state: INACTIVE, annotation, carrier, detail}, " +
+                "a @Profile one even with condition evaluation disabled; the rows of library beans excluded by a " +
+                "condition are only counted in " +
+                "'inactiveLibraryCount', absent when there was none, unless origin=LIBRARY is requested, which " +
+                "lists them after the active library rows. A bean whose condition cannot be decided keeps its place " +
+                "with 'condition': {state: UNDECIDED, reasons, annotation, carrier, detail}. The envelope-level " +
+                "'limitations' holds CONDITIONS_NOT_EVALUATED when condition evaluation is disabled, and is absent " +
+                "otherwise. " +
+                "A page holds at most 'limit' beans (8 by default) within 'maxChars' of compact JSON (1800 by " +
+                "default) and can end earlier, because the budget is measured on the finished document. When " +
+                "'truncated' is true, repeat the call with 'offset' = 'nextOffset' and 'expectedRevision' = " +
+                "'revision' to continue the same answer; a changed filter or a re-read model answers RESULT_CHANGED. " +
+                "Every row also names the model that answered in 'source': STATIC is an estimate of the module, " +
+                "NATIVE_SNAPSHOT a context recorded at 'snapshotImportedAt' (ISO-8601 UTC, absent when unknown) " +
+                "and never live, with 'contextId' naming it. A row's 'limitations' appears only when its own bean " +
+                "has one, such as ALIASES_NOT_EXPORTED (the bean may answer to names the context did not export). " +
+                "When sources changed after 'snapshotImportedAt', pass source=STATIC for an answer read from them. " +
+                "An empty 'moduleName' means the bean has no module in this project - a library bean, or one a " +
+                "loaded context reports without project sources; the bean is still listed. " +
+                "By default the answer comes from a loaded application context when one is available and from the " +
+                "static model otherwise, where it is an estimate of the module rather than of a running context; " +
+                "pass source=STATIC or source=NATIVE to choose, and contextId to name one of several loaded " +
+                "contexts. For one bean by type or name, or for a single injection point, use " +
+                "explyt_find_spring_bean instead. " +
+                "Take applicationClassName from explyt_get_spring_boot_applications."
+    )
     suspend fun applicationBeans(
         @McpDescription("Fully-qualified class name for the SpringBootApplication")
         applicationClassName: String,
-        @McpDescription("Path to the project root")
-        projectPath: String,
+        @McpDescription(PROJECT_PATH_DESCRIPTION)
+        projectPath: String? = null,
         @McpDescription(
             "Filter results by a Bean Type. Possible values: " +
                     "ASPECT - for org.aspectj.lang.annotation.Aspect, \n" +
@@ -87,30 +222,116 @@ class SpringBootApplicationMcpToolset : McpToolset {
                     "CONFIGURATION_PROPERTIES - for org.springframework.boot.context.properties.ConfigurationProperties and inheritors , \n" +
                     "CONFIGURATION - for org.springframework.context.annotation.Configuration and inheritors , \n" +
                     "REPOSITORY - for Spring Data Repositories and org.springframework.stereotype.Repository , \n" +
-                    "COMPONENT - for Spring Components/Service and other beans. \n"
+                    "COMPONENT - for Spring Components/Service and other beans. \n" +
+                    "Case-insensitive; any other value is rejected with the list of valid values."
         )
         beanType: String,
+        @McpDescription(
+            "Which bean model answers, case-insensitive: AUTO (default) prefers a loaded application context and " +
+                    "falls back to the static model, STATIC always uses the static model, NATIVE requires a loaded " +
+                    "context. Any other value is rejected with the list of valid values."
+        )
+        source: String = "AUTO",
+        @McpDescription("Id of the loaded context to answer from, when several are loaded for this application.")
+        contextId: String? = null,
+        @McpDescription(
+            "Optional filter by where a bean is declared, case-insensitive: PROJECT or LIBRARY. Leave empty for " +
+                    "all beans. Any other value is rejected with the list of valid values."
+        )
+        origin: String? = null,
+        @McpDescription("Index of the first bean to return; needs expectedRevision when above 0")
+        offset: Int = 0,
+        @McpDescription("Maximum beans on this page, 1..50, $BEAN_PAGE_LIMIT by default")
+        limit: Int = BEAN_PAGE_LIMIT,
+        @McpDescription("Budget of the whole compact JSON answer, 512..16000, $BEAN_PAGE_MAX_CHARS by default")
+        maxChars: Int = BEAN_PAGE_MAX_CHARS,
+        @McpDescription("The 'revision' of the first page, required to continue that same answer")
+        expectedRevision: String? = null,
     ): String {
         val project = getCurrentProject(projectPath)
+            ?: projectPath?.takeIf { it.isNotBlank() }?.let { mcpFail(projectProblem(it)) }
             ?: getCurrentProjectForClass(applicationClassName)
-            ?: mcpFail("project not found")
-        val mcpBeanType = getMcpBeanType(beanType) ?: mcpFail("bean type not found $beanType")
-        val springBeans = withContext(Dispatchers.IO) {
+            ?: mcpFail(projectProblem(projectPath))
+        val mcpBeanType = McpBeanTypes.valueOf(
+            McpChoiceArguments.required(beanType, "beanType", McpBeanTypes.entries.map { it.name })
+        )
+        val preference = BeanSourcePreference.valueOf(
+            McpChoiceArguments.required(source, "source", BeanSourcePreference.entries.map { it.name })
+        )
+        val originFilter = origin
+            ?.let { McpChoiceArguments.optional(it, "origin", BeanOrigin.names) }
+            ?.let(BeanOrigin::valueOf)
+        val page = PageRequest(offset = offset, limit = limit, maxChars = maxChars, expectedRevision = expectedRevision)
+        return withContext(Dispatchers.IO) {
             smartReadAction(project) {
-                val applicationPsiClass = JavaPsiFacade.getInstance(project)
-                    .findClass(applicationClassName, project.projectScope())
+                val applicationPsiClass = ApplicationClassName
+                    .findClass(project, applicationClassName, project.projectScope())
                     ?: mcpFail("Spring Boot Application class not found $applicationClassName")
-                val module = ModuleUtilCore.findModuleForPsiElement(applicationPsiClass)
-                    ?: mcpFail("Module not found for $applicationClassName")
-                McpBeanSearchService.getInstance(project).getProjectBeansMcp(module)
+                val listing = try {
+                    McpBeanSearchService.getInstance(project)
+                        .getProjectBeansMcp(applicationPsiClass, preference, contextId)
+                } catch (e: BeanQueryException) {
+                    // A context that cannot be chosen is not an application without beans: an empty array would
+                    // read as the latter, so the caller is told what to disambiguate instead.
+                    mcpFail("${e.problem.code}: ${e.problem.message}")
+                }
+            val ofType = listing.rows.filter { it.beanType == mcpBeanType }
+            val (inactiveLibrary, listable) = ofType.partition {
+                originFilter == null && it.inactive && it.origin == BeanOrigin.LIBRARY
+            }
+            val beans = listable
+                .filter { originFilter == null || it.origin == originFilter }
+                .sortedWith(BEAN_LISTING_ORDER)
+            val unknownOriginCount = if (originFilter == null) 0 else ofType.count { it.origin == null }
+            val envelope = mapper.createObjectNode()
+            if (unknownOriginCount > 0) envelope.put(FIELD_UNKNOWN_ORIGIN_COUNT, unknownOriginCount)
+            if (inactiveLibrary.isNotEmpty()) envelope.put(FIELD_INACTIVE_LIBRARY_COUNT, inactiveLibrary.size)
+            if (listing.limitations.isNotEmpty()) {
+                envelope.putArray(FIELD_LIMITATIONS).apply { listing.limitations.forEach(::add) }
+            }
+            val beansQuestion = mapOf(
+                "tool" to "explyt_get_spring_beans",
+                "modelStamp" to listing.modelStamp,
+                "applicationClassName" to applicationClassName.trim(),
+                "beanType" to mcpBeanType.name,
+                "source" to preference.name,
+                "contextId" to contextId,
+                "origin" to originFilter?.name,
+            )
+            val answer = WholeAnswerCache.getInstance(project).answerFor(beansQuestion, beans.size) {
+                WholeAnswer.project(envelope, beans.size, { index -> beans[index].toRow() })
+            }
+            val revision = BeanQueryRevision.compute(
+                listing.modelStamp + ":" + answer.digest,
+                mapOf(
+                    "applicationClassName" to applicationClassName.trim(),
+                    "beanType" to mcpBeanType.name,
+                    "source" to preference.name,
+                    "contextId" to contextId,
+                    "origin" to originFilter?.name,
+                )
+            )
+            BoundedPageWriter().write(
+                envelope = envelope,
+                itemsField = FIELD_BEANS,
+                totalCount = answer.totalCount,
+                itemAt = answer::itemAt,
+                revision = revision,
+                page = page,
+            )
             }
         }
-        val beans = springBeans.asSequence()
-            .filter { it.beanType == mcpBeanType }
-            .map { McpSpringBean(it.beanName, it.className, it.moduleName) }
-            .toList()
-        return mapper.writeValueAsString(beans)
     }
+
+    private fun SpringBean.toRow(): ObjectNode =
+        mapper.valueToTree<ObjectNode>(toMcpSpringBean()).apply {
+            condition?.let { set<ObjectNode>(FIELD_CONDITION, BeanConditionJson.of(it)) }
+        }
+
+    private fun SpringBean.toMcpSpringBean() = McpSpringBean(
+        beanName, className, moduleName, source, contextId, snapshotImportedAt, limitations, origin?.name
+    )
+
 
     private fun toSpringBootApplicationDto(psiClass: PsiClass): SpringBootApplicationJson? {
         val qualifiedName = psiClass.qualifiedName ?: return null
@@ -120,161 +341,768 @@ class SpringBootApplicationMcpToolset : McpToolset {
             springBootVersion = SpringBootUtil.getSpringBootVersion(psiClass),
             springBootStarters = springBootInfo?.second ?: emptyList(),
             moduleName = ModuleUtilCore.findModuleForPsiElement(psiClass)?.name,
-            buildTool = springBootInfo?.first
+            buildTool = springBootInfo?.first,
+            testSource = ProjectSources.declaresInTests(psiClass).takeIf { it }
         )
     }
 
-    private fun getMcpBeanType(beanType: String): McpBeanTypes? {
-        return try {
-            McpBeanTypes.valueOf(beanType.uppercase())
-        } catch (_: Exception) {
-            null
-        }
-    }
 
     @McpTool("explyt_find_spring_endpoint")
     @McpDescription(
-        description = "Finds endpoints matching a URL pattern across all endpoint types: " +
-                "Spring MVC, WebFlux, JAX-RS, HttpExchange, OpenFeign, OpenAPI, message brokers (Kafka/RabbitMQ listeners), " +
-                "and event listeners. " +
-                "Resolves composed paths from class-level @RequestMapping and method-level @GetMapping/@PostMapping etc. " +
-                "Returns matching endpoints with full path, HTTP methods, controller class, method name, parameters, " +
-                "return type, file path, line number, and endpoint type. " +
-                "Supports partial URL matching (e.g. 'requests' matches '/api/.../requests') " +
-                "and path variable wildcards (e.g. '{id}' matches any path variable name)."
+        description = "Call when a task starts from a URL - a bug report, a frontend call, a log line, a curl - " +
+                "and right after adding or changing a mapping, to confirm the composed path and the bound parameters " +
+                "registered as intended. " +
+                "Resolves the URL against the IDE's endpoint model, not the source text: the path is composed from " +
+                "the class-level @RequestMapping and the method-level @GetMapping/@PostMapping, so it never appears " +
+                "as one string and a text search for it finds nothing, and a class-level prefix can silently give a " +
+                "new method a different URL than the one written on it. " +
+                "Covers Spring MVC, WebFlux, JAX-RS, HttpExchange, OpenFeign, OpenAPI, message brokers " +
+                "(Kafka/RabbitMQ listeners), event listeners and Actuator - the project's own @Endpoint classes " +
+                "and, when Spring Boot's endpoint auto-configuration is on the classpath, the built-in ones such as " +
+                "'/actuator/health'. An Actuator endpoint carries 'exposed': EXPOSED or NOT_EXPOSED as " +
+                "management.endpoints.web.exposure.include/exclude decide it (by default only health), UNKNOWN " +
+                "when a value cannot be read from the configuration files; it is found whatever 'exposed' says, " +
+                "since a profile or an environment variable can change exposure at run time. It also carries " +
+                "'access': UNRESTRICTED, READ_ONLY, NONE or UNKNOWN as management.endpoint.<id>.access, " +
+                "management.endpoints.access.default and .max-permitted grant it. Exposure and access are " +
+                "independent gates: an exposed operation with NONE answers 404, and under READ_ONLY a write or " +
+                "delete operation reads NONE. " +
+                BEAN_CONDITION_DESCRIPTION +
+                "Returns {status, basePath, assumedPrefix, sharedPrefix, nearestByPrefix, revision, totalCount, " +
+                "offset, truncated, nextOffset, endpoints}: 'totalCount' counts the matching endpoints and " +
+                "'truncated' is true when more remain after this page. " +
+                LOOKUP_PAGE_DESCRIPTION +
+                "Each endpoint carries full path, " +
+                "HTTP methods, controller class, method name, parameters with their binding source, return type, " +
+                "project-relative 'filePath', line and endpoint type, and 'consumes'/'produces' when the mapping " +
+                "declares media types; an endpoint declared in a jar, such as a built-in Actuator one, has a null " +
+                "'filePath' and names the jar in 'library' instead - no answer carries a path of the machine. " +
+                ALL_HTTP_METHODS_DESCRIPTION +
+                "'endpoints' lists the closest production match to the pattern first: an exact path, then one " +
+                "matching it as a pattern, then one merely containing it, and within each group by path specificity, " +
+                "the way Spring ranks path patterns - literal before '{template}', fewer wildcards first - so of " +
+                "routes with different paths matching one URL the first is the one that dispatches. Endpoints " +
+                "declared in test sources follow them, marked 'testSource': such an endpoint exists only in a test " +
+                "context, not in the running application. Handlers sharing one " +
+                "path and verb are not ordered by dispatch: the request's Content-Type and Accept choose among " +
+                "them, by the 'consumes' and 'produces' each record carries. " +
+                "Covers annotation-declared handlers and functional routes alike; for a functional route the " +
+                "controller class and method name are the bean factory that registers it, and 'parameters' holds " +
+                "the path variables its URL template declares. " +
+                "Matching is forgiving: 'requests' matches '/api/.../requests', and '{id}' matches any path variable. " +
+                "A deployed URL can be passed as it is: the scheme, host, query and fragment are ignored. When no " +
+                "route answers the path as written, a base path the module's configuration declares - " +
+                "server.servlet.context-path followed by spring.mvc.servlet.path, or spring.webflux.base-path - is " +
+                "stripped and reported as 'basePath', a declared fact; failing that, leading segments are dropped " +
+                "until a route answers - a context path or a gateway prefix living only in deployment " +
+                "configuration - and the dropped part is reported as 'assumedPrefix', a guess. Both are null when " +
+                "the path matched as written. " +
+                "'fullPath' is the path the application serves, with configuration placeholders such as " +
+                "'\${app.path:/l}' resolved; 'pathTemplate' is the endpoint path template with mapping prefixes and " +
+                "values joined and normalised, before configuration placeholders are resolved; it equals 'path' when " +
+                "nothing was resolved. " +
+                "When 'endpoints' is empty, no route answers the URL even without a leading prefix, and " +
+                "'nearestByPrefix' lists the existing routes that share the longest leading path with it - the " +
+                "controller and the conventions a new route has to fit; 'sharedPrefix' names that common path as " +
+                "the routes declare it, with their '{templates}'. " +
+                "A test-source endpoint - a probe controller inside a test class - is listed in 'endpoints' and in " +
+                "'nearestByPrefix' too, after the production ones, with 'testSource': true; the key is absent on " +
+                "production and library endpoints. " +
+                ACTUATOR_APPLICATION_DESCRIPTION
     )
     suspend fun findEndpoint(
         @McpDescription(
-            "URL pattern to search for. Can be: " +
+            "URL or URL pattern to search for. Can be: " +
+                    "a URL copied from a browser, a log line or a curl, like " +
+                    "'https://example.com/ctx/api/orgs/42/drilldown/7/requests?from=1d', " +
                     "a full path like '/api/orgs/{orgId}/drilldown/{metricId}/requests', " +
                     "a partial path like '/drilldown/requests' or just 'requests', " +
                     "or a path with wildcards like '/{id}/requests'. " +
                     "Path variables like {orgId} are treated as wildcards matching any segment."
         )
         urlPattern: String,
-        @McpDescription("Path to the project root")
-        projectPath: String,
-        @McpDescription(
-            "Optional HTTP method filter: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS. " +
-                    "Leave empty to match all methods."
-        )
+        @McpDescription(PROJECT_PATH_DESCRIPTION)
+        projectPath: String? = null,
+        @McpDescription(HTTP_METHOD_DESCRIPTION)
         httpMethod: String = "",
-    ): String {
-        if (urlPattern.isBlank()) mcpFail("urlPattern must not be empty")
-        val project = getCurrentProject(projectPath) ?: mcpFail("project not found")
-        val normalizedPattern = SpringWebUtil.simplifyUrl(urlPattern)
-        val methodFilter = httpMethod.trim().uppercase().takeIf { it.isNotEmpty() }
-
-        val endpoints = withContext(Dispatchers.IO) {
-            smartReadAction(project) {
-                val allEndpoints = SpringWebEndpointsSearcher.getInstance(project).getAllEndpoints()
-
-                allEndpoints.asSequence()
-                    .filter { matchesUrlPattern(it, normalizedPattern) }
-                    .filter { methodFilter == null || it.requestMethods.isEmpty() || it.requestMethods.any { m -> m.equals(methodFilter, ignoreCase = true) } }
-                    .take(MAX_ENDPOINT_RESULTS)
-                    .map { toEndpointJson(it, project) }
-                    .toList()
-            }
-        }
-
-        return mapper.writeValueAsString(endpoints)
+        @McpDescription(ENDPOINT_OFFSET_DESCRIPTION)
+        offset: Int = 0,
+        @McpDescription("Budget of the whole compact JSON answer, 512..16000, $FIND_PAGE_CHARS by default")
+        maxChars: Int = FIND_PAGE_CHARS,
+        @McpDescription(EXPECTED_REVISION_DESCRIPTION)
+        expectedRevision: String? = null,
+    ): String = lookupEndpoints(
+        "explyt_find_spring_endpoint", urlPattern, projectPath, httpMethod,
+        PageRequest(offset, MAX_ENDPOINT_RESULTS, maxChars, expectedRevision),
+    ) { endpoint, project ->
+        toEndpointJson(endpoint, project)
     }
 
-    private fun matchesUrlPattern(endpoint: EndpointElement, normalizedPattern: String): Boolean {
-        val endpointPath = SpringWebUtil.simplifyUrl(endpoint.path)
-        // Exact/regex match (handles {param} wildcards)
-        if (SpringWebUtil.isEndpointMatches(endpointPath, normalizedPattern)) return true
-        // Substring match for partial URLs
-        if (endpointPath.contains(normalizedPattern)) return true
-        return false
+    /**
+     * The single-URL lookup shared by the find and contract tools.
+     *
+     * The URL is reduced to its request path and read as written first, then under a base path a module's
+     * configuration declares ([DeclaredBasePaths]), then under ever longer leading prefixes no route declares
+     * ([EndpointPathPatterns.readingsOf]); the first reading any route answers is the answer, and the prefix it
+     * dropped is reported rather than hidden - as `basePath` when the configuration declares it,
+     * as `assumedPrefix` when it is a guess. A deployed URL carries its context path, and without
+     * this a real, working URL answered "no such route" - which invites the caller to write a duplicate.
+     *
+     * A URL that matches nothing is not a dead end: `nearestByPrefix` carries the routes sharing
+     * the longest leading path with it, which is where a route that does not exist yet would be added.
+     */
+    private suspend fun lookupEndpoints(
+        toolName: String,
+        urlPattern: String,
+        projectPath: String?,
+        httpMethod: String,
+        page: PageRequest,
+        toJson: (EndpointElement, Project) -> Any,
+    ): String {
+        if (urlPattern.isBlank()) mcpFail("urlPattern must not be empty")
+        val project = getCurrentProject(projectPath) ?: mcpFail(projectProblem(projectPath))
+        val requestPath = EndpointPathPatterns.requestPathOf(urlPattern)
+        val pathReadings = EndpointPathPatterns.readingsOf(requestPath).toList()
+        val methodFilter = McpChoiceArguments.optional(httpMethod, "httpMethod", HTTP_METHODS)
+
+        return withContext(Dispatchers.IO) {
+            smartReadAction(project) {
+                val allEndpoints = SpringWebEndpointsSearcher.getInstance(project).getAllEndpoints()
+                val basePaths = DeclaredBasePaths(allEndpoints)
+                // Lazy: a URL matching as written never pays for reading the modules' configuration.
+                val readings = sequence {
+                    yield(LookupReading(pathReadings.first()))
+                    yieldAll(basePaths.readingsOf(requestPath))
+                    yieldAll(pathReadings.drop(1).map(::LookupReading))
+                }
+
+                // The reading is settled by the path alone: a URL that resolves only for another verb has been found,
+                // and dropping one more segment of it to satisfy the method filter would answer a different URL.
+                val answered = EndpointPathPatterns.preferredReading(
+                    readings,
+                    { reading -> matchesOf(allEndpoints, reading, basePaths) },
+                    { SpringWebUtil.simplifyUrl(it.path) },
+                )
+                val matching = answered?.second.orEmpty().filter { endpoint ->
+                    methodFilter == null || endpoint.requestMethods.isEmpty()
+                            || endpoint.requestMethods.any { it.equals(methodFilter, ignoreCase = true) }
+                }
+
+                // The neighbourhood of a miss is context, not an answer, so the method filter does not apply to
+                // it: a POST sibling under the same prefix still names the controller a new GET route belongs to.
+                val nearest = if (matching.isEmpty()) {
+                    nearestByPrefix(allEndpoints, answered?.first?.let(::listOf) ?: readings.toList(), basePaths, project)
+                } else {
+                    null
+                }
+                val settled = answered?.first ?: nearest?.reading
+
+                val envelope = mapper.createObjectNode()
+                    .put(FIELD_BASE_PATH, settled?.basePath)
+                    .put(FIELD_ASSUMED_PREFIX, settled?.pathReading?.assumedPrefix)
+                    .put(FIELD_SHARED_PREFIX, nearest?.sharedPrefix)
+                EndpointPageWriter(project).write(
+                    envelope = envelope,
+                    endpoints = matching,
+                    toJson = { toJson(it, project) },
+                    query = mapOf(
+                        "tool" to toolName,
+                        "urlPattern" to urlPattern.trim(),
+                        "httpMethod" to methodFilter?.uppercase(),
+                    ),
+                    page = page,
+                    nearestByPrefix = nearest?.routes.orEmpty(),
+                )
+            }
+        }
+    }
+
+    /**
+     * The endpoints answering [reading], closest match first, those declared in test sources after every other.
+     *
+     * Matches are ordered by how closely they answer the path ([matchRank]) and then by
+     * [EndpointPathPatterns.SPECIFICITY], so when a literal route and a `{template}` route both match, the first
+     * element is the one Spring dispatches to. Handlers sharing one path keep no dispatch order: Spring chooses among
+     * them by the request's media types, which [CompactEndpointJson.consumes] and [CompactEndpointJson.produces] show.
+     */
+    private fun matchesOf(
+        endpoints: List<EndpointElement>,
+        reading: LookupReading,
+        basePaths: DeclaredBasePaths,
+    ): List<EndpointElement> =
+        endpoints.asSequence()
+            .onEach { ProgressManager.checkCanceled() }
+            .map { it to SpringWebUtil.simplifyUrl(it.path) }
+            .filter { (endpoint, path) -> admits(reading, endpoint, path, basePaths) }
+            .mapNotNull { (endpoint, path) ->
+                matchRank(path, reading)?.let { RankedEndpoint(endpoint, path, it, declaredInTests(endpoint)) }
+            }
+            .sortedWith(
+                compareBy<RankedEndpoint> { it.inTestSources }
+                    .thenBy { it.rank }
+                    .thenBy(EndpointPathPatterns.SPECIFICITY) { it.path }
+            )
+            .map { it.endpoint }
+            .toList()
+
+    private data class RankedEndpoint(
+        val endpoint: EndpointElement,
+        val path: String,
+        val rank: Int,
+        val inTestSources: Boolean,
+    )
+
+    /**
+     * Whether [endpoint] belongs to test code: decided by the controller serving it, not by the method declaring
+     * the mapping - a test-source probe inheriting a production base class's `@GetMapping` is still test code.
+     */
+    private fun declaredInTests(endpoint: EndpointElement): Boolean =
+        ProjectSources.declaresInTests(endpoint.containingClass ?: endpoint.psiElement) ||
+                endpoint.application?.let(ProjectSources::declaresInTests) == true
+
+    /**
+     * One way a request path meets the routes: as written, under a [basePath] a module's configuration declares, or
+     * under a guessed prefix no route declares ([PathReading.assumedPrefix]).
+     */
+    private data class LookupReading(val pathReading: PathReading, val basePath: String? = null) {
+        val path: String get() = pathReading.path
+        val isAsWritten: Boolean get() = basePath == null && pathReading.assumedPrefix == null
+    }
+
+    /**
+     * Whether the route at [route] may answer [reading]: under a declared base path only a route of a module that
+     * declares that very base path does - another application does not serve under it, and matching its routes
+     * would report a fact about the wrong module. A guessed prefix keeps the rule of [PathReading.admits].
+     */
+    private fun admits(
+        reading: LookupReading,
+        endpoint: EndpointElement,
+        route: String,
+        basePaths: DeclaredBasePaths,
+    ): Boolean =
+        if (reading.basePath != null) basePaths.of(endpoint) == reading.basePath
+        else reading.pathReading.admits(route)
+
+    /**
+     * The base path each module's configuration declares ([ApplicationBasePath]), read at most once per module and
+     * per lookup: reading it scans the module's configuration files.
+     */
+    private class DeclaredBasePaths(private val endpoints: List<EndpointElement>) {
+
+        private val byModule = HashMap<Module, String>()
+        private val byEndpoint: Map<EndpointElement, String> by lazy {
+            endpoints.mapNotNull { endpoint -> declaredFor(endpoint)?.let { endpoint to it } }
+                .toMap(IdentityHashMap())
+        }
+
+        fun of(endpoint: EndpointElement): String? = byEndpoint[endpoint]
+
+        /**
+         * The readings of [requestPath] under each declared base path it opens with at a segment boundary, the
+         * longest base path first: `/t/api/items` under `/t/api` before `/t`.
+         */
+        fun readingsOf(requestPath: String): List<LookupReading> =
+            byEndpoint.values.distinct()
+                .filter { requestPath == it || requestPath.startsWith("$it/") }
+                .sortedByDescending { it.length }
+                .map { basePath ->
+                    val rest = requestPath.removePrefix(basePath).ifEmpty { "/" }
+                    LookupReading(PathReading(assumedPrefix = null, path = rest), basePath)
+                }
+
+        private fun declaredFor(endpoint: EndpointElement): String? {
+            val module = moduleOf(endpoint) ?: return null
+            return byModule.getOrPut(module) { ApplicationBasePath.of(module).orEmpty() }.ifEmpty { null }
+        }
+
+        /**
+         * The module an endpoint is served by. A built-in Actuator endpoint is declared in a jar, where
+         * `findModuleForPsiElement` answers `null` for anything but a file, so its file is asked instead. That names one
+         * of the modules the library is attached to - the first in dependency order - and the endpoint is read under
+         * that module's base path; in a project whose applications share the jar but declare different base paths, the
+         * others are not tried.
+         */
+        private fun moduleOf(endpoint: EndpointElement): Module? =
+            ModuleUtilCore.findModuleForPsiElement(endpoint.psiElement)
+                ?: endpoint.psiElement.containingFile?.originalFile?.let { ModuleUtilCore.findModuleForPsiElement(it) }
+    }
+
+    /**
+     * The routes around a URL no route answers, read the way that shares the longest leading path with them.
+     *
+     * Each reading is scored by its longest shared path, and the reading dropping the fewest segments wins a tie:
+     * a context path the caller included would otherwise leave the neighbourhood empty, because no route opens
+     * with it. Nothing is returned when no reading shares a segment: every route in the project "shares" the root,
+     * and listing all of them would say nothing about where the URL belongs.
+     *
+     * The shared path is spelled the way the most specific production neighbour declares it: the URL of a request carries values
+     * where a route has `{templates}`, and echoing `/api/short-links/15a4a137` would read as if a route with that
+     * literal id existed.
+     */
+    private fun nearestByPrefix(
+        endpoints: List<EndpointElement>,
+        readings: List<LookupReading>,
+        basePaths: DeclaredBasePaths,
+        project: Project,
+    ): Neighbourhood? {
+        val (reading, sharedSegments, nearest) = readings.asSequence()
+            .mapNotNull { reading ->
+                endpoints
+                    .filter { admits(reading, it, SpringWebUtil.simplifyUrl(it.path), basePaths) }
+                    .groupBy { EndpointPathPatterns.sharedLeadingSegments(SpringWebUtil.simplifyUrl(it.path), reading.path) }
+                    .maxByOrNull { it.key }
+                    ?.takeIf { it.key > 0 }
+                    ?.let { Triple(reading, it.key, it.value) }
+            }
+            .maxByOrNull { it.second }
+            ?: return null
+
+        val bySpecificity = nearest.sortedWith(compareBy(EndpointPathPatterns.SPECIFICITY) { SpringWebUtil.simplifyUrl(it.path) })
+        val (inTests, production) = bySpecificity.partition(::declaredInTests)
+        val ordered = production + inTests
+        val compact = ordered
+            .take(MAX_NEAREST_ROUTES)
+            .onEach { ProgressManager.checkCanceled() }
+            .map { toCompactEndpointJson(it, project) }
+        val sharedPrefix = EndpointPathPatterns.prefixOf(SpringWebUtil.simplifyUrl(ordered.first().path), sharedSegments)
+        return Neighbourhood(reading, sharedPrefix, compact)
+    }
+
+    private data class Neighbourhood(
+        val reading: LookupReading,
+        val sharedPrefix: String,
+        val routes: List<CompactEndpointJson>,
+    )
+
+    /**
+     * How closely a route at [endpointPath] answers [reading], lowest first, or `null` when it does not answer it.
+     *
+     * Matching is deliberately forgiving - a bare `items` finds `/api/demo/items` - so a long unrelated path that
+     * merely contains the pattern matches too. Ordering those by path specificity alone puts such a path *above*
+     * the route matching the pattern exactly, because specificity breaks ties by descending length. The caller
+     * reads its answer off the first element, so how well an endpoint fits the query has to outrank how Spring
+     * would dispatch between the endpoints that fit it equally well.
+     *
+     * The substring match finds a route from a fragment the caller wrote. Under a base path or an assumed prefix the
+     * rest of the URL is what the application routes on, not a fragment, so only a route matching it whole counts.
+     */
+    private fun matchRank(endpointPath: String, reading: LookupReading): Int? = when {
+        endpointPath == reading.path -> EXACT_MATCH
+        SpringWebUtil.isEndpointMatches(endpointPath, reading.path) -> PATTERN_MATCH
+        reading.isAsWritten && endpointPath.contains(reading.path) -> SUBSTRING_MATCH
+        else -> null
+    }
+
+    private fun toCompactEndpointJson(endpoint: EndpointElement, project: Project): CompactEndpointJson {
+        val declaringMethod = declaringMethodOf(endpoint)
+        val controllerClass = endpoint.containingClass ?: declaringMethod?.containingClass
+        val position = sourcePositionOf(endpoint.psiElement, project)
+        // A loader may know the declaring file of an endpoint whose element has no source position of its own.
+        val location = position.location.takeIf { it != McpSourceLocation.UNKNOWN }
+            ?: endpoint.containingFile?.let { McpSourceLocation.of(it, project) }
+            ?: McpSourceLocation.UNKNOWN
+        val mediaTypes = mediaTypesOf(
+            requestHandlerOf(endpoint)?.toUElement() as? UMethod,
+            ModuleUtilCore.findModuleForPsiElement(endpoint.psiElement),
+            project,
+        )
+
+        return CompactEndpointJson(
+            httpMethods = McpHttpMethods.listed(endpoint.requestMethods),
+            fullPath = endpoint.path,
+            pathTemplate = endpoint.pathTemplate.takeIf { it != endpoint.path },
+            controllerClass = controllerClass?.qualifiedName,
+            methodName = declaringMethod?.name,
+            filePath = location.filePath,
+            library = location.library,
+            line = position.line,
+            endpointType = endpoint.type.readable,
+            consumes = mediaTypes.consumes,
+            produces = (endpoint.produces + mediaTypes.produces).distinct(),
+            producesSource = endpoint.producesSource?.name,
+            exposed = endpoint.exposure?.name,
+            access = endpoint.access?.name,
+            beanCondition = endpoint.beanCondition?.toBeanConditionJson(),
+            testSource = declaredInTests(endpoint).takeIf { it },
+            application = endpoint.application?.qualifiedName,
+        )
     }
 
     private fun toEndpointJson(endpoint: EndpointElement, project: Project): EndpointJson {
-        val psiMethod = endpoint.psiElement as? PsiMethod
-        val controllerClass = endpoint.containingClass ?: psiMethod?.containingClass
-        val position = sourcePositionOf(endpoint.psiElement, project)
-        // A loader may know the declaring file of an endpoint whose element has no source position of its own.
-        val filePath = position.filePath
-            ?: endpoint.containingFile?.let { relativePathOf(it, project) }
-
-        val parameters = if (psiMethod != null) extractParameters(psiMethod) else emptyList()
-        val returnType = psiMethod?.returnType?.canonicalText
+        val handler = requestHandlerOf(endpoint)
+        val core = toCompactEndpointJson(endpoint, project)
 
         return EndpointJson(
-            httpMethods = endpoint.requestMethods.ifEmpty { listOf("ALL") },
-            fullPath = endpoint.path,
-            controllerClass = controllerClass?.qualifiedName,
-            methodName = psiMethod?.name,
-            filePath = filePath,
-            line = position.line,
-            parameters = parameters,
-            returnType = returnType,
-            endpointType = endpoint.type.readable,
+            httpMethods = core.httpMethods,
+            fullPath = core.fullPath,
+            pathTemplate = core.pathTemplate,
+            controllerClass = core.controllerClass,
+            methodName = core.methodName,
+            filePath = core.filePath,
+            library = core.library,
+            line = core.line,
+            parameters = parametersOf(endpoint, handler),
+            returnType = handler?.let(HandlerSignature::declaredReturnType)?.canonicalText,
+            endpointType = core.endpointType,
+            consumes = core.consumes,
+            produces = core.produces,
+            producesSource = core.producesSource,
+            exposed = core.exposed,
+            access = core.access,
+            beanCondition = core.beanCondition,
+            testSource = core.testSource,
+            application = core.application,
         )
     }
+
+    private fun parametersOf(endpoint: EndpointElement, handler: PsiMethod?): List<EndpointParameterJson> = when {
+        handler == null -> pathTemplateParameters(endpoint.path)
+        endpoint.type == EndpointType.ACTUATOR && isActuatorOperation(handler) -> actuatorOperationParameters(handler)
+        else -> extractParameters(handler)
+    }
+
+    private fun isActuatorOperation(method: PsiMethod): Boolean =
+        ACTUATOR_OPERATION_SOURCES.keys.any { method.isMetaAnnotatedBy(it) }
+
+    /**
+     * The parameters of an Actuator operation, bound the way Boot's web operation mapping binds them: a `@Selector`
+     * is a path segment, the arguments of a `@WriteOperation` are fields of the JSON request body, and those of a read
+     * or delete operation are query parameters. A parameter Boot supplies itself - the security context, the server
+     * namespace, a producible media type, the API version - is not part of the request.
+     *
+     * An argument is mandatory unless it is nullable, which is Boot's `OperationMethodParameter.isMandatory`.
+     */
+    private fun actuatorOperationParameters(method: PsiMethod): List<EndpointParameterJson> {
+        val argumentSource = ACTUATOR_OPERATION_SOURCES.entries.first { method.isMetaAnnotatedBy(it.key) }.value
+        return method.parameterList.parameters.map { param ->
+            val source = when {
+                param.isMetaAnnotatedBy(SpringCoreClasses.ACTUATOR_SELECTOR) -> "PATH"
+                ACTUATOR_SUPPLIED_TYPES.any { InheritanceUtil.isInheritor(param.type, it) } -> "FRAMEWORK"
+                else -> argumentSource
+            }
+            val required = if (source == "FRAMEWORK") null else !isNullableArgument(param)
+            EndpointParameterJson(param.name, source, param.type.canonicalText, required)
+        }
+    }
+
+    /**
+     * Boot 4 reads nullness through `Nullness.forParameter`, which also sees JSpecify's type-use `@Nullable` - the one
+     * its own operations use, carried on the parameter's type rather than on its modifier list.
+     */
+    private fun isNullableArgument(param: PsiParameter): Boolean =
+        with(SpringWebUtil) { param.acceptsMissingValue() } ||
+                param.type.annotations.any { it.qualifiedName?.substringAfterLast('.') == NULLABLE_SIMPLE_NAME }
+
+    /**
+     * The method whose declaration carries [endpoint], handler or not.
+     *
+     * A functional route is a call inside a `@Bean` factory rather than a member of its own, so the element the
+     * loader reports is an expression. Naming the enclosing factory is what makes such a route reachable: its path
+     * appears nowhere else in the project, and without the method a caller is left with a file and a line.
+     */
+    private fun declaringMethodOf(endpoint: EndpointElement): PsiMethod? =
+        endpoint.psiElement as? PsiMethod
+            ?: endpoint.psiElement.toUElement()?.getParentOfType<UMethod>()?.javaPsi
+
+    /**
+     * The method Spring invokes for [endpoint], or `null` when the endpoint has none to read a signature from.
+     *
+     * A functional route is registered by a `@Bean` factory returning a `RouterFunction`, and that factory's
+     * signature describes the *registration*: reading parameters off it reports the injected handler bean as a
+     * request parameter and `RouterFunction<ServerResponse>` as the response type. Both are invented facts about
+     * the wire format, and a caller generating a client cannot tell them from real ones - the reason this is
+     * rejected rather than reported with a caveat.
+     */
+    private fun requestHandlerOf(endpoint: EndpointElement): PsiMethod? =
+        (endpoint.psiElement as? PsiMethod)?.takeUnless { it.returnType.isRouteRegistration() }
+
+    private fun PsiType?.isRouteRegistration(): Boolean =
+        this != null && ROUTE_FUNCTION_TYPES.any { isInheritorOf(it) }
+
+    /**
+     * The parameters the URL template itself declares, for an endpoint with no handler signature to read.
+     *
+     * The type is the wire type of a path segment rather than a target type: nothing has been found that converts
+     * it, so naming anything narrower than `String` would state more than is known.
+     */
+    private fun pathTemplateParameters(path: String): List<EndpointParameterJson> =
+        SpringWebUtil.NameInBracketsRx.findAll(path)
+            .mapNotNull { it.groups[TEMPLATE_NAME_GROUP]?.value?.substringBefore(':')?.takeIf(String::isNotBlank) }
+            .distinct()
+            .map { EndpointParameterJson(it, "PATH", CommonClassNames.JAVA_LANG_STRING, required = true) }
+            .toList()
 
     private fun extractParameters(psiMethod: PsiMethod): List<EndpointParameterJson> {
         val result = mutableListOf<EndpointParameterJson>()
 
         for (info in SpringWebUtil.collectPathVariables(psiMethod)) {
-            result += EndpointParameterJson(info.name, "PATH", info.typeFqn, info.isRequired)
+            result += EndpointParameterJson(info.name, "PATH", declaredTypeOf(info), info.isRequired)
         }
+        val multipartRequestNames = HandlerSignature.requestParameters(psiMethod).asSequence()
+            .filter { inherited(it, SpringWebClasses.REQUEST_PARAM) != null && isMultipartPart(it.type) }
+            .map(::wireNameOf)
+            .toSet()
+        val stack = webStackOf(psiMethod)
+        val servletApplication = stack == WebApplicationStack.SERVLET
         for (info in SpringWebUtil.collectRequestParameters(psiMethod)) {
-            result += EndpointParameterJson(info.name, "QUERY", info.typeFqn, info.isRequired, info.defaultValue)
+            val source = if (servletApplication && info.name in multipartRequestNames) "PART" else "QUERY"
+            result += EndpointParameterJson(info.name, source, declaredTypeOf(info), info.isRequired, info.defaultValue)
+        }
+        for (param in HandlerSignature.requestParameters(psiMethod)) {
+            val part = inherited(param, SpringWebClasses.REQUEST_PART) ?: continue
+            result += EndpointParameterJson(
+                name = wireNameOf(param),
+                source = "PART",
+                type = param.type.canonicalText,
+                required = part.getBooleanAttribute("required") ?: true,
+            )
         }
         val body = SpringWebUtil.getRequestBodyInfo(psiMethod)
         if (body != null) {
-            result += EndpointParameterJson(body.name, "BODY", body.typeFqn, body.isRequired)
+            result += EndpointParameterJson(body.name, "BODY", declaredTypeOf(body), body.isRequired)
         }
         for (info in SpringWebUtil.collectRequestHeaders(psiMethod)) {
-            result += EndpointParameterJson(info.name, "HEADER", info.typeFqn, info.isRequired, info.defaultValue)
+            result += EndpointParameterJson(
+                info.name, "HEADER", declaredTypeOf(info), info.isRequired, info.defaultValue
+            )
         }
 
+        result += parametersOutsideCollectors(psiMethod, stack)
         return result
+    }
+
+    /**
+     * The type the handler declares. The collectors box a primitive for the OpenAPI and HTTP-client consumers, which
+     * need a reference type, but `int` and `java.lang.Integer` differ for a client: only the latter may be absent.
+     */
+    private fun declaredTypeOf(info: SpringWebUtil.PathArgumentInfo): String {
+        val parameter = info.psiElement as? PsiParameter
+            ?: info.psiElement.toUElement()?.getParentOfType(UParameter::class.java, false)?.javaPsi as? PsiParameter
+        val type = parameter?.type
+        return if (type is PsiPrimitiveType) type.canonicalText else info.typeFqn
+    }
+
+    private fun webStackOf(psiMethod: PsiMethod): WebApplicationStack? {
+        val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return null
+        return WebApplicationStack.of(module)
+    }
+
+    private fun isMultipartPart(type: PsiType): Boolean = when (type) {
+        is PsiArrayType -> isMultipartPart(type.componentType)
+        is PsiClassType -> {
+            val className = type.resolve()?.qualifiedName ?: type.canonicalText
+            className in MULTIPART_PART_TYPES ||
+                    InheritanceUtil.isInheritor(type, "java.util.Collection")
+                    && type.parameters.any(::isMultipartPart)
+        }
+        else -> false
+    }
+
+    /**
+     * The handler parameters none of the annotation collectors claims.
+     *
+     * Enumerating only annotated parameters drops everything bound by a `HandlerMethodArgumentResolver`, and a
+     * dropped parameter is indistinguishable from one that was never declared. That is the dangerous half: a
+     * `currentUser` argument absent from the output can mean either "the endpoint authenticates its caller" or
+     * "the endpoint has no authorization at all", and those have opposite meanings for anyone reading the
+     * contract to audit it. Reporting the parameter - with Spring's default source, or `UNKNOWN` when even that
+     * cannot be told - says "there is an argument here", which is actionable; silence is not.
+     */
+    private fun parametersOutsideCollectors(
+        psiMethod: PsiMethod,
+        stack: WebApplicationStack?,
+    ): List<EndpointParameterJson> =
+        HandlerSignature.requestParameters(psiMethod)
+            .filter { param ->
+                COLLECTED_BINDING_ANNOTATIONS.none { binding ->
+                    HandlerMethods.annotatedParameter(param) { it.isMetaAnnotatedBy(binding) } != null
+                }
+            }
+            .map { param ->
+                EndpointParameterJson(
+                    name = wireNameOf(param),
+                    source = sourceOfUncollected(param, stack),
+                    type = param.type.canonicalText,
+                    // Not null-by-omission: the collected annotations declare requiredness, whereas a
+                    // resolver's contract is private to the resolver. Defaulting to `true` or `false` here would
+                    // invent a fact about the wire format, which is the failure this method exists to avoid.
+                    required = null,
+                )
+            }
+
+    /**
+     * The name the client sends, which is not always the Java name: `@CookieValue("sid") String sessionId` is
+     * `sid` on the wire. The collectors above already report the annotation's name, so reporting the
+     * declared identifier here instead would make one parameter list speak two different vocabularies — and the
+     * wire name is the one a generated client or a test fixture has to use.
+     *
+     * Falls back to the declared name, which is also Spring's own rule when the annotation names nothing.
+     */
+    private fun inherited(param: PsiParameter, annotationFqn: String): PsiAnnotation? =
+        HandlerMethods.bindingAnnotationOf(param) { it.isMetaAnnotatedByOrSelf(annotationFqn) }
+
+    private fun wireNameOf(param: PsiParameter): String {
+        val annotation = NAMED_BINDING_ANNOTATIONS.firstNotNullOfOrNull { inherited(param, it) } ?: return param.name
+        return annotation.getStringAttribute("value")
+            ?: annotation.getStringAttribute(ATTR_NAME)
+            ?: param.name
+    }
+
+    private fun sourceOfUncollected(param: PsiParameter, stack: WebApplicationStack?): String {
+        val annotated = HandlerMethods.bindingAnnotationOf(param) { it.isRuntimeParameterAnnotation() } != null
+        val frameworkSource = FrameworkArguments.sourceOf(param.type, stack, annotated)
+        return when {
+            inherited(param, SpringWebClasses.COOKIE_VALUE) != null -> "COOKIE"
+            inherited(param, SpringWebClasses.MODEL_ATTRIBUTE) != null -> "MODEL"
+            frameworkSource != null -> frameworkSource.name
+            HandlerMethods.bindingAnnotationOf(param) { !isBindingNeutral(it) } != null -> "UNKNOWN"
+            else -> defaultSourceOf(param.type, stack == WebApplicationStack.SERVLET)
+        }
+    }
+
+    /**
+     * Where Spring's catch-all resolvers put a parameter no annotation claims - the tail of the resolver chain of
+     * both servlet MVC and WebFlux: `RequestParamMethodArgumentResolver(useDefaultResolution = true)` for a simple
+     * type, then the model-attribute resolver (`annotationNotRequired = true`) for any other.
+     *
+     * The types Spring claims ahead of that tail without an annotation keep their own source: a multipart part is a
+     * request part on servlet MVC, and `HttpEntity`, `Pageable` and `Sort` stay
+     * `UNKNOWN` because their resolvers read a wire format of their own. A type that does not resolve stays
+     * `UNKNOWN` too: whether it is simple is the question that cannot be answered.
+     */
+    private fun defaultSourceOf(type: PsiType, servletApplication: Boolean): String {
+        val value = optionalValueOf(type)
+        return when {
+            !isResolved(value) -> "UNKNOWN"
+            OWN_WIRE_FORMAT_TYPES.any { InheritanceUtil.isInheritor(value, it) } -> "UNKNOWN"
+            isMultipartPart(value) -> if (servletApplication) "PART" else "UNKNOWN"
+            SpringSimpleValueTypes.isSimpleProperty(value) -> "QUERY"
+            else -> "MODEL"
+        }
+    }
+
+    /** `Optional<T>` is read as `T`, as `MethodParameter.nestedIfOptional` does for a request parameter. */
+    private fun optionalValueOf(type: PsiType): PsiType {
+        val classType = type as? PsiClassType ?: return type
+        if (classType.resolve()?.qualifiedName != CommonClassNames.JAVA_UTIL_OPTIONAL) return type
+        return classType.parameters.singleOrNull() ?: type
+    }
+
+    private fun isResolved(type: PsiType): Boolean = when (type) {
+        is PsiArrayType -> isResolved(type.componentType)
+        is PsiClassType -> type.resolve() != null
+        else -> true
+    }
+
+    /**
+     * An annotation that leaves the parameter to Spring's default binding: validation, formatting and nullability
+     * annotations do not claim a parameter. Any other one may be the key of a custom argument resolver.
+     */
+    private fun isBindingNeutral(annotation: PsiAnnotation): Boolean {
+        val qualifiedName = annotation.qualifiedName ?: return false
+        return BINDING_NEUTRAL_ANNOTATION_PACKAGES.any { qualifiedName.startsWith(it) } ||
+                qualifiedName.substringAfterLast('.') in BINDING_NEUTRAL_ANNOTATION_NAMES
     }
 
     // ---- explyt_get_spring_http_endpoints ----
 
     @McpTool("explyt_get_spring_http_endpoints")
     @McpDescription(
-        description = "Lists all HTTP endpoints in the project. " +
-                "Covers Spring MVC, WebFlux, JAX-RS, HttpExchange, OpenFeign, and Spring Boot actuator endpoints. " +
-                "Returns an object: 'endpoints' is the array (each entry has the HTTP method, full path, " +
-                "controller class, method name, return type, file path, line number, and endpoint type), " +
-                "'totalCount' is how many endpoints matched the filters, 'offset' is the index the returned page " +
-                "starts at, and 'truncated' is true when more matches remain after this page. " +
-                "When 'truncated' is true, either narrow the result with the controller or endpoint-type filters, " +
-                "or request the next page with 'offset' = 'offset' + number of returned endpoints. " +
-                "Use optional filters to narrow results by controller class name or endpoint type."
+        description = "Lists the HTTP endpoints of one controller (controllerFilter) or of the whole project. " +
+                "Call before extending an existing controller: the listing shows its class-level prefix, its sibling " +
+                "routes and the parameter conventions a new route must match, and a literal route that would " +
+                "compete with a '{template}' sibling. " +
+                "Call with compact=true for a first inventory of an API surface you do not know yet. " +
+                "Covers Spring MVC, WebFlux, JAX-RS, HttpExchange, OpenFeign and Actuator: the project's own " +
+                "@Endpoint classes and, when Spring Boot's endpoint auto-configuration is on the classpath, the " +
+                "built-in ones (health, info, metrics...). An Actuator endpoint carries 'exposed': EXPOSED or " +
+                "NOT_EXPOSED as management.endpoints.web.exposure.include/exclude decide it (by default only " +
+                "health), UNKNOWN when a value cannot be read from the configuration files. Nothing is hidden: a " +
+                "profile or an environment variable can change exposure at run time. Each Actuator operation also " +
+                "carries 'access' (UNRESTRICTED, READ_ONLY, NONE, UNKNOWN), a gate independent of exposure: an " +
+                "exposed operation with NONE answers 404. Other endpoints have no 'exposed' or 'access' key. " +
+                BEAN_CONDITION_DESCRIPTION +
+                "Returns an object with 'totalCount' (how many endpoints matched the filters), 'offset' (the index " +
+                "the returned page starts at), 'truncated' (true when more matches remain after this page), and " +
+                "'endpoints'. One endpoint looks exactly like this - note 'httpMethods' is an array, and the keys " +
+                "are 'fullPath' and 'line', not 'path' or 'lineNumber': " +
+                "{\"httpMethods\":[\"GET\"],\"fullPath\":\"/api/demo/items/{id}\"," +
+                "\"controllerClass\":\"com.example.app.web.DemoController\",\"methodName\":\"getItem\"," +
+                "\"filePath\":\"src/main/java/com/example/app/web/DemoController.java\",\"line\":40," +
+                "\"parameters\":[{\"name\":\"id\",\"source\":\"PATH\",\"type\":\"java.lang.Long\"," +
+                "\"required\":true,\"defaultValue\":null}],\"returnType\":\"com.example.app.dto.DemoDto\"," +
+                "\"endpointType\":\"Spring MVC\"}. " +
+                ALL_HTTP_METHODS_DESCRIPTION +
+                "'consumes' and 'produces' are present only when the mapping declares media types: two handlers " +
+                "sharing a path and a verb are told apart by them, not by their order. An Actuator operation " +
+                "lists the media types Boot answers with and carries 'producesSource': DECLARED, NONE for a void " +
+                "operation, RESOURCE, BOOT_DEFAULT, or CUSTOM_ENDPOINT_MEDIA_TYPES when the application declares " +
+                "its own EndpointMediaTypes bean, whose types are not read. " +
+                "'fullPath' has configuration placeholders resolved; an endpoint declared with one, such as " +
+                "'\${app.path:/l}/{code}', also carries 'pathTemplate' with mapping prefixes and values joined and " +
+                "normalised before configuration placeholders are resolved; it equals 'path' when nothing was " +
+                "resolved. 'filePath' is project-relative; an endpoint declared in a jar, such as a " +
+                "built-in Actuator one, has a null 'filePath' and names the jar in 'library' instead, a key absent " +
+                "for a project endpoint - no answer carries a path of the machine. " +
+                "Pass compact=true to omit 'parameters' and 'returnType' entirely - they dominate the response, " +
+                "and on a large project the full form can exceed 100 KB on a single line. " +
+                "Returns {status, revision, totalCount, offset, truncated, nextOffset, endpoints}. A page holds at " +
+                "most 'limit' endpoints within 'maxChars' of compact JSON ($LIST_PAGE_CHARS by default) and can " +
+                "end earlier, because the budget is measured on the finished document. When 'truncated' is true, " +
+                "either narrow the result with the controller or endpoint-type filters, or repeat the call with " +
+                "'offset' = 'nextOffset' and 'expectedRevision' = 'revision' to continue the same answer; " +
+                "'nextOffset' is null on the last page, and another filter, another 'compact' or an edited project " +
+                "answers RESULT_CHANGED. One endpoint larger than 'maxChars' answers RESPONSE_TOO_LARGE naming the " +
+                "maxChars that fetches it. Endpoints come in a stable order, so pages never overlap: production " +
+                "before test sources, then by controller class, file and declaration position, path and HTTP " +
+                "methods, then application. An endpoint declared in a test source root carries 'testSource': true and " +
+                "lands on the last pages; the key is absent otherwise. " +
+                ACTUATOR_APPLICATION_DESCRIPTION
     )
     suspend fun getHttpEndpoints(
-        @McpDescription("Path to the project root")
-        projectPath: String,
+        @McpDescription(PROJECT_PATH_DESCRIPTION)
+        projectPath: String? = null,
         @McpDescription("Optional substring filter on controller class name (e.g. 'Coverage'). Leave empty for all.")
         controllerFilter: String = "",
         @McpDescription(
-            "Optional endpoint type filter. Possible values: SPRING_MVC, SPRING_WEBFLUX, SPRING_JAX_RS, " +
-                    "SPRING_HTTP_EXCHANGE, SPRING_OPEN_FEIGN, SPRING_BOOT, OPENAPI. Leave empty for all."
+            "Optional endpoint type filter, case-insensitive. Possible values: SPRING_MVC, SPRING_WEBFLUX, " +
+                    "SPRING_JAX_RS, SPRING_HTTP_EXCHANGE, SPRING_OPEN_FEIGN, ACTUATOR. Leave empty for all. " +
+                    "Any other value is rejected with the list of valid values."
         )
         endpointType: String = "",
-        @McpDescription("Index of the first endpoint to return, for paging through large projects. Defaults to 0.")
+        @McpDescription(ENDPOINT_OFFSET_DESCRIPTION)
         offset: Int = 0,
         @McpDescription(
             "Maximum number of endpoints to return. Defaults to $DEFAULT_ENDPOINT_PAGE_SIZE, " +
                     "capped at $MAX_ENDPOINT_LIST_RESULTS."
         )
         limit: Int = DEFAULT_ENDPOINT_PAGE_SIZE,
+        @McpDescription(
+            "Omit 'parameters' and 'returnType' from each endpoint. Use this for a first inventory of a project " +
+                    "you do not know yet: those two fields dominate the response, and the controller/type " +
+                    "filters cannot narrow it before you know which controllers exist. Defaults to false."
+        )
+        compact: Boolean = false,
+        @McpDescription("Budget of the whole compact JSON answer, 512..16000, $LIST_PAGE_CHARS by default")
+        maxChars: Int? = null,
+        @McpDescription(LISTING_REVISION_DESCRIPTION)
+        expectedRevision: String? = null,
     ): String {
-        val project = getCurrentProject(projectPath) ?: mcpFail("project not found")
+        val project = getCurrentProject(projectPath) ?: mcpFail(projectProblem(projectPath))
         val controllerSubstring = controllerFilter.trim().takeIf { it.isNotEmpty() }
-        val typeFilter = endpointType.trim().uppercase().takeIf { it.isNotEmpty() }
-        val pageStart = offset.coerceAtLeast(0)
-        val pageSize = limit.coerceIn(1, MAX_ENDPOINT_LIST_RESULTS)
+        val typeFilter = McpChoiceArguments.optional(endpointType, "endpointType", WEB_ENDPOINT_TYPES)
+        val page = PageRequest(
+            offset = offset.coerceAtLeast(0),
+            limit = limit.coerceIn(1, MAX_ENDPOINT_LIST_RESULTS),
+            maxChars = maxChars ?: LIST_PAGE_CHARS,
+            expectedRevision = expectedRevision,
+            maxLimit = MAX_ENDPOINT_LIST_RESULTS,
+            revisionRequired = false,
+        )
 
-        val result = withContext(Dispatchers.IO) {
+        return withContext(Dispatchers.IO) {
             smartReadAction(project) {
-                val matching = SpringWebEndpointsSearcher.getInstance(project).getAllEndpoints().asSequence()
+                val listed = SpringWebEndpointsSearcher.getInstance(project).getAllEndpoints().asSequence()
                     .filter { it.type.isWeb }
                     .filter { typeFilter == null || it.type.name.equals(typeFilter, ignoreCase = true) }
                     .filter {
@@ -286,204 +1114,532 @@ class SpringBootApplicationMcpToolset : McpToolset {
                         }
                     }
                     .toList()
+                val matching = listed
+                    .map(::listedOf)
+                    .sortedWith(ListedEndpoint.ORDER)
+                    .map { it.endpoint }
 
-                // Convert only the requested page: building an EndpointJson resolves PSI (module, line number,
-                // parameters), which is far too expensive to do for every endpoint of a large project.
-                val endpoints = matching.asSequence()
-                    .drop(pageStart)
-                    .take(pageSize)
-                    .map {
-                        ProgressManager.checkCanceled()
-                        toEndpointJson(it, project)
-                    }
-                    .toList()
-
-                EndpointListJson(
-                    totalCount = matching.size,
-                    offset = pageStart,
-                    truncated = pageStart + endpoints.size < matching.size,
-                    endpoints = endpoints,
+                EndpointPageWriter(project).write(
+                    envelope = mapper.createObjectNode(),
+                    endpoints = matching,
+                    toJson = { if (compact) toCompactEndpointJson(it, project) else toEndpointJson(it, project) },
+                    query = mapOf(
+                        "tool" to "explyt_get_spring_http_endpoints",
+                        "controllerFilter" to controllerSubstring,
+                        "endpointType" to typeFilter?.uppercase(),
+                        "compact" to compact.toString(),
+                    ),
+                    page = page,
                 )
             }
         }
+    }
 
-        return mapper.writeValueAsString(result)
+    private fun listedOf(endpoint: EndpointElement) = ListedEndpoint(
+        endpoint = endpoint,
+        inTestSources = declaredInTests(endpoint),
+        controllerClass = (endpoint.containingClass ?: declaringMethodOf(endpoint)?.containingClass)
+            ?.qualifiedName.orEmpty(),
+        filePath = (endpoint.psiElement.containingFile ?: endpoint.containingFile)?.virtualFile?.path.orEmpty(),
+        declarationOffset = endpoint.psiElement.textOffset,
+        application = endpoint.application?.qualifiedName.orEmpty(),
+    )
+
+    private data class ListedEndpoint(
+        val endpoint: EndpointElement,
+        val inTestSources: Boolean,
+        val controllerClass: String,
+        val filePath: String,
+        val declarationOffset: Int,
+        val application: String,
+    ) {
+        companion object {
+            val ORDER: Comparator<ListedEndpoint> = compareBy(
+                { it.inTestSources },
+                { it.controllerClass },
+                { it.filePath },
+                { it.declarationOffset },
+                { it.endpoint.path },
+                { it.endpoint.requestMethods.joinToString(",") },
+                { it.application },
+            )
+        }
     }
 
     // ---- explyt_get_spring_endpoint_contract ----
 
     @McpTool("explyt_get_spring_endpoint_contract")
     @McpDescription(
-        description = "Returns the full API contract for a specific endpoint. " +
-                "Includes HTTP method, full path, all parameters (path variables, query params, request body, headers) " +
-                "with types and required flags, return type, response DTO field schema (recursively expanded up to 3 levels), " +
-                "produces/consumes media types, and the first service method called from the controller. " +
-                "Use this after explyt_find_spring_endpoint or explyt_get_spring_http_endpoints to deeply inspect a single endpoint."
+        description = "Call before writing a client, a test, a frontend call or an OpenAPI description against one " +
+                "endpoint, and before changing its request or response shape, to see what callers currently depend " +
+                "on. " +
+                "Returns the full API contract of the endpoint: HTTP method, full path (configuration placeholders " +
+                "resolved, with 'pathTemplate' holding the endpoint path template with mapping prefixes and values " +
+                "joined and normalised before configuration placeholders are resolved, equal to 'path' when nothing " +
+                "was resolved, only when it differs), every declared handler " +
+                "parameter with its type, return type, response DTO field schema as Jackson writes it (recursively " +
+                "expanded up to 3 levels: in 'name' a @JsonProperty name, else the name the declared Jackson naming " +
+                "strategy gives - @JsonNaming or spring.jackson.property-naming-strategy, reported as 'namingStrategy' " +
+                "and 'namingStrategySource', UNKNOWN when it cannot be read and the names are left as declared, which " +
+                "includes an ObjectMapper, mapper builder or builder customizer bean declared in the application's " +
+                "production sources, since Boot yields to it and what it sets is not read; 'namingStrategySource' " +
+                "then names that declaration - with " +
+                "the declared one in 'declaredName'; 'nullable' null when an unannotated Java reference leaves it unknown; " +
+                "no transient or @JsonIgnore members, an enum as its wire values in 'enumValues' or, with " +
+                "@JsonValue, as the 'jsonValue' member, its 'valueType' and the constant names in 'enumConstants', " +
+                "which are not the wire values; a non-generic library class such as an Actuator descriptor is " +
+                "expanded like a project DTO, and a library object type that is not, or a polymorphic variant past " +
+                "the depth limit, carries 'schemaOmitted': LIBRARY_INFRASTRUCTURE, JSON_TREE, CUSTOM_SERIALIZATION, " +
+                "MAP_TYPE, COLLECTION_TYPE, ABSTRACT_TYPE, NO_VISIBLE_PROPERTIES or DEPTH_LIMIT; a project abstract, " +
+                "interface, sealed or @JsonSubTypes type carries 'polymorphic': true, 'discriminator' when " +
+                "@JsonTypeInfo applies ('use', 'include' except for DEDUCTION, and 'property' except for " +
+                "WRAPPER_OBJECT, WRAPPER_ARRAY and DEDUCTION) and 'variants' when Jackson knows the subtypes - " +
+                "Kotlin sealed subclasses and @JsonSubTypes - each with the 'typeId' written for it, absent " +
+                "otherwise; " +
+                "'additionalProperties': true when a @JsonAnyGetter map, such as ProblemDetail's, " +
+                "is written next to the fields; a Spring Data Page or Slice is described as Spring Data writes it, " +
+                "with 'wireShape' PAGE_DIRECT (PageImpl's getters), PAGED_MODEL ('content' and 'page', under " +
+                "pageSerializationMode VIA_DTO, which also re-wraps a project subclass of PageImpl; otherwise such " +
+                "a subclass is PAGE_DIRECT under its own class name, with its own getters after the page keys) or " +
+                "SLICE_DIRECT, a declared Spring Data PagedModel is PAGED_MODEL whatever the mode, " +
+                "'wireShapeSource' naming where the page mode was " +
+                "read - DECLARED_TYPE for a declared Spring Data PagedModel, DEFAULT, @EnableSpringDataWebSupport " +
+                "on its class, or " +
+                "spring.data.web.pageable.serialization-mode on a servlet application - or UNKNOWN with the " +
+                "PAGE_DIRECT shape when the property is unresolvable, the annotation is on a reactive " +
+                "application, a VIA_DTO declaration meets another VIA_DTO or unreadable one while bean definition " +
+                "overriding is not enabled, which can fail startup, a library auto-configuration that the " +
+                "project neither imports nor scans declares a mode that would change the answer, " +
+                "or an annotation composing @EnableSpringDataWebSupport declares a " +
+                "pageSerializationMode without @AliasFor, or a mode alias that neither its use site nor anything above it sets, " +
+                "and 'wireShapeAssumed': true when a declared Page or Slice is taken for " +
+                "PageImpl or SliceImpl, and on the 'pageable' schema, which Pageable.unpaged() writes as the " +
+                "string INSTANCE; a Spring HATEOAS EntityModel, CollectionModel or PagedModel is described as the " +
+                "HAL document Boot writes by default - the content's fields next to '_links', or '_embedded' keyed " +
+                "by the @Relation collectionRelation, else the uncapitalized class name plus 'List', next to " +
+                "'_links' and, for a PagedModel, 'page'; the relation and page keys follow the configured Jackson " +
+                "naming strategy; '_embedded' is left out for an empty collection and " +
+                "'_links' when there are no links; the content and the items are written without their " +
+                "@JsonTypeInfo type id, and a Map content's entries are written next to '_links' " +
+                "('additionalProperties') - with 'wireShapeAssumed': true on a reactive application, when " +
+                "spring.hateoas.use-hal-as-default-json-media-type is false or unresolvable, with a Jackson naming " +
+                "strategy that is unknown, or any naming strategy below Spring Boot 4, or when '_embedded' is left " +
+                "unexpanded because Evo Inflector on the runtime classpath pluralises an undeclared relation or the " +
+                "element is abstract, an interface or polymorphic, whose relation comes from the runtime class, " +
+                "unless the element and every known subtype declare the same collectionRelation), " +
+                "produces/consumes media types, and " +
+                "'serviceCalls': every " +
+                "call the handler makes on an injected project bean - including a bean method passed as a callable " +
+                "reference, such as 'validator::validate', a repository method the bean's interface inherits, " +
+                "named after the bean's type like 'OwnerRepository.save', and a call made inside the handler's " +
+                "own helper methods, listed where the helper makes it - in source order, each with its 'target', the " +
+                "'filePath' and 'line' of the target's declaration and the 'callLine' in the handler (empty when " +
+                "there is none). A call on an injected bean whose method the IDE cannot resolve - a missing jar or " +
+                "a method that does not exist - is still listed, with 'resolved': false, a 'target' named after the " +
+                "declared type of the bean and null 'filePath' and 'line'; the key is absent on every resolved call. " +
+                "'serviceCall' is the first of them, kept for compatibility - often a guard or a " +
+                "resolver called before the service that handles the request, not that service; to follow the " +
+                "request through the layers, call explyt_trace_spring_call_chain on the handler. Calls into the " +
+                "JDK, Kotlin and Spring are never listed. Reading the handler signature by hand misses what Spring " +
+                "binds implicitly and what the DTO's nested " +
+                "types serialise to. " +
+                ALL_HTTP_METHODS_DESCRIPTION +
+                "Each parameter carries a 'source': PATH, QUERY, PART, BODY, HEADER, COOKIE or MODEL for an " +
+                "annotation-bound one (whose 'name' is the wire name, not the Java name, and whose 'required' is " +
+                "declared); for an unannotated one, Spring's own default - QUERY, named after the parameter, for a " +
+                "simple type such as String, int, an enum or LocalDate, and MODEL, a form or query object bound " +
+                "field by field, for any other type, a List included; FRAMEWORK for one the container supplies, " +
+                "such as WebRequest or Principal; and UNKNOWN for one whose type does not resolve, that carries an " +
+                "annotation a custom HandlerMethodArgumentResolver may claim, or that is HttpEntity, Pageable or " +
+                "Sort - inspect the source before treating an UNKNOWN parameter as absent. A project " +
+                "HandlerMethodArgumentResolver registered for a type can still claim a QUERY or MODEL parameter. " +
+                "'type' is the declared type: int, not java.lang.Integer. " +
+                "An Actuator operation's @Selector argument is PATH, the other arguments of a @WriteOperation are " +
+                "BODY (fields of its JSON body) and of a read or delete operation QUERY; its record also carries " +
+                "'exposed' and 'access', two independent gates - with access NONE it answers 404 even when " +
+                "exposed. " +
+                BEAN_CONDITION_DESCRIPTION +
+                "'required' is null whenever nothing declares it. " +
+                "'contractStatus' is COMPLETE when a handler method declares the endpoint and PARTIAL for a " +
+                "functional route (coRouter/router/RouterFunctions.route) or an OpenAPI declaration, which have no " +
+                "such signature: a PARTIAL contract still names the path, the verb, the declaring bean factory, " +
+                "the handler function as the one entry of 'serviceCalls' and as 'serviceCall', and the path " +
+                "variables the URL template declares, and " +
+                "'contractUnavailableReason' says what has to be read at the source - an empty 'parameters' there " +
+                "means 'not declared here', never 'the endpoint takes nothing'. " +
+                "Returns the same object shape as explyt_find_spring_endpoint - 'totalCount', 'truncated', " +
+                "'endpoints' with the closest match to the pattern first, 'basePath' when a base path the " +
+                "configuration declares was stripped from the URL, 'assumedPrefix' when an undeclared leading path " +
+                "had to be guessed and dropped, and 'nearestByPrefix' with 'sharedPrefix' when nothing " +
+                "matched - with a contract in place of each endpoint, plus 'status', 'revision', 'offset' and " +
+                "'nextOffset'; every counted endpoint is reachable, page by page. " +
+                LOOKUP_PAGE_DESCRIPTION +
+                "A contract is large, so 'maxChars' defaults to $CONTRACT_PAGE_CHARS. " +
+                "A contract of an endpoint declared in a test source root carries 'testSource': true and follows " +
+                "every production contract. " +
+                ACTUATOR_APPLICATION_DESCRIPTION + " " +
+                "Take the urlPattern from explyt_find_spring_endpoint or explyt_get_spring_http_endpoints."
     )
     suspend fun getEndpointContract(
         @McpDescription(
             "URL pattern of the endpoint to inspect (e.g. '/api/orgs/{orgId}/project-success/v1/coverage/users'). " +
-                    "Must match a single endpoint. If multiple match, all are returned."
+                    "Should match a single endpoint. If several match, all are returned, the most specific path " +
+                    "first; handlers sharing a path and a verb differ by 'consumes'/'produces', and the request's " +
+                    "Content-Type and Accept choose among them."
         )
         urlPattern: String,
-        @McpDescription("Path to the project root")
-        projectPath: String,
-        @McpDescription("Optional HTTP method filter: GET, POST, PUT, DELETE, etc. Leave empty for all.")
+        @McpDescription(PROJECT_PATH_DESCRIPTION)
+        projectPath: String? = null,
+        @McpDescription(HTTP_METHOD_DESCRIPTION)
         httpMethod: String = "",
-    ): String {
-        if (urlPattern.isBlank()) mcpFail("urlPattern must not be empty")
-        val project = getCurrentProject(projectPath) ?: mcpFail("project not found")
-        val normalizedPattern = SpringWebUtil.simplifyUrl(urlPattern)
-        val methodFilter = httpMethod.trim().uppercase().takeIf { it.isNotEmpty() }
-
-        val contracts = withContext(Dispatchers.IO) {
-            smartReadAction(project) {
-                val allEndpoints = SpringWebEndpointsSearcher.getInstance(project).getAllEndpoints()
-
-                allEndpoints.asSequence()
-                    .filter { matchesUrlPattern(it, normalizedPattern) }
-                    .filter { methodFilter == null || it.requestMethods.isEmpty() || it.requestMethods.any { m -> m.equals(methodFilter, ignoreCase = true) } }
-                    .take(MAX_ENDPOINT_RESULTS)
-                    .mapNotNull { buildContract(it, project) }
-                    .toList()
-            }
-        }
-
-        return mapper.writeValueAsString(contracts)
+        @McpDescription(ENDPOINT_OFFSET_DESCRIPTION)
+        offset: Int = 0,
+        @McpDescription("Budget of the whole compact JSON answer, 512..16000, $CONTRACT_PAGE_CHARS by default")
+        maxChars: Int = CONTRACT_PAGE_CHARS,
+        @McpDescription(EXPECTED_REVISION_DESCRIPTION)
+        expectedRevision: String? = null,
+    ): String = lookupEndpoints(
+        "explyt_get_spring_endpoint_contract", urlPattern, projectPath, httpMethod,
+        PageRequest(offset, MAX_ENDPOINT_RESULTS, maxChars, expectedRevision),
+    ) { endpoint, project ->
+        buildContract(endpoint, project)
     }
 
-    private fun buildContract(endpoint: EndpointElement, project: Project): EndpointContractJson? {
-        val psiMethod = endpoint.psiElement as? PsiMethod ?: return null
-        val uMethod = psiMethod.toUElement() as? UMethod ?: return null
-        val controllerClass = endpoint.containingClass ?: psiMethod.containingClass
-        val parameters = extractParameters(psiMethod)
-        val returnTypeFqn = psiMethod.returnType?.canonicalText
+    /**
+     * The contract of [endpoint], complete when a request-handling method declares it and partial otherwise.
+     *
+     * A partial contract is deliberately still a contract: dropping the endpoint instead would leave the caller
+     * with a `totalCount` naming an endpoint it cannot see, which reads as "the route does not exist" - the
+     * opposite of what the endpoint model found. What is knowable without a handler signature - the path, the
+     * verb, the declaring bean factory, and the parameters the URL template itself declares - is reported, and
+     * [EndpointContractJson.contractUnavailableReason] names what is missing rather than leaving the caller to
+     * infer it from empty fields.
+     */
+    private fun buildContract(endpoint: EndpointElement, project: Project): EndpointContractJson {
+        val handler = requestHandlerOf(endpoint)
+        val uHandler = handler?.toUElement() as? UMethod
+        val module = ModuleUtilCore.findModuleForPsiElement(endpoint.psiElement)
+        val core = toCompactEndpointJson(endpoint, project)
 
-        // Response DTO schema
-        val responseSchema = psiMethod.returnType?.let { expandType(it, project, depth = 3) }
-
-        // Produces / consumes from @RequestMapping via UAST API
-        val module = ModuleUtilCore.findModuleForPsiElement(psiMethod)
-        var produces = emptyList<String>()
-        var consumes = emptyList<String>()
-        if (module != null) {
-            val mah = SpringSearchService.getInstance(project).getMetaAnnotations(module, SpringWebClasses.REQUEST_MAPPING)
-            produces = mah.getAnnotationValues(uMethod, setOf("produces"))
-                .mapNotNull { it.evaluateString() }
-            consumes = mah.getAnnotationValues(uMethod, setOf("consumes"))
-                .mapNotNull { it.evaluateString() }
+        val serviceCalls = when {
+            handler != null && uHandler != null && module != null ->
+                injectedBeanCallsOf(handler, uHandler, module, project)
+            else -> listOfNotNull(routeHandlerCall(endpoint, project))
         }
-
-        // First service call target
-        val calledMethods = findCalledMethods(psiMethod)
-        val serviceCall = calledMethods.firstOrNull()?.let { callee ->
-            val calleeClass = callee.containingClass
-            CallTargetJson(
-                target = "${calleeClass?.qualifiedName ?: calleeClass?.name ?: "?"}.${callee.name}",
-                line = lineOf(callee),
-            )
-        }
-        val position = sourcePositionOf(psiMethod, project)
 
         return EndpointContractJson(
-            httpMethods = endpoint.requestMethods.ifEmpty { listOf("ALL") },
-            fullPath = endpoint.path,
-            controllerClass = controllerClass?.qualifiedName,
-            methodName = psiMethod.name,
-            filePath = position.filePath,
-            line = position.line,
-            parameters = parameters,
-            returnType = returnTypeFqn,
-            responseSchema = responseSchema,
-            produces = produces,
-            consumes = consumes,
-            serviceCall = serviceCall,
+            httpMethods = core.httpMethods,
+            fullPath = core.fullPath,
+            pathTemplate = core.pathTemplate,
+            controllerClass = core.controllerClass,
+            methodName = core.methodName,
+            filePath = core.filePath,
+            library = core.library,
+            line = core.line,
+            parameters = parametersOf(endpoint, handler),
+            returnType = handler?.let(HandlerSignature::declaredReturnType)?.canonicalText,
+            responseSchema = handler?.let(HandlerSignature::declaredReturnType)
+                ?.let { ResponseSchemaReader.schemaOf(it, depth = 3, module = module) },
+            produces = core.produces,
+            producesSource = core.producesSource,
+            consumes = core.consumes,
+            serviceCall = serviceCalls.firstOrNull(),
+            serviceCalls = serviceCalls,
             endpointType = endpoint.type.readable,
+            exposed = core.exposed,
+            access = core.access,
+            beanCondition = core.beanCondition,
+            testSource = core.testSource,
+            contractStatus = if (handler != null) COMPLETE_CONTRACT else PARTIAL_CONTRACT,
+            contractUnavailableReason = if (handler != null) null else contractUnavailableReason(endpoint),
+            application = core.application,
         )
     }
 
-    private fun expandType(psiType: PsiType, project: Project, depth: Int): DtoSchemaJson? {
-        if (depth <= 0) return null
-        val resolved = (psiType as? PsiClassType)?.resolve() ?: return null
-        val fqn = resolved.qualifiedName ?: return null
+    private data class MediaTypes(val produces: List<String>, val consumes: List<String>)
 
-        // Skip JDK / framework wrapper types — unwrap generics instead
-        if (fqn.startsWith("java.") || fqn.startsWith("kotlin.") || fqn.startsWith("org.springframework.")) {
-            // For generic wrappers (ResponseEntity<T>, List<T>, Optional<T>), expand the type argument
-            val typeArgs = psiType.parameters
-            if (typeArgs.isNotEmpty()) {
-                return expandType(typeArgs[0], project, depth)
-            }
-            return null
-        }
-
-        val fields = mutableListOf<DtoFieldJson>()
-        for (field in resolved.allFields) {
-            if (field.hasModifierProperty(PsiModifier.STATIC)) continue
-            val fieldType = field.type
-            val nested = expandType(fieldType, project, depth - 1)
-            fields += DtoFieldJson(
-                name = field.name,
-                type = fieldType.canonicalText,
-                nullable = fieldType is PsiPrimitiveType && fieldType == PsiTypes.nullType()
-                        || field.annotations.any { it.qualifiedName?.contains("Nullable") == true },
-                nested = nested,
-            )
-        }
-
-        // Also include Kotlin data class properties via getter methods (for classes without Java fields)
-        if (fields.isEmpty()) {
-            for (method in resolved.allMethods) {
-                if (method.hasModifierProperty(PsiModifier.STATIC)) continue
-                if (!method.name.startsWith("get") && !method.name.startsWith("is")) continue
-                if (method.parameterList.parametersCount != 0) continue
-                if (method.containingClass?.qualifiedName?.startsWith("java.") == true) continue
-                val propName = method.name
-                    .removePrefix("get").removePrefix("is")
-                    .replaceFirstChar { it.lowercase() }
-                val retType = method.returnType ?: continue
-                val nested = expandType(retType, project, depth - 1)
-                fields += DtoFieldJson(
-                    name = propName,
-                    type = retType.canonicalText,
-                    nullable = false,
-                    nested = nested,
-                )
-            }
-        }
-
-        return DtoSchemaJson(className = fqn, fields = fields)
+    private fun mediaTypesOf(
+        uHandler: UMethod?,
+        module: com.intellij.openapi.module.Module?,
+        project: Project,
+    ): MediaTypes {
+        if (uHandler == null || module == null) return MediaTypes(emptyList(), emptyList())
+        val mah = SpringSearchService.getInstance(project)
+            .getMetaAnnotations(module, SpringWebClasses.REQUEST_MAPPING)
+        val mappingSource = HandlerMethods.mappingSourceOf(uHandler.javaPsi) { it.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING) }
+            ?: uHandler.javaPsi
+        val mapping = HandlerMethods.methodMapping(mappingSource, mah)
+        return MediaTypes(produces = mapping.produces, consumes = mapping.consumes)
     }
+
+    /**
+     * What a caller has to read itself, in the terms of the endpoint kind rather than as a generic failure.
+     *
+     * "No contract" and "the request shape lives somewhere this tool does not read" call for different next
+     * steps, and a caller that cannot tell them apart treats both as "the endpoint takes nothing".
+     */
+    private fun contractUnavailableReason(endpoint: EndpointElement): String = when (endpoint.type) {
+        EndpointType.OPENAPI ->
+            "The endpoint is declared in an OpenAPI document; its request and response schema live in the " +
+                    "specification, not in a handler signature"
+
+        else ->
+            "The route is registered functionally, so its request and response shape is read from ServerRequest " +
+                    "inside the handler function rather than declared by a handler signature"
+    }
+
+    /**
+     * The handler function a functional route delegates to, as the endpoint's service call.
+     *
+     * `handler::handle` in `GET(path, handler::handle)` is the one thing a functional route states about its own
+     * behaviour, and it is where the request shape is actually read. Reporting it as `serviceCall` keeps the
+     * partial contract navigable instead of ending at the registration.
+     */
+    private fun routeHandlerCall(endpoint: EndpointElement, project: Project): ServiceCallJson? {
+        val callee = (FunctionalRouteTarget.of(endpoint.psiElement) as? FunctionalRouteTarget.Handler)?.method
+            ?: return null
+        val position = sourcePositionOf(callee, project)
+        val target = SourceNames.qualifiedNameOf(callee) ?: return null
+        return ServiceCallJson(
+            target = target,
+            filePath = position.filePath,
+            library = position.library,
+            line = position.line,
+        )
+    }
+
+    /**
+     * Every call the handler makes on an injected project bean, in source order, one entry per callee and line.
+     *
+     * All of them, because the first is often not the one that handles the request: a handler commonly resolves a
+     * tenant, checks access or normalises an argument through another bean before it calls the service. A call on a
+     * local alias of the bean - `val stats = statsService ?: throw ...` - is a call on the bean, and so is a bean
+     * method passed as a callable reference, `input.use(validator::validate)`, which the receiving function invokes.
+     * Source order is the order of the UAST visit, so an outer call precedes the calls and references in its
+     * arguments.
+     */
+    private fun injectedBeanCallsOf(
+        psiMethod: PsiMethod,
+        uMethod: UMethod,
+        module: com.intellij.openapi.module.Module,
+        project: Project,
+    ): List<ServiceCallJson> {
+        val controllerClass = psiMethod.containingClass ?: return emptyList()
+        val beanClasses = SpringSearchService.getInstance(project).getProjectBeans(module).map { it.psiClass }
+        val beanFields = controllerClass.allFields.filter { field ->
+            if (!InjectedDependencies.isInjected(field)) return@filter false
+            val fieldClass = (field.type as? PsiClassType)?.resolve() ?: return@filter false
+            beanClasses.any { InheritanceUtil.isInheritorOrSelf(it, fieldClass, true) }
+        }.toSet()
+        if (beanFields.isEmpty()) return emptyList()
+
+        val calls = mutableListOf<ServiceCallJson>()
+        val visited = mutableSetOf<String>()
+        fun visit(method: PsiMethod, body: UMethod) {
+            if (!visited.add(methodKey(method))) return
+            fun collect(site: CallSite?) {
+                when (site) {
+                    null -> Unit
+                    is UnresolvedCallSite -> unresolvedServiceCallOf(site, controllerClass, beanFields)?.let { calls += it }
+                    is MethodCallSite -> {
+                        val call = serviceCallOf(site, controllerClass, beanFields, project)
+                        if (call != null) calls += call
+                        else ownHelperOf(site, psiMethod)?.let { (helper, helperBody) -> visit(helper, helperBody) }
+                    }
+                }
+            }
+            body.accept(object : AbstractUastVisitor() {
+                override fun visitCallExpression(node: UCallExpression): Boolean {
+                    ProgressManager.checkCanceled()
+                    collect(CallSite.of(node))
+                    return false
+                }
+
+                override fun visitCallableReferenceExpression(node: UCallableReferenceExpression): Boolean {
+                    collect(CallSite.of(node))
+                    return false
+                }
+            })
+        }
+        visit(psiMethod, uMethod)
+        return calls.distinctBy { it.target to it.callLine }
+    }
+
+    private fun ownHelperOf(site: MethodCallSite, handler: PsiMethod): Pair<PsiMethod, UMethod>? {
+        val helper = site.callee
+        if (site.receiver != null && !site.isOnSelf) return null
+        if (helper.isConstructor || helper.hasModifierProperty(PsiModifier.ABSTRACT)) return null
+        if (!ProjectSources.declares(helper) || !CallChainTracer.isInternal(handler, helper)) return null
+        val body = (helper.navigationElement.toUElement() ?: helper.toUElement()) as? UMethod ?: return null
+        return helper to body
+    }
+
+    /**
+     * A member the JDK, the Kotlin standard library or Spring declares in a library: `toString`, or a method a Spring
+     * Data repository inherits. A class declared in the project is never one, whatever its package.
+     */
+    private fun isPlatformOrFrameworkLibraryMember(declaringClass: PsiClass): Boolean {
+        if (ProjectSources.declares(declaringClass)) return false
+        val fqn = declaringClass.qualifiedName ?: return true
+        return FRAMEWORK_PACKAGES.any(fqn::startsWith)
+    }
+
+    private fun unresolvedServiceCallOf(
+        site: UnresolvedCallSite,
+        controllerClass: PsiClass,
+        beanFields: Set<PsiField>,
+    ): ServiceCallJson? {
+        val field = InjectedDependencies.fieldOf(site.receiver, controllerClass)?.takeIf { it in beanFields } ?: return null
+        return ServiceCallJson(
+            target = "${InjectedDependencies.declaredTypeNameOf(field)}.${site.methodName}",
+            filePath = null,
+            line = null,
+            callLine = site.line,
+            resolved = false,
+        )
+    }
+
+    private fun isFrameworkInterfaceMemberOfProjectType(calleeClass: PsiClass, receiverClass: PsiClass): Boolean {
+        val fqn = calleeClass.qualifiedName ?: return false
+        return calleeClass.isInterface
+                && PLATFORM_PACKAGES.none(fqn::startsWith)
+                && ProjectSources.declares(receiverClass)
+    }
+
+    /** The service call [site] makes, when it invokes a project method of one of the controller's injected beans. */
+    private fun serviceCallOf(
+        site: MethodCallSite,
+        controllerClass: PsiClass,
+        beanFields: Set<PsiField>,
+        project: Project,
+    ): ServiceCallJson? {
+        val field = InjectedDependencies.fieldOf(site.receiver, controllerClass)?.takeIf { it in beanFields } ?: return null
+        val callee = site.callee
+        val receiverClass = (field.type as? PsiClassType)?.resolve() ?: return null
+        val calleeClass = callee.containingClass ?: return null
+        if (callee.isConstructor
+            || callee.hasModifierProperty(PsiModifier.STATIC)
+            || !InheritanceUtil.isInheritorOrSelf(receiverClass, calleeClass, true)
+        ) return null
+        val namedAfter = when {
+            !isPlatformOrFrameworkLibraryMember(calleeClass) -> null
+            isFrameworkInterfaceMemberOfProjectType(calleeClass, receiverClass) -> receiverClass
+            else -> return null
+        }
+        val target = SourceNames.qualifiedNameOf(callee, namedAfter) ?: return null
+        val position = sourcePositionOf(callee, project)
+        return ServiceCallJson(
+            target = target,
+            filePath = position.filePath,
+            library = position.library,
+            line = position.line,
+            callLine = site.line,
+        )
+    }
+
 
     @McpTool("explyt_trace_spring_call_chain")
     @McpDescription(
-        description = "Traces the call chain from a given method through Spring layers (Controller → Service → Repository). " +
-                "Returns the chain of methods with their Spring stereotype (CONTROLLER, SERVICE, REPOSITORY, COMPONENT, CONFIGURATION), " +
-                "parameters, called methods, file paths, and line numbers. " +
-                "Optionally finds test files that reference discovered methods. " +
-                "Useful for understanding cross-cutting concerns and planning parameter-threading changes."
+        description = "Call before changing a service method's signature or threading a new parameter through the " +
+                "layers, and after explyt_find_spring_endpoint when a task needs the logic behind a route, not only " +
+                "its handler. " +
+                "Traces the call chain from the method at filePath:line through the Spring layers " +
+                "(Controller → Service → Repository), following the calls into project code only - a call " +
+                "written against an interface is followed to each of its implementations in the project, which " +
+                "is where a hand-made trace usually stops. Calls into the JDK, the Kotlin standard library and " +
+                "framework jars are left out, except where the request leaves the application: a library method " +
+                "called on an injected dependency, such as JdbcTemplate.query, and a method the framework " +
+                "implements, such as a Spring Data repository method, are listed as EXTERNAL and not followed. " +
+                "Any line of the method identifies it - its signature, an annotation on it, or a line of its " +
+                "body - so the line explyt_find_spring_endpoint reports for a handler can be passed straight in; " +
+                "a line belonging to no method is refused with the nearest method declarations in that file. " +
+                "A trace started at a functional route begins at its handler; for a lambda route the start node " +
+                "is the @Bean factory with only that route's calls; 'route' names the verb and path, such as " +
+                "'GET /items', or 'ALL /items' for a route answering every method, " +
+                "or 'PUT|POST /items' for a route served for several methods, when they are known. " +
+                "Returns {status, chainLimitReached, revision, totalCount, offset, truncated, nextOffset, chain}. " +
+                "'chain' holds the traced methods, the starting method first, each with an 'id', the Spring " +
+                "stereotype of its class in 'layer' (CONTROLLER, SERVICE, REPOSITORY, COMPONENT, CONFIGURATION; " +
+                "null for a class that is not a bean, such as a Kotlin object), 'reachedBy' (INTERNAL for a helper " +
+                "of its caller's class, PROJECT for a call from another class, null for the starting method), " +
+                "parameters as declared, file path and declaration line, and an extension function's node carries " +
+                "'receiver' with its declared receiver type, which is not listed in 'parameters'. " +
+                "'aop' - the @Transactional, @Async and cache annotations declared on the method or its class, with " +
+                "'declaredOn' METHOD or CLASS; Spring applies them through a proxy, so they do not take effect for a " +
+                "call reached INTERNAL, which is a self-invocation - and 'callsInto': every call, including a method " +
+                "passed as a callable reference such as 'repository::save', with its 'kind' (INTERNAL, PROJECT or " +
+                "EXTERNAL), the line of the call itself, 'node' naming the id of the traced method it reaches " +
+                "(null when it is not traced), and 'via' naming the interface method it is written against when " +
+                "it reaches an implementation. A call on an injected dependency that the IDE cannot resolve - its " +
+                "library jar is not downloaded, or the method does not exist - is still listed, as EXTERNAL since " +
+                "it cannot be followed even when the declared type is a project class, named after that declared " +
+                "type and marked 'resolved': false; the key is absent on every resolved call. An unresolved call " +
+                "with an implicit receiver, inside with(dsl) or dsl.apply, names no dependency and is left out. " +
+                "A call to a trivial accessor of a project class - a getter or setter whose body only reads or " +
+                "writes a field, a Kotlin property's default accessor, or one generated from the field as Lombok " +
+                "does - carries 'accessor': true: it is listed, not followed, and not counted against the limit. " +
+                "'chainLimitReached' is true when reachable methods were left out " +
+                "because the chain hit its size limit of $MAX_TRACED_METHODS methods. " +
+                "With includeTests, every node carries 'testReferences': the test files referring to the method, " +
+                "or to the interface method named in 'via' - the tests a signature change will break - and the " +
+                "starting method, when it handles an endpoint, also carries 'testUrlReferences': the test requests " +
+                "whose URL matches it, with the matched 'endpointPath' - MockMvc to any host, since it never leaves " +
+                "the JVM, WebTestClient, and java.net.http, RestTemplate, TestRestTemplate and RestClient to this " +
+                "machine only; a request built inside a test helper from a parameter is not detected. A request " +
+                "listed there is not repeated in 'testReferences'. Without includeTests both fields are absent, which " +
+                "means not requested; an empty list means that no test was found. 'testUrlReferences' is also " +
+                "absent when requests cannot be matched to the starting route: its path or its methods are " +
+                "unknown. " +
+                "A page holds at most 'limit' nodes ($TRACE_PAGE_LIMIT by default) within 'maxChars' of compact " +
+                "JSON ($TRACE_PAGE_CHARS by default) and can end earlier, because the budget is measured on the " +
+                "finished document. When 'truncated' is true, repeat the call with 'offset' = 'nextOffset' and " +
+                "'expectedRevision' = 'revision': the pages together serve every node once, and a 'node' id on " +
+                "one page refers to the same chain on another. A revision from a different query, or a project " +
+                "changed since the first page, is answered with RESULT_CHANGED."
     )
     suspend fun traceCallChain(
-        @McpDescription("Path to the source file containing the starting method (project-relative, e.g. 'src/main/kotlin/.../MyController.kt')")
+        @McpDescription(
+            "Path to the source file containing the starting method, relative to the project root as the other " +
+                    "tools report it, e.g. 'src/main/kotlin/.../MyController.kt' or '../shared/src/.../Service.kt' for " +
+                    "a module outside the project directory"
+        )
         filePath: String,
-        @McpDescription("1-based line number within the method to start tracing from")
+        @McpDescription(
+            "1-based line number of the method to start tracing from. Any line of the method works - its " +
+                    "signature, an annotation on it, or a line of its body - so the line another Explyt tool " +
+                    "reports for a handler can be passed through unchanged."
+        )
         line: Int,
-        @McpDescription("Path to the project root")
-        projectPath: String,
-        @McpDescription("How many layers deep to trace (default 3). Each layer follows method calls into injected beans.")
+        @McpDescription(PROJECT_PATH_DESCRIPTION)
+        projectPath: String? = null,
+        @McpDescription(
+            "How many layers deep to trace (default 3, at most 10). A layer is a call into another class, " +
+                    "counted from the starting method: depth 1 reaches the methods its calls into other classes " +
+                    "land in and stops there. A call to the same class, its supertypes, its nested classes or a " +
+                    "top-level function of the same file does not use one up."
+        )
         depth: Int = 3,
-        @McpDescription("Whether to find test files that reference the discovered methods (default true)")
+        @McpDescription("Whether to find the test files that call a traced method (default true)")
         includeTests: Boolean = true,
+        @McpDescription("Index of the first chain node to return; needs expectedRevision when above 0")
+        offset: Int = 0,
+        @McpDescription("Maximum chain nodes on this page, 1..50, $TRACE_PAGE_LIMIT by default")
+        limit: Int = TRACE_PAGE_LIMIT,
+        @McpDescription("Budget of the whole compact JSON answer, 512..16000, $TRACE_PAGE_CHARS by default")
+        maxChars: Int = TRACE_PAGE_CHARS,
+        @McpDescription("The 'revision' of the first page, required to continue that same answer")
+        expectedRevision: String? = null,
     ): String {
         if (filePath.isBlank()) mcpFail("filePath must not be empty")
         if (line < 1) mcpFail("line must be >= 1")
-        val project = getCurrentProject(projectPath) ?: mcpFail("project not found")
+        val project = getCurrentProject(projectPath) ?: mcpFail(projectProblem(projectPath))
         val effectiveDepth = depth.coerceIn(1, 10)
+        val page = PageRequest(offset = offset, limit = limit, maxChars = maxChars, expectedRevision = expectedRevision)
 
-        val result = withContext(Dispatchers.IO) {
+        return withContext(Dispatchers.IO) {
             smartReadAction(project) {
                 val basePath = project.basePath ?: mcpFail("project base path not found")
-                val absolutePath = "$basePath/$filePath"
+                val absolutePath = McpSourceLocation.resolveInputPath(filePath, basePath)
                 val virtualFile = LocalFileSystem.getInstance().findFileByPath(absolutePath)
                     ?: mcpFail("file not found: $filePath")
                 val psiFile = PsiManager.getInstance(project).findFile(virtualFile)
@@ -491,182 +1647,308 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 val document = PsiDocumentManager.getInstance(project).getDocument(psiFile)
                     ?: mcpFail("cannot get document for: $filePath")
 
-                val offset = document.getLineStartOffset((line - 1).coerceIn(0, document.lineCount - 1))
-                val elementAtLine = psiFile.findElementAt(offset)
-                // Use UAST to support both Java (PsiMethod) and Kotlin (KtNamedFunction)
-                val psiMethod = elementAtLine
-                    ?.getUastParentOfType<UMethod>()
-                    ?.javaPsi
-                    ?: mcpFail("no method found at $filePath:$line")
+                val route = FunctionalRouteTarget.atLine(psiFile, document, line)
+                val psiMethod = route?.start
+                    ?: methodAtLine(psiFile, document, line)
+                    ?: mcpFail(noMethodAtLineMessage(psiFile, document, filePath, line))
 
                 val module = ModuleUtilCore.findModuleForPsiElement(psiMethod)
-                val visited = mutableSetOf<PsiMethod>()
-                val chain = buildChain(psiMethod, effectiveDepth, visited, project)
+                val chain = CallChainTracer(project, MAX_TRACED_METHODS).trace(psiMethod, effectiveDepth, route?.startBody)
+                val tests = module?.takeIf { includeTests }?.let { CallChainTestReferences(it, project) }
+                val envelope = mapper.createObjectNode().put(FIELD_CHAIN_LIMIT_REACHED, chain.truncated)
+                val answer = WholeAnswer.project(envelope, chain.methods.size, { id ->
+                    mapper.valueToTree(toCallChainNodeJson(id, chain.methods[id], chain, tests, project, route))
+                })
+                val revision = EntityInventory.revision(
+                    project,
+                    mapOf(
+                        "filePath" to filePath,
+                        "line" to line.toString(),
+                        "depth" to effectiveDepth.toString(),
+                        "includeTests" to includeTests.toString(),
+                    ),
+                    answer.digest,
+                )
 
-                val testReferences = if (includeTests && module != null) {
-                    findTestReferences(visited, module, project)
-                } else {
-                    emptyList()
-                }
-
-                CallChainResultJson(chain = chain, testReferences = testReferences)
+                BoundedPageWriter().write(
+                    envelope = envelope,
+                    itemsField = FIELD_CHAIN,
+                    totalCount = answer.totalCount,
+                    itemAt = answer::itemAt,
+                    revision = revision,
+                    page = page,
+                )
             }
         }
-
-        return mapper.writeValueAsString(result)
     }
 
-    private fun buildChain(
-        psiMethod: PsiMethod,
-        remainingDepth: Int,
-        visited: MutableSet<PsiMethod>,
-        project: Project,
-    ): List<CallChainNodeJson> {
-        if (remainingDepth <= 0 || !visited.add(psiMethod)) return emptyList()
+    /**
+     * The method declared on [line], whether that line carries its signature, its body or its annotations.
+     *
+     * Only the line's *first* offset used to be examined, and that offset is the indentation whitespace. Inside a
+     * body that whitespace is a child of the method, so a body line resolved; on a declaration line it is a
+     * sibling of the method under the class body, so the search reached the class and reported that no method
+     * exists. The declaration line is the one every other tool hands out - `explyt_find_spring_endpoint` reports
+     * a handler at its declaration - so the two tools disagreed about the same method.
+     *
+     * Scanning the line leaf by leaf rather than widening the parent search keeps a blank line between two methods
+     * unresolved, which is a genuine miss and must not silently trace a neighbour.
+     */
+    private fun methodAtLine(psiFile: PsiFile, document: Document, line: Int): PsiMethod? {
+        val lineIndex = (line - 1).coerceIn(0, document.lineCount - 1)
+        val lineEnd = document.getLineEndOffset(lineIndex)
+        var offset = document.getLineStartOffset(lineIndex)
 
-        val containingClass = psiMethod.containingClass
-        val calledMethods = findCalledMethods(psiMethod)
-
-        val callsInto = calledMethods.map { callee ->
-            CallTargetJson(
-                target = "${callee.containingClass?.name ?: "?"}.${callee.name}",
-                line = lineOf(callee),
-            )
+        while (offset <= lineEnd) {
+            ProgressManager.checkCanceled()
+            val leaf = psiFile.findElementAt(offset) ?: return null
+            leaf.getUastParentOfType<UMethod>()?.javaPsi?.let { return it }
+            offset = maxOf(leaf.textRange.endOffset, offset + 1)
         }
-
-        val position = sourcePositionOf(psiMethod, project)
-        val node = CallChainNodeJson(
-            layer = containingClass?.let { detectSpringLayer(it) },
-            className = containingClass?.qualifiedName ?: containingClass?.name,
-            methodName = psiMethod.name,
-            filePath = position.filePath,
-            line = position.line,
-            parameters = psiMethod.parameterList.parameters.map { it.name },
-            callsInto = callsInto,
-        )
-
-        val childNodes = calledMethods.flatMap { callee ->
-            buildChain(callee, remainingDepth - 1, visited, project)
-        }
-
-        return listOf(node) + childNodes
+        return null
     }
 
-    private fun findCalledMethods(psiMethod: PsiMethod): List<PsiMethod> {
-        val uMethod = psiMethod.toUElement() as? UMethod ?: return emptyList()
-        val calls = mutableListOf<UCallExpression>()
-        uMethod.accept(object : AbstractUastVisitor() {
-            override fun visitCallExpression(node: UCallExpression): Boolean {
-                calls += node
-                return false // keep descending so nested calls are discovered too
+    /**
+     * A miss names the methods around [line], because the caller cannot see which line convention was expected.
+     *
+     * A bare "no method found" is indistinguishable from "the file has no methods" and from "the line belongs to a
+     * method this tool cannot read", and it leaves the caller re-reading the file by hand.
+     */
+    private fun noMethodAtLineMessage(psiFile: PsiFile, document: Document, filePath: String, line: Int): String {
+        val nearest = methodDeclarationLines(psiFile, document)
+            .sortedBy { abs(it.second - line) }
+            .take(MAX_SUGGESTED_METHODS)
+            .sortedBy { it.second }
+            .joinToString { "${it.first} (line ${it.second})" }
+
+        return if (nearest.isEmpty()) "no method found at $filePath:$line, and the file declares no methods"
+        else "no method found at $filePath:$line. Nearest methods in this file: $nearest"
+    }
+
+    private fun methodDeclarationLines(psiFile: PsiFile, document: Document): List<Pair<String, Int>> {
+        val declarations = mutableListOf<Pair<String, Int>>()
+        psiFile.toUElement()?.accept(object : AbstractUastVisitor() {
+            override fun visitMethod(node: UMethod): Boolean {
+                ProgressManager.checkCanceled()
+                val anchor = (node.uastAnchor?.sourcePsi ?: node.sourcePsi)?.textRange
+                if (anchor != null && anchor.startOffset <= document.textLength) {
+                    declarations += node.name to document.getLineNumber(anchor.startOffset) + 1
+                }
+                return false
             }
         })
-        return calls.asSequence()
-            .mapNotNull { it.resolve() }
-            .filter { it != psiMethod } // skip self-recursion
-            .distinctBy { (it.containingClass?.qualifiedName ?: "") + "#" + it.name + "#" + it.parameterList.parametersCount }
-            .toList()
+        return declarations
     }
 
-    private fun findTestReferences(
-        methods: Set<PsiMethod>,
-        module: com.intellij.openapi.module.Module,
+    private fun toCallChainNodeJson(
+        id: Int,
+        traced: TracedMethod,
+        chain: CallChain,
+        tests: CallChainTestReferences?,
         project: Project,
-    ): List<TestReferenceJson> {
-        val testScope = module.moduleTestsWithDependentsScope
-        val byFile = mutableMapOf<String, MutableMap<String, MutableList<Int>>>()
-
-        for (method in methods) {
-            val refs = MethodReferencesSearch.search(method, testScope, true).findAll()
-            for (ref in refs) {
-                val refElement = ref.element
-                val position = sourcePositionOf(refElement, project)
-                val refFile = position.filePath ?: continue
-                val refLine = position.line ?: continue
-                val methodKey = "${method.containingClass?.name ?: "?"}.${method.name}"
-                byFile.getOrPut(refFile) { mutableMapOf() }
-                    .getOrPut(methodKey) { mutableListOf() }
-                    .add(refLine)
-            }
-        }
-
-        return byFile.map { (file, methods) ->
-            TestReferenceJson(
-                filePath = file,
-                referencedMethods = methods.map { (method, lines) ->
-                    TestMethodReferenceJson(method = method, lines = lines.distinct().sorted())
-                },
-            )
-        }
+        route: FunctionalRouteTarget?,
+    ): CallChainNodeJson {
+        val method = traced.method
+        val containingClass = method.containingClass
+        val position = sourcePositionOf(method, project)
+        val startRoute = route?.takeIf { traced.reachedBy == null }
+        val nodeTests = tests?.of(
+            method, chain.viaDeclarationsOf(method), withUrlReferences = traced.reachedBy == null, route = startRoute
+        )
+        return CallChainNodeJson(
+            id = id,
+            layer = containingClass?.let { detectSpringLayer(it) },
+            reachedBy = traced.reachedBy?.name,
+            className = SourceNames.qualifiedOwnerNameOf(method) ?: containingClass?.name,
+            methodName = SourceNames.sourceNameOf(method),
+            filePath = position.filePath,
+            library = position.library,
+            line = position.line,
+            parameters = CallChainTracer.sourceParametersOf(method),
+            receiver = CallChainTracer.sourceReceiverOf(method),
+            aop = ProxyAnnotations.of(method).map { AopAnnotationJson(it.annotation, it.declaredOn.name) },
+            callsInto = traced.calls.map { call ->
+                CallTargetJson(
+                    target = call.target,
+                    kind = call.kind.name,
+                    line = call.line,
+                    node = call.reached?.let(chain::idOf),
+                    via = call.via,
+                    resolved = if (call.resolved) null else false,
+                    accessor = true.takeIf { call.accessor },
+                )
+            },
+            testReferences = nodeTests?.references,
+            testUrlReferences = nodeTests?.urlReferences,
+            route = startRoute?.route,
+        )
     }
 
     // ---- explyt_get_spring_data_entities ----
 
     @McpTool("explyt_get_spring_data_entities")
     @McpDescription(
-        description = "Returns all JPA entities (@Entity annotated classes) in the project with their schema metadata. " +
-                "Detects both javax.persistence and jakarta.persistence annotations. " +
-                "Each entity includes class name, file path and line, table name (from @Table or default), " +
-                "fields with column names, types, primary key flag, nullability, " +
-                "and JPA relationships (@OneToOne, @OneToMany, @ManyToOne, @ManyToMany) with joinColumn/mappedBy metadata. " +
-                "Also returns table indexes from @Table(indexes=[...]). " +
-                "Use this for schema understanding, migration planning, DTO design, and query writing."
+        description = "Call before writing a query, a migration, a DTO or a projection, and before adding a field to " +
+                "an entity, to see the table, column and relationship names the database actually uses. " +
+                "A column name that differs from its field name, and a relationship's owning side, are exactly what " +
+                "a query written from the Java field names gets wrong. " +
+                "Answers in two steps: by default an inventory of the JPA entities (@Entity classes, " +
+                "javax.persistence and jakarta.persistence alike) carrying only name, className, tableName and " +
+                "source location - enough to pick one without expanding any schema. tableName is @Table(name) " +
+                "when declared, otherwise the JPA default - the @Entity(name) entity name, then the class name - " +
+                "before any physical naming strategy of the application is applied. A name declared between " +
+                "backticks, double quotes or square brackets is reported without them and flagged 'tableQuoted', " +
+                "'columnQuoted' or 'joinColumnQuoted' (true, absent otherwise); only such explicit delimiters count, " +
+                "a global quoting setting such as hibernate.globally_quoted_identifiers is not read. " +
+                "Pass includeDetails=true, and className to name the entity, to add its fields with column names, " +
+                "types, primary key flag and nullability, its @OneToOne/@OneToMany/@ManyToOne/@ManyToMany " +
+                "relationships with joinColumn/mappedBy, and the indexes declared in @Table(indexes=[...]). " +
+                "A relationship reports joinTable with its name, joinColumns and inverseJoinColumns only when " +
+                "@JoinTable is declared; default names are not computed. " +
+                "'nullable' is the nullability of the mapped column: a primary key (@Id, @EmbeddedId, a @MapsId " +
+                "association) is never nullable, even when the property is nullable before the entity is " +
+                "persisted, such as a Kotlin 'Long?' id; a to-one association is not nullable when it declares " +
+                "optional = false or @JoinColumn(nullable = false); a primitive property with neither @Column " +
+                "nor @Basic maps to a NOT NULL column. @Basic(optional = false) forces NOT NULL for any type, " +
+                "also over @Column(nullable = true); an optional or bare @Basic does not force NOT NULL by itself. " +
+                "'nullable' is absent for a to-many association, an element collection and the inverse side of a " +
+                "one-to-one, because the owner table has no column for them. " +
+                "A SINGLE_TABLE subclass column relaxed to nullable reports nullableReason: SINGLE_TABLE_SUBCLASS, " +
+                "unless an explicit @Column(nullable = false), @JoinColumn(nullable = false) or to-one optional = false keeps it NOT NULL. " +
+                "An inventory record carries no 'fields' or 'indexes' at all, so a client never reads 'not " +
+                "requested' as 'this entity has none'. " +
+                "packageFilter narrows the inventory by prefix and className selects exactly one entity; passing " +
+                "both is rejected, and a className nothing declares is an empty answer rather than an error. " +
+                "Returns {status, revision, totalCount, offset, truncated, nextOffset, entities}: at most 'limit' " +
+                "entities (5 by default) within 'maxChars' of compact JSON (1800 by default), and a page can end " +
+                "earlier because the budget is measured on the finished document rather than on a number of " +
+                "entities. When 'truncated' is true, repeat the call with 'offset' = 'nextOffset' and " +
+                "'expectedRevision' = 'revision' to continue the same answer; every entity stays reachable that " +
+                "way. A single entity too large for the budget is reported as RESPONSE_TOO_LARGE naming the " +
+                "maxChars that would fetch it, never silently shortened."
     )
     suspend fun getSpringDataEntities(
-        @McpDescription("Path to the project root")
-        projectPath: String,
-        @McpDescription("Optional fully-qualified package prefix to restrict results (e.g. 'com.example.domain'). Leave empty for all packages.")
+        @McpDescription(PROJECT_PATH_DESCRIPTION)
+        projectPath: String? = null,
+        @McpDescription("Optional fully-qualified package prefix to restrict the inventory (e.g. 'com.example.domain'); cannot be combined with className")
         packageFilter: String = "",
+        @McpDescription("Exact FQN of one entity, as reported by the inventory; cannot be combined with packageFilter")
+        className: String? = null,
+        @McpDescription("Adds fields, relationships and indexes to every entity of the page")
+        includeDetails: Boolean = false,
+        @McpDescription("Index of the first entity to return; needs expectedRevision when above 0")
+        offset: Int = 0,
+        @McpDescription("Maximum entities on this page, 1..50, 5 by default")
+        limit: Int = 5,
+        @McpDescription("Budget of the whole compact JSON answer, 512..16000, 1800 by default")
+        maxChars: Int = 1800,
+        @McpDescription("The 'revision' of the first page, required to continue that same answer")
+        expectedRevision: String? = null,
     ): String {
-        val project = getCurrentProject(projectPath) ?: mcpFail("project not found")
+        val writer = BoundedPageWriter()
         val packagePrefix = packageFilter.trim().takeIf { it.isNotEmpty() }
-
-        val entities = withContext(Dispatchers.IO) {
-            smartReadAction(project) {
-                val projectScope = project.projectScope()
-                val librariesScope = GlobalSearchScope.allScope(project)
-                val javaPsiFacade = JavaPsiFacade.getInstance(project)
-                val entityClasses = ENTITY_ANNOTATION_FQNS.asSequence()
-                    .mapNotNull { javaPsiFacade.findClass(it, librariesScope) }
-                    .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, projectScope).findAll().asSequence() }
-                    .distinctBy { it.qualifiedName }
-                    .filter { cls ->
-                        packagePrefix == null || cls.qualifiedName?.startsWith(packagePrefix) == true
-                    }
-                    .take(MAX_ENTITY_RESULTS)
-                    .toList()
-
-                entityClasses.mapNotNull { toEntityJson(it, project) }
-            }
+        val entityName = className?.trim()?.takeIf { it.isNotEmpty() }
+        if (packagePrefix != null && entityName != null) {
+            return writer.writeError(
+                BoundedPageWriter.INVALID_ARGUMENT,
+                "packageFilter and className narrow the same choice; pass one of them.",
+                maxChars = BoundedPageWriter.FALLBACK_BUDGET
+            )
         }
 
-        return mapper.writeValueAsString(entities)
+        val project = getCurrentProject(projectPath) ?: mcpFail(projectProblem(projectPath))
+        val page = PageRequest(
+            offset = offset,
+            limit = limit,
+            maxChars = maxChars,
+            expectedRevision = expectedRevision
+        )
+        val inventory = EntityInventory(mapper)
+
+        return withContext(Dispatchers.IO) {
+            smartReadAction(project) {
+                val records = inventory.ordered(entityRecords(project, packagePrefix, entityName))
+                val entitiesQuestion = mapOf(
+                    "tool" to "explyt_get_spring_data_entities",
+                    "packageFilter" to packagePrefix,
+                    "className" to entityName,
+                    "includeDetails" to includeDetails.toString(),
+                )
+                val answer = WholeAnswerCache.getInstance(project).answerFor(entitiesQuestion, records.size) {
+                    WholeAnswer.project(mapper.createObjectNode(), records.size, { index ->
+                        records[index].let { if (includeDetails) inventory.details(it) else inventory.compact(it) }
+                    })
+                }
+                val revision = EntityInventory.revision(
+                    project,
+                    mapOf(
+                        "packageFilter" to packagePrefix,
+                        "className" to entityName,
+                        "includeDetails" to includeDetails.toString()
+                    ),
+                    answer.digest,
+                )
+                writer.write(
+                    envelope = mapper.createObjectNode(),
+                    itemsField = "entities",
+                    totalCount = answer.totalCount,
+                    itemAt = answer::itemAt,
+                    revision = revision,
+                    page = page
+                )
+            }
+        }
     }
 
-    private fun toEntityJson(psiClass: PsiClass, project: Project): SpringDataEntityJson? {
+    /**
+     * Every entity the query selects, each able to read its own schema but none having read it yet.
+     *
+     * Expanding fields, relationships and indexes is the expensive half of this tool, so an inventory without
+     * `includeDetails` never reads a schema. With it, every selected schema is read once per PSI state, because
+     * the revision fingerprints the whole answer: [WholeAnswerCache] keeps that projection for the later pages.
+     */
+    private fun entityRecords(project: Project, packagePrefix: String?, entityName: String?): List<EntityRecord> {
+        val javaPsiFacade = JavaPsiFacade.getInstance(project)
+        val librariesScope = GlobalSearchScope.allScope(project)
+        val projectScope = project.projectScope()
+        return ENTITY_ANNOTATION_FQNS.asSequence()
+            .mapNotNull { javaPsiFacade.findClass(it, librariesScope) }
+            .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, projectScope).findAll().asSequence() }
+            .distinctBy { it.qualifiedName }
+            .filter { cls ->
+                val qualifiedName = cls.qualifiedName
+                when {
+                    entityName != null -> qualifiedName == entityName
+                    packagePrefix != null -> qualifiedName?.startsWith(packagePrefix) == true
+                    else -> true
+                }
+            }
+            .mapNotNull { toEntityRecord(it, project) }
+            .toList()
+    }
+
+    private fun toEntityRecord(psiClass: PsiClass, project: Project): EntityRecord? {
         val qualifiedName = psiClass.qualifiedName ?: return null
         val simpleName = psiClass.name ?: qualifiedName.substringAfterLast('.')
-        val tableName = resolveTableName(psiClass, simpleName)
-        val fields = collectEntityFields(psiClass)
-        val indexes = collectEntityIndexes(psiClass)
-
         val position = sourcePositionOf(psiClass, project)
-        return SpringDataEntityJson(
+        val table = resolveTableName(psiClass, simpleName)
+        return EntityRecord(
             name = simpleName,
             className = qualifiedName,
+            tableName = table.name,
             filePath = position.filePath,
+            library = position.library,
             line = position.line,
-            tableName = tableName,
-            fields = fields,
-            indexes = indexes,
+            tableQuoted = table.quoted,
+            readSchema = { EntitySchema(collectEntityFields(psiClass), collectEntityIndexes(psiClass)) }
         )
     }
 
-    private fun resolveTableName(psiClass: PsiClass, defaultName: String): String {
+    private fun resolveTableName(psiClass: PsiClass, defaultName: String): SqlIdentifier {
         val tableName = psiClass.findFirstAnnotation(TABLE_ANNOTATION_FQNS).getStringAttribute(ATTR_NAME)
-        if (tableName != null) return tableName
+        if (tableName != null) return SqlIdentifier.declared(tableName)
         val entityName = psiClass.findFirstAnnotation(ENTITY_ANNOTATION_FQNS).getStringAttribute(ATTR_NAME)
-        return entityName ?: defaultName
+        return SqlIdentifier.declared(entityName ?: defaultName)
     }
 
     private fun collectEntityFields(psiClass: PsiClass): List<EntityFieldJson> {
@@ -678,36 +1960,107 @@ class SpringBootApplicationMcpToolset : McpToolset {
             if (field.findFirstAnnotation(TRANSIENT_ANNOTATION_FQNS) != null) continue
             if (!seen.add(field.name)) continue
 
-            result += toEntityField(field)
+            result += toEntityField(field, psiClass)
         }
         return result
     }
 
-    private fun toEntityField(field: PsiField): EntityFieldJson {
+    private fun toEntityField(field: PsiField, readEntity: PsiClass): EntityFieldJson {
         val columnAnnotation = field.findFirstAnnotation(COLUMN_ANNOTATION_FQNS)
-        val column = columnAnnotation.getStringAttribute(ATTR_NAME)
-        val columnNullable = columnAnnotation.getBooleanAttribute(ATTR_NULLABLE)
+        val column = columnAnnotation.getStringAttribute(ATTR_NAME)?.let(SqlIdentifier::declared)
+        val columnNullable = columnAnnotation.getDeclaredBooleanAttribute(ATTR_NULLABLE)
+        val basicAnnotation = field.findFirstAnnotation(BASIC_ANNOTATION_FQNS)
+        val basicOptional = basicAnnotation?.let { it.getDeclaredBooleanAttribute(ATTR_OPTIONAL) ?: true }
+        val implicitPrimitiveColumn = columnAnnotation == null && field.type is PsiPrimitiveType && basicAnnotation == null
         val relationshipMatch = RELATIONSHIP_ANNOTATIONS.firstNotNullOfOrNull { (fqns, kind) ->
             field.findFirstAnnotation(fqns)?.let { it to kind }
         }
         val relationshipAnnotation = relationshipMatch?.first
         val relationshipType = relationshipMatch?.second
-        val joinColumn = field.findFirstAnnotation(JOIN_COLUMN_ANNOTATION_FQNS).getStringAttribute(ATTR_NAME)
+        val joinColumnAnnotation = field.findFirstAnnotation(JOIN_COLUMN_ANNOTATION_FQNS)
+        val joinColumn = joinColumnAnnotation.getStringAttribute(ATTR_NAME)?.let(SqlIdentifier::declared)
+        val joinColumnNullable = joinColumnAnnotation.getDeclaredBooleanAttribute(ATTR_NULLABLE)
+        val optional = relationshipAnnotation.getDeclaredBooleanAttribute(ATTR_OPTIONAL)
         val mappedBy = relationshipAnnotation.getStringAttribute(ATTR_MAPPED_BY)
-        val primaryKey = field.findFirstAnnotation(ID_ANNOTATION_FQNS) != null
-        val nullable = columnNullable ?: !hasNotNullAnnotation(field)
+        val primaryKey = field.findFirstAnnotation(PRIMARY_KEY_ANNOTATION_FQNS) != null
+        val constrainedNullable = !primaryKey && optional != false && basicOptional != false && !implicitPrimitiveColumn &&
+                (columnNullable ?: joinColumnNullable ?: !hasNotNullAnnotation(field))
+        val nullable = if (!hasOwnerColumn(field, relationshipType, mappedBy)) {
+            null
+        } else {
+            constrainedNullable || isSingleTableSubclass(owningEntity(field.containingClass, readEntity)) &&
+                    !primaryKey && optional != false && (columnNullable ?: joinColumnNullable ?: true)
+        }
 
         return EntityFieldJson(
             name = field.name,
             type = field.type.canonicalText,
-            column = column,
+            column = column?.name,
+            columnQuoted = column?.quotedOrNull,
             primaryKey = primaryKey,
             nullable = nullable,
+            nullableReason = EntityNullableReason.SINGLE_TABLE_SUBCLASS.takeIf { nullable == true && !constrainedNullable },
             relationship = relationshipType,
-            joinColumn = joinColumn,
+            joinColumn = joinColumn?.name,
+            joinColumnQuoted = joinColumn?.quotedOrNull,
             mappedBy = mappedBy,
+            joinTable = relationshipAnnotation?.let {
+                field.findFirstAnnotation(JpaClasses.JOIN_TABLE.allFqns)?.let(::toEntityJoinTable)
+            },
         )
     }
+
+    private fun owningEntity(declaringClass: PsiClass?, readEntity: PsiClass): PsiClass? {
+        if (declaringClass?.findFirstAnnotation(ENTITY_ANNOTATION_FQNS) != null) return declaringClass
+        var current = readEntity
+        var nearestEntity: PsiClass? = null
+        val visited = mutableSetOf<PsiClass>()
+        while (visited.add(current)) {
+            ProgressManager.checkCanceled()
+            if (current.findFirstAnnotation(ENTITY_ANNOTATION_FQNS) != null) {
+                nearestEntity = current
+            }
+            if (current == declaringClass) return nearestEntity
+            current = current.superClass ?: return null
+        }
+        return null
+    }
+
+    private fun isSingleTableSubclass(declaringClass: PsiClass?): Boolean {
+        if (declaringClass?.findFirstAnnotation(ENTITY_ANNOTATION_FQNS) == null) return false
+        var root: PsiClass = declaringClass
+        var hasEntityParent = false
+        var ancestor = declaringClass.superClass
+        val visited = mutableSetOf<PsiClass>()
+        while (ancestor != null && visited.add(ancestor)) {
+            ProgressManager.checkCanceled()
+            if (ancestor.findFirstAnnotation(ENTITY_ANNOTATION_FQNS) != null) {
+                root = ancestor
+                hasEntityParent = true
+            }
+            ancestor = ancestor.superClass
+        }
+        if (!hasEntityParent) return false
+        val strategy = root.findFirstAnnotation(JpaClasses.inheritance.allFqns)
+            ?.findDeclaredAttributeValue("strategy") ?: return true
+        return (strategy as? PsiReferenceExpression)?.resolve().let { it as? PsiEnumConstant }?.name == "SINGLE_TABLE"
+    }
+
+    private fun toEntityJoinTable(annotation: PsiAnnotation): EntityJoinTableJson {
+        val name = annotation.getStringAttribute(ATTR_NAME)?.let(SqlIdentifier::declared)
+        return EntityJoinTableJson(
+            name = name?.name,
+            quoted = name?.quotedOrNull,
+            joinColumns = collectJoinTableColumns(annotation, "joinColumns"),
+            inverseJoinColumns = collectJoinTableColumns(annotation, "inverseJoinColumns"),
+        )
+    }
+
+    private fun collectJoinTableColumns(annotation: PsiAnnotation, attribute: String): List<EntityJoinColumnJson> =
+        annotation.getMemberValues(attribute).filterIsInstance<PsiAnnotation>().map { column ->
+            val name = column.getStringAttribute(ATTR_NAME)?.let(SqlIdentifier::declared)
+            EntityJoinColumnJson(name = name?.name, quoted = name?.quotedOrNull)
+        }
 
     private fun collectEntityIndexes(psiClass: PsiClass): List<EntityIndexJson> {
         val tableAnnotation = psiClass.findFirstAnnotation(TABLE_ANNOTATION_FQNS) ?: return emptyList()
@@ -718,17 +2071,25 @@ class SpringBootApplicationMcpToolset : McpToolset {
                     name = indexAnnotation.getStringAttribute(ATTR_NAME),
                     columns = indexAnnotation.getStringAttribute(ATTR_COLUMN_LIST)
                         ?.split(',')
-                        ?.map { it.trim() }
                         ?.filter { it.isNotBlank() }
+                        ?.map { SqlIdentifier.declared(it).name }
                         ?: emptyList(),
                     unique = indexAnnotation.getBooleanAttribute(ATTR_UNIQUE) ?: false,
                 )
             }
     }
 
+    private fun hasOwnerColumn(field: PsiField, relationshipType: String?, mappedBy: String?): Boolean =
+        field.findFirstAnnotation(JpaClasses.elementCollection.allFqns) == null &&
+                relationshipType !in setOf("ONE_TO_MANY", "MANY_TO_MANY") &&
+                !(relationshipType == "ONE_TO_ONE" && mappedBy != null)
+
     private fun hasNotNullAnnotation(field: PsiField): Boolean {
         return field.annotations.any { it.qualifiedName?.substringAfterLast('.') == NOT_NULL_SIMPLE_NAME }
     }
+
+    private fun PsiAnnotation?.getDeclaredBooleanAttribute(attributeName: String): Boolean? =
+        this?.findDeclaredAttributeValue(attributeName)?.getBooleanValue()
 
     private fun detectSpringLayer(psiClass: PsiClass): String? = when {
         psiClass.isMetaAnnotatedBy(SpringWebClasses.REST_CONTROLLER) -> "CONTROLLER"
@@ -740,51 +2101,33 @@ class SpringBootApplicationMcpToolset : McpToolset {
         else -> null
     }
 
-    private fun relativePathOf(element: PsiElement, project: Project): String? {
-        val basePath = project.basePath?.let { "$it/" } ?: return null
-        val filePath = element.containingFile?.virtualFile?.path ?: return null
-        return if (filePath.startsWith(basePath)) filePath.removePrefix(basePath) else filePath
-    }
-
     /**
-     * File path and line of a single source anchor. Both are `null` when the reported element has no
+     * Location and line of a single source anchor. All of them are `null` when the reported element has no
      * physical declaration to point at, so a caller never gets a path and a line taken from different files.
      */
-    private data class SourcePosition(val filePath: String?, val line: Int?)
-
-    private fun sourcePositionOf(element: PsiElement, project: Project): SourcePosition {
-        val anchor = sourceAnchorOf(element) ?: return SourcePosition(null, null)
-        return SourcePosition(relativePathOf(anchor, project), lineOfAnchor(anchor))
+    private data class SourcePosition(val location: McpSourceLocation, val line: Int?) {
+        val filePath: String? get() = location.filePath
+        val library: String? get() = location.library
     }
 
-    /**
-     * Physical element a source position may be reported for.
-     *
-     * Light and synthetic members - a Kotlin `data class` `copy()`, an enum `values()`, or any light method
-     * whose origin declaration is absent - have no text range, and reading a line number from them fails.
-     * Such a member is reported through its declaring class, and through nothing at all when that class is
-     * synthetic too.
-     */
-    private fun sourceAnchorOf(element: PsiElement): PsiElement? =
-        element.withSourcePosition()
-            ?: (element as? PsiMember)?.containingClass?.withSourcePosition()
-
-    private fun PsiElement.withSourcePosition(): PsiElement? =
-        takeIf { it.hasSourcePosition() } ?: navigationElement?.takeIf { it.hasSourcePosition() }
-
-    private fun PsiElement.hasSourcePosition(): Boolean = textRange != null && containingFile != null
-
-    private fun lineOfAnchor(anchor: PsiElement): Int? =
-        anchor.getLineNumber(start = true).takeIf { it >= 0 }?.plus(1)
+    private fun sourcePositionOf(element: PsiElement, project: Project): SourcePosition {
+        val anchor = McpSourcePositions.sourceAnchorOf(element) ?: return SourcePosition(McpSourceLocation.UNKNOWN, null)
+        return SourcePosition(McpSourceLocation.of(anchor, project), McpSourcePositions.lineOfAnchor(anchor))
+    }
 
     /** 1-based line of [element], or `null` when it has no physical declaration to point at. */
     @VisibleForTesting
-    internal fun lineOf(element: PsiElement): Int? = sourceAnchorOf(element)?.let(::lineOfAnchor)
+    internal fun lineOf(element: PsiElement): Int? =
+        McpSourcePositions.sourceAnchorOf(element)?.let(McpSourcePositions::lineOfAnchor)
 
     companion object {
         // Guard cap for single-target lookups (find / contract): a URL pattern is not
         // expected to resolve to many endpoints, so a small cap is enough.
         private const val MAX_ENDPOINT_RESULTS = 50
+
+        // A miss is answered with the routes around it, and a handful of them already names the controller
+        // and its conventions; more would only repeat the listing tool with a worse filter.
+        private const val MAX_NEAREST_ROUTES = 20
 
         // Hard cap for a single page of the "list all endpoints" tool. Converting an endpoint to JSON resolves
         // PSI, so the page size bounds both the read-action duration and the response size.
@@ -793,21 +2136,117 @@ class SpringBootApplicationMcpToolset : McpToolset {
         // Default page size: high enough to return every endpoint of a typical project in one call, low enough
         // that a broad call on a large/generated API stays cheap. Callers page via 'offset'.
         private const val DEFAULT_ENDPOINT_PAGE_SIZE = 500
-        private const val MAX_ENTITY_RESULTS = 500
         private val mapper = ObjectMapper()
+
+        // Match quality of an endpoint against the queried pattern, lowest first: the forgiving substring match
+        // exists to find a route from a fragment, never to outrank the route that matches the pattern itself.
+        private const val EXACT_MATCH = 0
+        private const val PATTERN_MATCH = 1
+        private const val SUBSTRING_MATCH = 2
+
+        private const val COMPLETE_CONTRACT = "COMPLETE"
+        private const val PARTIAL_CONTRACT = "PARTIAL"
+        private const val ACTUATOR_APPLICATION_DESCRIPTION =
+            "An Actuator endpoint names in 'application' the application whose context lists it; a copy listed by " +
+                    "an application declared in test sources carries 'testSource': true and follows the production copy."
+
+        private val PLATFORM_PACKAGES = listOf("java.", "kotlin.")
+        private val FRAMEWORK_PACKAGES = PLATFORM_PACKAGES + "org.springframework."
+
+        private const val TEMPLATE_NAME_GROUP = "name"
+
+        // Enough to show the caller which line convention the file uses; the whole method list would bury it.
+        private const val MAX_SUGGESTED_METHODS = 5
+
+        // Guard cap for one trace: the project methods reachable from a handler within ten layers can be the whole
+        // application, and a chain that long no longer tells the caller which path a change travels.
+        private const val MAX_TRACED_METHODS = 50
+
+        private const val TRACE_PAGE_LIMIT = 20
+        private const val TRACE_PAGE_CHARS = 8000
+        private const val FIELD_CHAIN = "chain"
+        private const val FIELD_CHAIN_LIMIT_REACHED = "chainLimitReached"
+
+        /** Return types of a route-registration bean, whose signature describes the registration, not a request. */
+        private val ROUTE_FUNCTION_TYPES = listOf(
+            SpringWebClasses.ROUTE_FUNCTION,
+            SpringWebClasses.SERVLET_ROUTE_FUNCTION,
+        )
 
         private const val ATTR_NAME = "name"
         private const val ATTR_NULLABLE = "nullable"
+        private const val ATTR_OPTIONAL = "optional"
         private const val ATTR_MAPPED_BY = "mappedBy"
         private const val ATTR_INDEXES = "indexes"
         private const val ATTR_COLUMN_LIST = "columnList"
         private const val ATTR_UNIQUE = "unique"
         private const val NOT_NULL_SIMPLE_NAME = "NotNull"
 
+        /** Binding annotations whose parameters [extractParameters] already reports. */
+        private const val NULLABLE_SIMPLE_NAME = "Nullable"
+
+        private val ACTUATOR_OPERATION_SOURCES = linkedMapOf(
+            SpringCoreClasses.ACTUATOR_WRITE_OPERATION to "BODY",
+            SpringCoreClasses.ACTUATOR_READ_OPERATION to "QUERY",
+            SpringCoreClasses.ACTUATOR_DELETE_OPERATION to "QUERY",
+        )
+
+        private val ACTUATOR_SUPPLIED_TYPES = listOf(
+            "org.springframework.boot.actuate.endpoint.SecurityContext",
+            "org.springframework.boot.actuate.endpoint.web.WebServerNamespace",
+            "org.springframework.boot.actuate.endpoint.Producible",
+            "org.springframework.boot.actuate.endpoint.ApiVersion",
+            "java.security.Principal",
+        )
+
+        private val COLLECTED_BINDING_ANNOTATIONS = listOf(
+            SpringWebClasses.PATH_VARIABLE,
+            SpringWebClasses.REQUEST_PARAM,
+            SpringWebClasses.REQUEST_PART,
+            SpringWebClasses.REQUEST_BODY,
+            SpringWebClasses.REQUEST_HEADER,
+        )
+
+        private val NAMED_BINDING_ANNOTATIONS = listOf(
+            SpringWebClasses.COOKIE_VALUE,
+            SpringWebClasses.MODEL_ATTRIBUTE,
+            SpringWebClasses.REQUEST_PARAM,
+            SpringWebClasses.REQUEST_PART,
+        )
+
+        private val MULTIPART_PART_TYPES = setOf(
+            SpringWebUtil.MULTIPART_FILE,
+            SpringWebClasses.JAVAX_HTTP_PART,
+            SpringWebClasses.JAKARTA_HTTP_PART,
+        )
+
+        /** Resolved by Spring without an annotation, from a wire format of their own: the body or `?page=&sort=`. */
+        private val OWN_WIRE_FORMAT_TYPES = listOf(
+            "org.springframework.http.HttpEntity",
+            "org.springframework.data.domain.Pageable",
+            "org.springframework.data.domain.Sort",
+        )
+
+        private val BINDING_NEUTRAL_ANNOTATION_PACKAGES = listOf(
+            "jakarta.validation.",
+            "javax.validation.",
+            "org.springframework.validation.annotation.",
+            "org.springframework.format.annotation.",
+            "org.jetbrains.annotations.",
+            "kotlin.",
+        )
+
+        /** Matched by simple name too, so an annotation whose library is not on the classpath still reads as neutral. */
+        private val BINDING_NEUTRAL_ANNOTATION_NAMES = setOf(
+            "Valid", "Validated", "DateTimeFormat", "NumberFormat", "NotNull", "NonNull", "Nonnull", "Nullable",
+        )
+
         private val ENTITY_ANNOTATION_FQNS = JpaClasses.entity.allFqns
         private val TABLE_ANNOTATION_FQNS = JpaClasses.table.allFqns
         private val COLUMN_ANNOTATION_FQNS = JpaClasses.column.allFqns
-        private val ID_ANNOTATION_FQNS = JpaClasses.id.allFqns + JpaClasses.embeddedId.allFqns
+        private val BASIC_ANNOTATION_FQNS = MultiVendorClass("persistence.Basic").allFqns
+        private val PRIMARY_KEY_ANNOTATION_FQNS =
+            JpaClasses.id.allFqns + JpaClasses.embeddedId.allFqns + MultiVendorClass("persistence.MapsId").allFqns
         private val TRANSIENT_ANNOTATION_FQNS = JpaClasses.transient.allFqns
         private val JOIN_COLUMN_ANNOTATION_FQNS = JpaClasses.joinColumn.allFqns
         private val RELATIONSHIP_ANNOTATIONS: List<Pair<List<String>, String>> = listOf(
@@ -819,26 +2258,39 @@ class SpringBootApplicationMcpToolset : McpToolset {
     }
 }
 
-private fun getCurrentProject(projectPath: String?): Project? {
-    projectPath ?: return null
-    val openProjects = ProjectManager.getInstance().openProjects
-        .filter { !it.isDefault }
-    if (openProjects.size == 1) return openProjects[0]
+/**
+ * The project a tool call is about, or a message saying why none could be chosen.
+ *
+ * The rule lives in [McpProjectResolver]; here it is only mapped onto this tool family's failure channel.
+ */
+private fun getCurrentProject(projectPath: String?): Project? =
+    (McpProjectResolver.resolve(projectPath) as? McpProjectChoice.Resolved)?.project
 
-    return openProjects.find { it.basePath == projectPath }
-}
-
-private suspend fun getCurrentProjectForClass(applicationClassName: String? = null): Project? {
-    if (applicationClassName != null) {
-        val openProjects = ProjectManager.getInstance().openProjects.filter { !it.isDefault }
-        for (project in openProjects) {
-            val applicationPsiClass = readAction {
-                JavaPsiFacade.getInstance(project).findClass(applicationClassName, project.projectScope())
-            }
-            if (applicationPsiClass != null) return project
-        }
+private fun projectProblem(projectPath: String?): String =
+    when (val choice = McpProjectResolver.resolve(projectPath)) {
+        is McpProjectChoice.Resolved -> "project not found"
+        is McpProjectChoice.NotFound -> choice.message
+        is McpProjectChoice.Ambiguous -> choice.message
     }
-    return null
+
+/**
+ * The single open project declaring [applicationClassName], used only when no path was supplied.
+ *
+ * An explicit path always wins: searching other projects for the class name would answer about a codebase the
+ * caller did not name, which is the very substitution [McpProjectResolver] exists to prevent. With the class in
+ * several open projects the caller is asked for a path instead of being given the first match.
+ */
+private suspend fun getCurrentProjectForClass(applicationClassName: String? = null): Project? {
+    applicationClassName ?: return null
+    val declaring = ProjectManager.getInstance().openProjects
+        .filter { !it.isDefault }
+        .filter { project ->
+            // Waits for this project's indexing instead of failing the whole call because some other one is dumb.
+            smartReadAction(project) {
+                ApplicationClassName.findClass(project, applicationClassName, project.projectScope())
+            } != null
+        }
+    return declaring.singleOrNull()
 }
 
 data class SpringBootApplicationJson(
@@ -847,6 +2299,7 @@ data class SpringBootApplicationJson(
     val springBootStarters: List<String>,
     val moduleName: String?,
     val buildTool: String?,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val testSource: Boolean? = null,
 )
 
 data class SpringBootApplication(
@@ -857,117 +2310,444 @@ data class McpSpringBean(
     @param:McpDescription("Spring Bean name") val beanName: String,
     @param:McpDescription("full qualified java class name for Spring Bean") val className: String,
     @param:McpDescription("project module name where Spring Bean located") val moduleName: String,
+    @param:McpDescription("model that answered: STATIC or NATIVE_SNAPSHOT") val source: String,
+    @param:McpDescription("loaded context the row comes from; absent for STATIC")
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val contextId: String?,
+    @param:McpDescription("when the loaded context was last imported, ISO-8601 UTC; absent for STATIC or when unknown")
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val snapshotImportedAt: String?,
+    @param:McpDescription("what the model cannot promise about this row's own bean; absent when nothing")
+    @get:JsonInclude(JsonInclude.Include.NON_EMPTY) val limitations: List<String>,
+    @param:McpDescription("PROJECT or LIBRARY, read from where the bean is declared; absent when unknown")
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val origin: String?,
 )
 
 data class EndpointJson(
     val httpMethods: List<String>,
     val fullPath: String,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val pathTemplate: String?,
     val controllerClass: String?,
     val methodName: String?,
+    /** Project-relative; `null` for an element declared outside the project, see [CompactEndpointJson.library]. */
     val filePath: String?,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val library: String?,
     /** `null` when the endpoint element has no physical declaration to point at. */
     val line: Int?,
     val parameters: List<EndpointParameterJson>,
     val returnType: String?,
     val endpointType: String,
+    /** The media types the mapping accepts, present only when it declares some; see [CompactEndpointJson.consumes]. */
+    @get:JsonInclude(JsonInclude.Include.NON_EMPTY) val consumes: List<String>,
+    /** The media types the mapping produces, present only when it declares some. */
+    @get:JsonInclude(JsonInclude.Include.NON_EMPTY) val produces: List<String>,
+    /** Where an Actuator operation's [produces] come from; see [CompactEndpointJson.producesSource]. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val producesSource: String?,
+    /** Whether an Actuator endpoint answers over HTTP; see [CompactEndpointJson.exposed]. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val exposed: String?,
+    /** The access an Actuator operation is granted; see [CompactEndpointJson.access]. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val access: String?,
+    /** The condition excluding a project Actuator endpoint's bean; see [CompactEndpointJson.beanCondition]. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val beanCondition: EndpointBeanConditionJson?,
+    /** Whether the endpoint is declared in a test source root; see [CompactEndpointJson.testSource]. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val testSource: Boolean?,
+    /** The application whose context lists an Actuator endpoint; see [CompactEndpointJson.application]. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val application: String?,
 )
 
-data class EndpointListJson(
-    val totalCount: Int,
-    val offset: Int,
-    val truncated: Boolean,
-    val endpoints: List<EndpointJson>,
+/**
+ * One endpoint without its per-method signature, for the `compact` listing.
+ *
+ * Not [EndpointJson] with nulled-out fields: the two arrays are *absent* rather than empty, so a caller cannot
+ * mistake a projection for an endpoint that genuinely takes no parameters — the same absent-versus-empty
+ * confusion that made a dropped parameter unreadable before.
+ */
+data class CompactEndpointJson(
+    val httpMethods: List<String>,
+    /** The path the application serves, configuration placeholders resolved. */
+    val fullPath: String,
+    /**
+     * The path as declared, placeholders included - present only when it differs from [fullPath], so the common
+     * endpoint keeps its shape. A profile or an environment variable can override the resolved value at runtime.
+     */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val pathTemplate: String?,
+    val controllerClass: String?,
+    val methodName: String?,
+    /** Relative to the project root, `../` for a module outside it; `null` for an element declared in a library. */
+    val filePath: String?,
+    /**
+     * The jar, or the library, declaring an element that is not a project file - a built-in Actuator endpoint -
+     * by its file name, never by a path of this machine. Absent for a project element, whose [filePath] is set.
+     */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val library: String?,
+    /** `null` when the endpoint element has no physical declaration to point at. */
+    val line: Int?,
+    val endpointType: String,
+    /**
+     * The `Content-Type` values the mapping accepts. Two handlers sharing a path and a verb are told apart by these
+     * and [produces], not by their order. Absent rather than empty when the mapping declares none - any media type is
+     * accepted then - so the common endpoint keeps its shape.
+     */
+    @get:JsonInclude(JsonInclude.Include.NON_EMPTY) val consumes: List<String>,
+    /** The media types the mapping produces, matched against the request's `Accept`; absent when it declares none. */
+    @get:JsonInclude(JsonInclude.Include.NON_EMPTY) val produces: List<String>,
+    /**
+     * For an Actuator operation only, where [produces] comes from: `DECLARED` by `produces`/`producesFrom`, `NONE` for a
+     * void operation, `RESOURCE` for a resource, `BOOT_DEFAULT` for Boot's default endpoint media types, or
+     * `CUSTOM_ENDPOINT_MEDIA_TYPES` when the application declares its own `EndpointMediaTypes` bean, whose types are not
+     * read and may differ from the Boot defaults listed. Absent for every other endpoint.
+     */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val producesSource: String?,
+    /**
+     * For an Actuator endpoint only, whether `management.endpoints.web.exposure.include`/`exclude` let it answer over
+     * HTTP: `EXPOSED`, `NOT_EXPOSED`, or `UNKNOWN` when a value cannot be read from the configuration files. Absent for
+     * every other endpoint. A profile or an environment variable can change exposure at run time, so an endpoint is
+     * listed whatever this says.
+     */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val exposed: String?,
+    /**
+     * For an Actuator operation only, the access the configuration grants it: `UNRESTRICTED`, `READ_ONLY`, `NONE`, or
+     * `UNKNOWN` when a value cannot be read. Independent of [exposed]: an exposed operation with `NONE` answers 404.
+     * Under `READ_ONLY` only read operations are served, so a write or delete operation of that endpoint reads `NONE`.
+     */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val access: String?,
+    /**
+     * For a project Actuator endpoint only, the condition that excludes its bean (`INACTIVE`) or leaves it
+     * undecidable statically (`UNDECIDED`). Absent when no condition excludes the bean or leaves it undecided.
+     */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val beanCondition: EndpointBeanConditionJson?,
+    /**
+     * `true` for an endpoint declared in a test source root - a probe controller inside a test class - which every
+     * endpoint tool lists after the production endpoints. Absent for production and library endpoints.
+     */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val testSource: Boolean?,
+    /**
+     * For an Actuator endpoint only, the qualified name of the `@SpringBootApplication` whose context lists it. A copy
+     * listed by an application declared in test sources carries [testSource] and follows the production copy.
+     */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val application: String?,
 )
+
+@JsonInclude(JsonInclude.Include.NON_NULL)
+data class EndpointBeanConditionJson(
+    val state: String,
+    val annotation: String?,
+    val carrier: String?,
+    val detail: String?,
+    val reasons: List<String>?,
+)
+
+private fun ConditionVerdict.toBeanConditionJson(): EndpointBeanConditionJson? = when (this) {
+    ConditionVerdict.Active -> null
+    is ConditionVerdict.Inactive -> EndpointBeanConditionJson(
+        state = "INACTIVE",
+        annotation = condition.annotationFqn,
+        carrier = condition.carrierFqn,
+        detail = condition.detail,
+        reasons = null,
+    )
+    is ConditionVerdict.Undecided -> conditions.firstOrNull().let { first ->
+        EndpointBeanConditionJson(
+            state = "UNDECIDED",
+            annotation = first?.annotationFqn,
+            carrier = first?.carrierFqn,
+            detail = first?.detail,
+            reasons = conditions.map { it.reason.name },
+        )
+    }
+}
+
+private const val ALL_HTTP_METHODS_DESCRIPTION =
+    "'httpMethods' is [\"ALL\"] for a route that answers every HTTP method - a controller mapping that declares no method, " +
+        "a router path(\"/x\", handler), an @HttpExchange without a method, a @ServletEndpoint. "
+
+private const val BEAN_CONDITION_DESCRIPTION =
+    "A project Actuator endpoint whose bean a condition excludes stays listed with 'beanCondition' " +
+        "{state: INACTIVE, annotation, carrier, detail} naming that condition, or with state UNDECIDED when " +
+        "its conditions cannot be decided statically - then 'annotation', 'carrier' and 'detail' name the " +
+        "first undecided condition and 'reasons' lists the reason of every undecided one. 'exposed' and " +
+        "'access' describe the configured exposure, not whether the bean exists. The key is absent when no " +
+        "condition excludes the bean or leaves it undecided. While bean condition evaluation is disabled in the " +
+        "settings a missing key does not mean the bean is active: no endpoint carries it then, and every page " +
+        "names that in the envelope-level 'limitations': [\"CONDITIONS_NOT_EVALUATED\"], a key absent while " +
+        "conditions are evaluated. "
 
 data class EndpointParameterJson(
     val name: String,
+    /**
+     * Where the value comes from: `PATH`, `QUERY`, `PART`, `BODY`, `HEADER`, `COOKIE` or `MODEL` for an
+     * annotation-bound parameter; for an unannotated one, `QUERY` when its type is simple as `BeanUtils.isSimpleProperty`
+     * defines it and `MODEL` otherwise, which is where Spring's catch-all resolvers put it; `FRAMEWORK` for one the
+     * container supplies; and `UNKNOWN` for one this tool cannot classify - an unresolved type, or an annotation a
+     * project-local `HandlerMethodArgumentResolver` may claim.
+     */
     val source: String,
+    /** The declared type: a primitive stays `int`, because only `java.lang.Integer` may be absent. */
     val type: String,
-    val required: Boolean,
+    /**
+     * Whether Spring rejects a request that omits the value. A query parameter or a header with a `defaultValue`,
+     * or one declared `Optional`, `@Nullable`, Kotlin-nullable or with a Kotlin default, is `false` whatever its
+     * `required` attribute says. `null` when nothing declares it, which is every source the tool cannot read the
+     * contract of.
+     */
+    val required: Boolean?,
     val defaultValue: String? = null,
 )
 
-data class CallChainResultJson(
-    val chain: List<CallChainNodeJson>,
-    val testReferences: List<TestReferenceJson>,
-)
 
 data class CallChainNodeJson(
+    /** Position of the node in the chain, which [CallTargetJson.node] refers to. */
+    val id: Int,
+    /** Stereotype of the declaring class; `null` when that class is not a Spring bean, e.g. a Kotlin `object`. */
     val layer: String?,
+    /**
+     * `INTERNAL` for a helper of the unit of code that called it, `PROJECT` for a method of another class, `null` for
+     * the method the trace started from.
+     */
+    val reachedBy: String?,
     val className: String?,
     val methodName: String,
+    /** Project-relative; `null` for a method declared outside the project, see [CompactEndpointJson.library]. */
     val filePath: String?,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val library: String?,
     /** `null` for a light or synthetic method with no physical declaration, e.g. a generated `copy()`. */
     val line: Int?,
     val parameters: List<String>,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val receiver: String?,
+    /**
+     * The proxy annotations Spring applies around the method - `@Transactional`, `@Async`, the cache annotations -
+     * declared on the method or on its class, the method's own first. Empty when none is declared.
+     */
+    val aop: List<AopAnnotationJson>,
     val callsInto: List<CallTargetJson>,
+    /**
+     * The test code referring to this method, or to the interface method a call reached it through. Absent when
+     * tests were not requested, empty when none refers to it.
+     */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL)
+    val testReferences: List<NodeTestReferenceJson>? = null,
+    /**
+     * On the method the trace started from, when it handles an endpoint: the test requests whose URL matches the
+     * endpoint - MockMvc to any host, `WebTestClient`, and real HTTP clients to this machine. Absent on every other node,
+     * when tests were not requested, and when requests cannot be matched to the route the trace started from.
+     */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL)
+    val testUrlReferences: List<UrlTestReferenceJson>? = null,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL)
+    val route: String? = null,
+)
+
+data class AopAnnotationJson(
+    /** Fully qualified name of the Spring or JTA annotation, also when a project annotation carries it as a meta-annotation. */
+    val annotation: String,
+    /** `METHOD` or `CLASS`. */
+    val declaredOn: String,
+)
+
+data class NodeTestReferenceJson(
+    /** Project-relative; `null` for a test outside the project, see [CompactEndpointJson.library]. */
+    val filePath: String?,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val library: String?,
+    val lines: List<Int>,
+    /** The interface or abstract method the test refers to instead of this method, `null` for a direct reference. */
+    val via: String?,
+)
+
+data class UrlTestReferenceJson(
+    /** Project-relative; `null` for a test outside the project, see [CompactEndpointJson.library]. */
+    val filePath: String?,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val library: String?,
+    val lines: List<Int>,
+    /**
+     * The mapping path of the endpoint the test's request matched, as the endpoint declares it - not the literal URL
+     * the test sends, which may carry concrete values in place of `{templates}`.
+     */
+    val endpointPath: String,
 )
 
 data class CallTargetJson(
     val target: String,
-    /** `null` for a light or synthetic call target with no physical declaration. */
+    /**
+     * `INTERNAL` for a helper of the caller's own unit of code, `PROJECT` for a method of another project class, and
+     * `EXTERNAL` where the request leaves the application: a library method called on an injected dependency, or a
+     * method the framework implements, such as a Spring Data repository method. An unresolved call is `EXTERNAL`
+     * because nothing can be followed, even when the dependency's declared type is a project class.
+     */
+    val kind: String,
+    /** Line of the call in the calling method, where a change to its arguments is made. */
     val line: Int?,
+    /** Id of the chain node the call reaches; `null` for an `EXTERNAL` call or a method the trace did not expand. */
+    val node: Int?,
+    /** The interface or abstract method the call is written against, when [target] is an implementation of it. */
+    val via: String?,
+    /**
+     * `false` when the IDE cannot resolve the method - its library jar is not downloaded, or it does not exist - so
+     * [target] is read from the call site and the declared type of the injected dependency it is made on. Absent on
+     * every resolved call.
+     */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL)
+    val resolved: Boolean? = null,
+    /**
+     * `true` when [target] is a trivial accessor of a project class - a getter or setter whose body only reads or
+     * writes a field, a Kotlin property's default accessor, or one generated from the field - which the trace lists
+     * without following or counting against its limit. Absent for every other call.
+     */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL)
+    val accessor: Boolean? = null,
 )
 
-data class TestReferenceJson(
-    val filePath: String,
-    val referencedMethods: List<TestMethodReferenceJson>,
+data class ServiceCallJson(
+    val target: String,
+    /** Where [target] is declared, project-relative; `null` for a library declaration, see [library]. */
+    val filePath: String?,
+    /** The jar or library declaring [target] when it is not a project file; see [CompactEndpointJson.library]. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val library: String? = null,
+    /** Declaration line of [target]. */
+    val line: Int?,
+    /** Line of the call in the handler; absent for a functional route, whose handler is a reference, not a call. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val callLine: Int? = null,
+    /** `false` when the IDE cannot resolve the method, so [target] is the declared type of the bean and the name written. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val resolved: Boolean? = null,
 )
 
-data class TestMethodReferenceJson(
-    val method: String,
-    val lines: List<Int>,
-)
 
 data class EndpointContractJson(
     val httpMethods: List<String>,
     val fullPath: String,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val pathTemplate: String?,
     val controllerClass: String?,
     val methodName: String?,
+    /** Project-relative; `null` for an element declared outside the project, see [CompactEndpointJson.library]. */
     val filePath: String?,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val library: String?,
     /** `null` when the endpoint method has no physical declaration to point at. */
     val line: Int?,
     val parameters: List<EndpointParameterJson>,
     val returnType: String?,
     val responseSchema: DtoSchemaJson?,
     val produces: List<String>,
+    /** Where an Actuator operation's [produces] come from; see [CompactEndpointJson.producesSource]. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val producesSource: String?,
     val consumes: List<String>,
-    val serviceCall: CallTargetJson?,
+    /** The first of [serviceCalls]; kept for callers of the generation that had only it. */
+    val serviceCall: ServiceCallJson?,
+    /**
+     * Every call on an injected project bean in source order, or the handler function of a functional route. Empty when
+     * the handler calls no such bean.
+     */
+    val serviceCalls: List<ServiceCallJson>,
     val endpointType: String,
+    /** Whether an Actuator endpoint answers over HTTP; see [CompactEndpointJson.exposed]. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val exposed: String?,
+    /** The access an Actuator operation is granted; see [CompactEndpointJson.access]. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val access: String?,
+    /** The condition excluding a project Actuator endpoint's bean; see [CompactEndpointJson.beanCondition]. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val beanCondition: EndpointBeanConditionJson?,
+    /** Whether the endpoint is declared in a test source root; see [CompactEndpointJson.testSource]. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val testSource: Boolean?,
+    /**
+     * `COMPLETE` when a request-handling method declares the endpoint, `PARTIAL` when the endpoint exists but has
+     * no such signature to read - a functional route or an OpenAPI declaration.
+     *
+     * A `PARTIAL` contract reports only what the declaration states: the path, the verb, the declaring element and
+     * the parameters the URL template names. Its empty `parameters` or null `returnType` mean "not declared here",
+     * never "the endpoint takes nothing".
+     */
+    val contractStatus: String,
+    /** What has to be read elsewhere, and where. `null` for a `COMPLETE` contract. */
+    val contractUnavailableReason: String?,
+    /** The application whose context lists an Actuator endpoint; see [CompactEndpointJson.application]. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val application: String?,
 )
 
+/**
+ * The shape of a value as Jackson writes it.
+ *
+ * An enum has no [fields]: it carries [enumValues] - the strings written for its constants - or, when it declares a
+ * `@JsonValue` member, [jsonValue] naming that member and [valueType] its type. The values of a `@JsonValue` member
+ * are computed in code, so they are not listed; [enumConstants] lists the constants themselves instead.
+ *
+ * @property enumConstants the declared constant names of a `@JsonValue` enum - NOT the values written on the wire -
+ * so a caller knows how many values there are and which constant each comes from. Absent for an enum without
+ * `@JsonValue`, whose [enumValues] already are its wire values and would only be repeated or contradicted.
+ */
 data class DtoSchemaJson(
     val className: String,
-    val fields: List<DtoFieldJson>,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val typeId: String? = null,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val fields: List<DtoFieldJson>?,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val enumValues: List<String>? = null,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val jsonValue: String? = null,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val valueType: String? = null,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val enumConstants: List<String>? = null,
+    /**
+     * The Jackson naming strategy that renamed the [fields]: a `PropertyNamingStrategies` constant such as
+     * `SNAKE_CASE`, or `UNKNOWN` when one is declared but cannot be read statically and the names are left as declared.
+     */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val namingStrategy: String? = null,
+    /**
+     * Where [namingStrategy] is declared: `@JsonNaming`, `spring.jackson.property-naming-strategy`, or the mapper,
+     * builder or customizer bean of the project that makes it `UNKNOWN`, with the property it may override when set.
+     */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val namingStrategySource: String? = null,
+    /** Why the type is not expanded into [fields]; see `ResponseSchemaReader.SchemaOmitted`. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val schemaOmitted: String? = null,
+    /** `true` when entries of a map are written next to [fields], as a Jackson `@JsonAnyGetter` writes them. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val additionalProperties: Boolean? = null,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val polymorphic: Boolean? = null,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val discriminator: DiscriminatorJson? = null,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val variants: List<DtoSchemaJson>? = null,
+    /** How Spring Data writes a page or slice: `PAGE_DIRECT`, `PAGED_MODEL` or `SLICE_DIRECT`. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val wireShape: String? = null,
+    /**
+     * Where the page serialization mode was read: `DEFAULT`, `spring.data.web.pageable.serialization-mode`,
+     * `@EnableSpringDataWebSupport on <class>`, or `UNKNOWN` when it cannot be read and the default shape is shown.
+     */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val wireShapeSource: String? = null,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val wireShapeAssumed: Boolean? = null,
+)
+
+data class DiscriminatorJson(
+    val use: String,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val include: String?,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val property: String?,
 )
 
 data class DtoFieldJson(
+    /** The name the field is written under: its `@JsonProperty` value, else the name the naming strategy gives it. */
     val name: String,
+    /** The name the field is declared with, present only when `@JsonProperty` or a naming strategy renames it. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val declaredName: String?,
     val type: String,
-    val nullable: Boolean,
+    /** `true` when `null` can be written, `false` when it cannot, `null` when an unannotated Java reference leaves it unknown. */
+    val nullable: Boolean?,
     val nested: DtoSchemaJson?,
-)
-
-data class SpringDataEntityJson(
-    val name: String,
-    val className: String,
-    val filePath: String?,
-    /** `null` when the entity class has no physical declaration to point at. */
-    val line: Int?,
-    val tableName: String,
-    val fields: List<EntityFieldJson>,
-    val indexes: List<EntityIndexJson>,
 )
 
 data class EntityFieldJson(
     val name: String,
     val type: String,
     val column: String?,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val columnQuoted: Boolean? = null,
     val primaryKey: Boolean,
-    val nullable: Boolean,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val nullable: Boolean? = null,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val nullableReason: EntityNullableReason? = null,
     val relationship: String?,
     val joinColumn: String?,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val joinColumnQuoted: Boolean? = null,
     val mappedBy: String?,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val joinTable: EntityJoinTableJson? = null,
+)
+
+enum class EntityNullableReason { SINGLE_TABLE_SUBCLASS }
+
+data class EntityJoinTableJson(
+    val name: String?,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val quoted: Boolean? = null,
+    val joinColumns: List<EntityJoinColumnJson>,
+    val inverseJoinColumns: List<EntityJoinColumnJson>,
+)
+
+data class EntityJoinColumnJson(
+    val name: String?,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val quoted: Boolean? = null,
 )
 
 data class EntityIndexJson(
@@ -975,4 +2755,3 @@ data class EntityIndexJson(
     val columns: List<String>,
     val unique: Boolean,
 )
-
