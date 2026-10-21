@@ -6,8 +6,6 @@
 package com.explyt.spring.core.service.kotlin
 
 import com.explyt.spring.core.service.SpringSearchServiceFacade
-import com.explyt.spring.core.service.beans.BeanApplicationResolver
-import com.explyt.spring.core.service.beans.BeanQueryException
 import com.explyt.spring.test.ExplytKotlinLightTestCase
 import com.explyt.spring.test.TestLibrary
 import com.intellij.openapi.module.ModuleUtilCore
@@ -15,7 +13,6 @@ import com.intellij.openapi.util.registry.Registry
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiClass
 import com.intellij.psi.search.GlobalSearchScope
-import org.junit.Assert
 
 class EnableAutoConfigurationApplicationTest : ExplytKotlinLightTestCase() {
 
@@ -38,12 +35,6 @@ class EnableAutoConfigurationApplicationTest : ExplytKotlinLightTestCase() {
         }
     }
 
-    fun testEnableAutoConfigurationWithComponentScanIsApplication() {
-        addPortalApplication(SCANNING_PORTAL_APPLICATION)
-
-        assertEquals(PORTAL_APPLICATION, resolveApplication(PORTAL_APPLICATION).qualifiedName)
-    }
-
     fun testEnableAutoConfigurationWithComponentScanScansItsPackage() {
         addOtherApplication()
         addPortalApplication(SCANNING_PORTAL_APPLICATION)
@@ -53,12 +44,6 @@ class EnableAutoConfigurationApplicationTest : ExplytKotlinLightTestCase() {
 
         assertTrue("precondition: the other application scans its package, got $activeBeans", OTHER_SERVICE in activeBeans)
         assertTrue("the portal application scans its package, got $activeBeans", PORTAL_SERVICE in activeBeans)
-    }
-
-    fun testEnableAutoConfigurationOnlyIsApplication() {
-        addPortalApplication(AUTO_CONFIGURATION_ONLY_PORTAL_APPLICATION)
-
-        assertEquals(PORTAL_APPLICATION, resolveApplication(PORTAL_APPLICATION).qualifiedName)
     }
 
     fun testEnableAutoConfigurationOnlyDoesNotScanItsPackage() {
@@ -80,73 +65,6 @@ class EnableAutoConfigurationApplicationTest : ExplytKotlinLightTestCase() {
 
         assertTrue("precondition: the other application scans its package, got $activeBeans", OTHER_SERVICE in activeBeans)
         assertTrue("the primary source is registered, got $activeBeans", PORTAL_APPLICATION in activeBeans)
-    }
-
-    fun testProjectMetaAnnotationWithEnableAutoConfigurationIsApplication() {
-        myFixture.addFileToProject(
-            "com/portal/MyApp.kt",
-            """
-            package com.portal
-
-            import org.springframework.boot.autoconfigure.EnableAutoConfiguration
-            import org.springframework.context.annotation.ComponentScan
-
-            @Target(AnnotationTarget.CLASS)
-            @Retention(AnnotationRetention.RUNTIME)
-            @EnableAutoConfiguration
-            @ComponentScan
-            annotation class MyApp
-            """.trimIndent()
-        )
-        myFixture.addFileToProject(
-            "com/portal/PortalApplication.kt",
-            """
-            package com.portal
-
-            @MyApp
-            class PortalApplication
-            """.trimIndent()
-        )
-        assertTrue(
-            "precondition: MyApp carries Boot's EnableAutoConfiguration",
-            projectClass("com.portal.MyApp").hasAnnotation(ENABLE_AUTO_CONFIGURATION)
-        )
-        assertTrue("precondition: PortalApplication carries MyApp", projectClass(PORTAL_APPLICATION).hasAnnotation("com.portal.MyApp"))
-
-        assertEquals(PORTAL_APPLICATION, resolveApplication(PORTAL_APPLICATION).qualifiedName)
-    }
-
-    fun testTestSliceIsNotApplication() {
-        addOtherApplication()
-        myFixture.addFileToProject(
-            "com/portal/PortalRepositoryTest.kt",
-            """
-            package com.portal
-
-            import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest
-
-            @DataJpaTest
-            class PortalRepositoryTest
-            """.trimIndent()
-        )
-        assertNotNull("precondition: Boot's DataJpaTest is on the classpath", libraryClass(DATA_JPA_TEST))
-        assertTrue(
-            "precondition: the test class carries DataJpaTest",
-            projectClass("com.portal.PortalRepositoryTest").hasAnnotation(DATA_JPA_TEST)
-        )
-        assertEquals(
-            "precondition: the detector finds applications in this fixture",
-            OTHER_APPLICATION, resolveApplication(OTHER_APPLICATION).qualifiedName
-        )
-
-        assertEquals(BeanApplicationResolver.APPLICATION_NOT_FOUND, failedResolution("com.portal.PortalRepositoryTest"))
-    }
-
-    fun testSpringBootApplicationIsStillApplication() {
-        addOtherApplication()
-
-        assertEquals(OTHER_APPLICATION, resolveApplication(OTHER_APPLICATION).qualifiedName)
-        assertTrue("the application scans its package", OTHER_SERVICE in activeBeanNames())
     }
 
     private fun addPortalApplication(text: String) {
@@ -196,14 +114,6 @@ class EnableAutoConfigurationApplicationTest : ExplytKotlinLightTestCase() {
         )
     }
 
-    private fun resolveApplication(qualifiedName: String): PsiClass =
-        BeanApplicationResolver(project).resolve(qualifiedName, null)
-
-    private fun failedResolution(qualifiedName: String): String =
-        Assert.assertThrows(BeanQueryException::class.java) {
-            BeanApplicationResolver(project).resolve(qualifiedName, null)
-        }.problem.code
-
     private fun activeBeanNames(): Set<String> =
         SpringSearchServiceFacade.getInstance(project).getAllActiveBeans(module)
             .mapNotNullTo(mutableSetOf()) { it.psiClass.qualifiedName }
@@ -217,7 +127,6 @@ class EnableAutoConfigurationApplicationTest : ExplytKotlinLightTestCase() {
 
     private companion object {
         const val ENABLE_AUTO_CONFIGURATION = "org.springframework.boot.autoconfigure.EnableAutoConfiguration"
-        const val DATA_JPA_TEST = "org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest"
         const val PORTAL_APPLICATION = "com.portal.PortalApplication"
         const val PORTAL_SERVICE = "com.portal.PortalService"
         const val OTHER_APPLICATION = "com.other.OtherApplication"

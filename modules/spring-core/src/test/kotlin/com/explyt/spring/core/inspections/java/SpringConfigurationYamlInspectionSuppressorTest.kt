@@ -49,6 +49,6 @@ explyt:
             .instantiateTool() as LocalInspectionTool
 
     private companion object {
-        const val PLACEHOLDER = $$"\"${FLAG:true}\""
+        const val PLACEHOLDER = "\"\${FLAG:true}\""
     }
 }

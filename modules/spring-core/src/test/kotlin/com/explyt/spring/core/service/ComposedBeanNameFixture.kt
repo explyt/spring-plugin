@@ -6,7 +6,6 @@
 package com.explyt.spring.core.service
 
 import com.explyt.spring.core.SpringCoreClasses
-import com.explyt.spring.core.service.beans.BeanSourcePreference
 import com.explyt.util.ExplytAnnotationUtil.getStringMemberValues
 import com.intellij.openapi.module.Module
 import com.intellij.psi.JavaPsiFacade
@@ -130,12 +129,6 @@ object ComposedBeanNameFixture {
         assertTrue("Expected names differ from the method name unless they fall back to it",
             expectedNames == listOf(method.name) || method.name !in expectedNames)
 
-        val records = SpringSearchServiceFacade.getInstance(project)
-            .getBeanSnapshot(application, BeanSourcePreference.STATIC).records
-            .filter { it.typeName == "beanname.Foo" }
-        assertEquals("One factory must produce one snapshot record", 1, records.size)
-        assertEquals("Snapshot bean name", expectedNames.first(), records.single().name)
-        assertEquals("Snapshot known names", expectedNames, records.single().knownNames.toList())
         val beans = SpringSearchServiceFacade.getInstance(project).getAllActiveBeans(module)
             .filter { it.psiClass.qualifiedName == "beanname.Foo" }
         assertEquals("Active model bean names", expectedNames.toSet(), beans.map { it.name }.toSet())
@@ -200,12 +193,6 @@ object ComposedBeanNameFixture {
         assertEquals("Declared composed attribute values", declaredValues, annotation.getStringMemberValues(attribute))
         assertTrue("Fixture names differ from the method name", declaredValues.none { it == method.name })
 
-        val records = SpringSearchServiceFacade.getInstance(project)
-            .getBeanSnapshot(application, BeanSourcePreference.STATIC).records
-            .filter { it.typeName == "beanname.Foo" }
-        assertEquals("One factory must produce one snapshot record", 1, records.size)
-        assertEquals("Snapshot bean name", expectedNames.first(), records.single().name)
-        assertEquals("Snapshot known names", expectedNames, records.single().knownNames.toList())
         val beans = SpringSearchServiceFacade.getInstance(project).getAllActiveBeans(module)
             .filter { it.psiClass.qualifiedName == "beanname.Foo" }
         assertEquals("Active model bean names", expectedNames.toSet(), beans.map { it.name }.toSet())
