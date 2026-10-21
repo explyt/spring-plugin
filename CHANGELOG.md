@@ -129,6 +129,7 @@
 - fix: Make `gradlew` and `mvnw` executable in a project generated through Spring Initializr, so the first `./gradlew` in a terminal no longer fails with "permission denied" (#60)
 
 ### Spring Web
+- fix: Open in Swagger UI and `.http` host completion resolve nested `server.port` placeholders such as `${SERVER_PORT:${app.port:9317}}`, and a mapping path placeholder nested in a default resolves to the inner value instead of staying half-resolved (#779)
 - fix: Actuator endpoints apply only `@EndpointWebExtension` classes that are beans, as Spring Boot does: an extension outside the component scan or without a stereotype no longer replaces the endpoint's operations (#655)
 - fix: Endpoint gutters, Run in Swagger and OpenAPI generation no longer offer the class-prefix URL for a handler whose path cannot be evaluated (#709)
 - fix: Read the class-level prefix of a controller annotated with a composed annotation the way Spring merges it: an `@AliasFor` default, such as `String[] path() default "/api"` on an annotation meta-annotated with `@RequestMapping`, also through a second composed level, is now the prefix of the controller's endpoints in the Endpoints tool window, the Spring MCP endpoint tools, the endpoint gutters and "Generate OpenApi Specification", and an attribute named like a `@RequestMapping` path attribute without `@AliasFor` sets the prefix only before Spring 7, as Spring's convention mapping does (#672)
