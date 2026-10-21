@@ -17,7 +17,6 @@ import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.pom.java.LanguageLevel
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PlatformTestUtil
-import com.intellij.testFramework.builders.JavaModuleFixtureBuilder
 import com.intellij.testFramework.fixtures.JavaCodeInsightFixtureTestCase
 import java.io.File
 
@@ -26,12 +25,9 @@ class SpringBootApplicationMcpToolsetTraceReceiverTest : JavaCodeInsightFixtureT
     private val toolset = SpringBootApplicationMcpToolset()
     private val mapper = ObjectMapper()
 
-    override fun tuneFixture(moduleBuilder: JavaModuleFixtureBuilder<*>) {
-        moduleBuilder.addJdkVersion(LanguageLevel.JDK_21)
-    }
-
     override fun setUp() {
         super.setUp()
+        myFixture.module.useMockJdk(LanguageLevel.JDK_21, testRootDisposable)
         ModuleRootModificationUtil.updateModel(myFixture.module) { model ->
             listOf(TestLibrary.kotlin_1_9_22, TestLibrary.springContext_6_0_7).forEach {
                 addFromMaven(model, it.mavenCoordinates, it.includeTransitiveDependencies)

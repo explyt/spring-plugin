@@ -24,7 +24,6 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.pom.java.LanguageLevel
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PlatformTestUtil
-import com.intellij.testFramework.builders.JavaModuleFixtureBuilder
 import com.intellij.testFramework.fixtures.JavaCodeInsightFixtureTestCase
 import java.io.File
 
@@ -44,12 +43,9 @@ class SpringBootApplicationMcpToolsetOutsideProjectRootTest : JavaCodeInsightFix
     private val mapper = ObjectMapper()
     private lateinit var outsideRoot: File
 
-    override fun tuneFixture(moduleBuilder: JavaModuleFixtureBuilder<*>) {
-        moduleBuilder.addJdkVersion(LanguageLevel.JDK_21)
-    }
-
     override fun setUp() {
         super.setUp()
+        myFixture.module.useMockJdk(LanguageLevel.JDK_21, testRootDisposable)
         ModuleRootModificationUtil.updateModel(myFixture.module) { model ->
             addFromMaven(model, TestLibrary.springWebMvc_6_0_7.mavenCoordinates, true)
             addFromMaven(model, TestLibrary.springBootAutoConfigure_3_1_1.mavenCoordinates, true)

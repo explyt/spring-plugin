@@ -23,7 +23,6 @@ import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PlatformTestUtil
-import com.intellij.testFramework.builders.JavaModuleFixtureBuilder
 import com.intellij.testFramework.fixtures.JavaCodeInsightFixtureTestCase
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.uast.UCallExpression
@@ -47,12 +46,9 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
     private val toolset = SpringBootApplicationMcpToolset()
     private val mapper = ObjectMapper()
 
-    override fun tuneFixture(moduleBuilder: JavaModuleFixtureBuilder<*>) {
-        moduleBuilder.addJdkVersion(LanguageLevel.JDK_21)
-    }
-
     override fun setUp() {
         super.setUp()
+        myFixture.module.useMockJdk(LanguageLevel.JDK_21, testRootDisposable)
         ModuleRootModificationUtil.updateModel(myFixture.module) { model ->
             LIBRARIES.forEach { addFromMaven(model, it.mavenCoordinates, it.includeTransitiveDependencies) }
         }
