@@ -54,7 +54,22 @@ class MappingPathPlaceholdersTest {
     }
 
     @Test
-    fun `a placeholder nested in a default resolves only the inner one`() {
-        assertEquals("\${outer:/d}", resolve("\${outer:\${inner:/d}}"))
+    fun `a placeholder nested in a default falls back to the inner default`() {
+        assertEquals("/d", resolve("\${outer:\${inner:/d}}"))
+    }
+
+    @Test
+    fun `a placeholder nested in a default takes the inner key value`() {
+        assertEquals("/l", resolve("\${outer:\${app.path:/d}}"))
+    }
+
+    @Test
+    fun `a defined outer key wins over a nested default`() {
+        assertEquals("/l", resolve("\${app.path:\${inner:/d}}"))
+    }
+
+    @Test
+    fun `a nested placeholder without any value is kept as written`() {
+        assertEquals("\${outer:\${inner}}", resolve("\${outer:\${inner}}"))
     }
 }
