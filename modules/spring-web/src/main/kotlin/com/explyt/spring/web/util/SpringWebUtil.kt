@@ -24,6 +24,7 @@ import com.explyt.spring.web.providers.JaxRsRunLineMarkerProvider.Companion.VALU
 import com.explyt.spring.web.references.contributors.webClient.EndpointResult
 import com.explyt.spring.web.route.RoutePredicates
 import com.explyt.spring.web.route.RoutePrefix
+import com.explyt.spring.web.route.RouteScope
 import com.explyt.spring.web.route.RouterDslRoutes
 import com.explyt.util.ExplytAnnotationUtil.getBooleanValue
 import com.explyt.util.ExplytAnnotationUtil.getStringValue
@@ -633,17 +634,24 @@ object SpringWebUtil {
     }
 
     fun getPathsFromCallExpression(callExpression: UCallExpression): List<String> {
-        var route = RoutePrefix.of(getOwnPaths(callExpression).orEmpty())
+        val ownPaths = getOwnPaths(callExpression) ?: return emptyList()
+        return getEnclosingNestScope(callExpression).then(RouteScope.of(RoutePrefix.Decided(ownPaths))).paths
+    }
 
+    fun getServedRequestMethods(callExpression: UCallExpression, requestMethods: List<String>): List<String>? =
+        getEnclosingNestScope(callExpression).verbs.servedVerbsOf(requestMethods)
+
+    private fun getEnclosingNestScope(callExpression: UCallExpression): RouteScope {
+        var scope = RouteScope.ROOT
         var currentNode = callExpression.uastParent
-        while (currentNode != null && route != RoutePrefix.Undecidable) {
+        while (currentNode != null && !scope.isUndecidable) {
             ProgressManager.checkCanceled()
             if (currentNode is UCallExpression && isNestCall(currentNode)) {
-                route = RoutePredicates.prefixOfNest(currentNode).then(route)
+                scope = RoutePredicates.scopeOfNest(currentNode).then(scope)
             }
             currentNode = currentNode.uastParent
         }
-        return (route as? RoutePrefix.Decided)?.segments.orEmpty()
+        return scope
     }
 
     /**
