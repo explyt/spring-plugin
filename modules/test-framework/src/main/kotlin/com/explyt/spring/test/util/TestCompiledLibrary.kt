@@ -6,7 +6,7 @@
 package com.explyt.spring.test.util
 
 import com.intellij.openapi.Disposable
-import com.intellij.openapi.application.runReadActionBlocking
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.roots.OrderEnumerator
 import com.intellij.openapi.util.Disposer
@@ -85,7 +85,7 @@ class TestCompiledLibrary private constructor(
             return TestCompiledLibrary(jarRoot, libraryName, rootPath, jarName)
         }
 
-        private fun classpathOf(module: Module): String = runReadActionBlocking {
+        private fun classpathOf(module: Module): String = ReadAction.compute<String, RuntimeException> {
             OrderEnumerator.orderEntries(module).withoutSdk().librariesOnly().classes().roots
                 .map { JarFileSystem.getInstance().getVirtualFileForJar(it) ?: it }
                 .joinToString(File.pathSeparator) { VfsUtilCore.virtualToIoFile(it).path }
