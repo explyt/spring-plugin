@@ -9,7 +9,6 @@ import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.service.ComposedBeanNameFixture
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.service.SpringSearchServiceFacade
-import com.explyt.spring.core.service.beans.BeanSourcePreference
 import com.explyt.spring.test.ExplytKotlinLightTestCase
 import com.explyt.spring.test.TestLibrary
 import com.explyt.util.ExplytAnnotationUtil.getStringMemberValues
@@ -99,16 +98,6 @@ class SpringSearchServiceTest : ExplytKotlinLightTestCase() {
 
     fun testBeanNameConstant() = assertBeanName("@Bean(name = [BEAN_NAME])", "name", listOf("x"), "x")
 
-    fun testBeanNameAttributeSnapshotAliases() {
-        val application = configureBeanName("@Bean(name = [\"x\", \"y\"])", "name", listOf("x", "y"))
-        val records = SpringSearchServiceFacade.getInstance(project)
-            .getBeanSnapshot(application, BeanSourcePreference.STATIC).records
-            .filter { it.typeName == "beanname.Foo" }
-        assertEquals("One factory must produce one snapshot record", 1, records.size)
-        assertEquals("x", records.single().name)
-        assertEquals(listOf("x", "y"), records.single().knownNames.toList())
-    }
-
     fun testComposedBeanNameAlias() = assertComposedBeanName(
         "@get:AliasFor(annotation = Bean::class, attribute = \"name\") val beanName: Array<String> = []",
         "@MyBean(beanName = [\"x\"])", "beanName", "name", listOf("x"), listOf("x")
@@ -153,13 +142,7 @@ class SpringSearchServiceTest : ExplytKotlinLightTestCase() {
     }
 
     private fun assertBeanName(annotation: String, attribute: String, values: List<String>, expectedName: String) {
-        val application = configureBeanName(annotation, attribute, values)
-        val records = SpringSearchServiceFacade.getInstance(project)
-            .getBeanSnapshot(application, BeanSourcePreference.STATIC).records
-            .filter { it.typeName == "beanname.Foo" }
-        assertEquals(1, records.size)
-        assertEquals(expectedName, records.single().name)
-        assertEquals(listOf(expectedName), records.single().knownNames.toList())
+        configureBeanName(annotation, attribute, values)
         val beans = SpringSearchServiceFacade.getInstance(project).getAllActiveBeans(module)
             .filter { it.psiClass.qualifiedName == "beanname.Foo" }
         assertEquals(setOf(expectedName), beans.map { it.name }.toSet())

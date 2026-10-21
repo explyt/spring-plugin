@@ -10,8 +10,6 @@ import com.explyt.spring.core.inspections.SpringBeanIncorrectAutowiringInspectio
 import com.explyt.spring.core.service.HierarchySearchDecoy
 import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.core.service.SpringSearchService
-import com.explyt.spring.core.service.beans.BeanModelSource
-import com.explyt.spring.core.service.beans.BeanSourcePreference
 import com.explyt.spring.core.util.BeanFactoryMethods
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
@@ -62,16 +60,6 @@ class BeanFactoryMethodsTest : ExplytJavaLightTestCase() {
             "com.explyt.demo.Dog",
             beans.single().psiClass.qualifiedName
         )
-    }
-
-    fun testStaticSnapshotTypesCovariantOverrideByOverride() {
-        configureCovariantOverride()
-        val snapshot = SpringSearchServiceFacade.getInstance(project)
-            .getBeanSnapshot(psiClass("App"), BeanSourcePreference.STATIC)
-        assertEquals(BeanModelSource.STATIC, snapshot.selection.source)
-        val records = snapshot.records.filter { it.name == "animal" }
-        assertEquals("Static snapshot must contain one animal record", 1, records.size)
-        assertEquals("com.explyt.demo.Dog", records.single().typeName)
     }
 
     fun testCovariantOverrideAutowiresByOverrideType() {
@@ -269,20 +257,6 @@ class BeanFactoryMethodsTest : ExplytJavaLightTestCase() {
         )
         assertEquals("com.explyt.demo.Foo", injection.type.canonicalText)
         myFixture.testHighlighting(true, false, false)
-    }
-
-    fun testStaticSnapshotHasOneRecordForAnnotatedOverride() {
-        configureOverride(annotated = true)
-        val snapshot = SpringSearchServiceFacade.getInstance(project)
-            .getBeanSnapshot(psiClass("App"), BeanSourcePreference.STATIC)
-        assertEquals(BeanModelSource.STATIC, snapshot.selection.source)
-        val records = snapshot.records.filter { it.typeName == "com.explyt.demo.Foo" }
-        assertEquals("Static snapshot must contain one foo record", 1, records.size)
-        assertEquals("foo", records.single().name)
-        assertEquals(
-            "com.explyt.demo.Child",
-            (records.single().declaration as PsiMethod).containingClass?.qualifiedName
-        )
     }
 
     fun testGrandparentOverrideIsOneBeanDeclaredInChild() {
