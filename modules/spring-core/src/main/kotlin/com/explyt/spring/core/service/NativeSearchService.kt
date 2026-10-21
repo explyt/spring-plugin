@@ -298,7 +298,18 @@ class NativeSearchService(private val project: Project) {
         sourcePsiType: PsiType?,
         qualifier: PsiAnnotation?,
         moduleFindInSource: Module? = null //when uses bean search by source(not native) - default behavior
-    ): List<PsiMember> {
+    ): List<PsiMember> =
+        findActiveBeans(allPsiBeans, byBeanName, language, sourcePsiType, qualifier, moduleFindInSource)
+            .map { it.psiMember }.distinct()
+
+    fun findActiveBeans(
+        allPsiBeans: Collection<PsiBean>,
+        byBeanName: String,
+        language: Language,
+        sourcePsiType: PsiType?,
+        qualifier: PsiAnnotation?,
+        moduleFindInSource: Module? = null
+    ): List<PsiBean> {
         val beanPsiType = if (language == KotlinLanguage.INSTANCE)
             sourcePsiType?.beanPsiTypeKotlin else sourcePsiType?.beanPsiType
         val beanPsiClass = sourcePsiType?.resolveBeanPsiClass
@@ -316,22 +327,20 @@ class NativeSearchService(private val project: Project) {
             ?: findInStaticBeans(beanPsiClass, moduleFindInSource)
 
         if (resultByType.size == 1) {
-            return resultByType.map { it.psiMember }
+            return resultByType
         }
 
         if (qualifier == null) {
             if (beanPsiClass != null && isMultipleBean.get()) {
-                return resultByType.map { it.psiMember }
+                return resultByType
             }
 
-            val filteredByBeanName = resultByType.filter { byBeanName == it.name }
-            return filteredByBeanName.map { it.psiMember }.ifEmpty { resultByType.map { it.psiMember } }
+            return resultByType.filter { byBeanName == it.name }.ifEmpty { resultByType }
         }
         val byNameFromQualifierBean = resultByType
             .filter { it.filterByQualifier(qualifier, beanNameFromQualifier) }
-            .map { it.psiMember }
         return byNameFromQualifierBean
-            .filter { byBeanName == it.name }
+            .filter { byBeanName == it.psiMember.name }
             .ifEmpty { byNameFromQualifierBean }
     }
 
