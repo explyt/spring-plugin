@@ -78,11 +78,17 @@ class PackageScanService(private val project: Project) {
             .mapNotNull { (registered, registrar) -> registered.qualifiedName?.let { it to registrar.qualifiedName } }
             .groupBy({ it.first }, { it.second })
             .mapValues { (_, registrars) -> registrars.filterNotNullTo(mutableSetOf()) }
+        val enabledPropertiesQualified = registrations.groupBy { it.registered }
+            .filterValues { group -> group.all { it.enabledProperties } }
+            .keys.mapNotNullTo(mutableSetOf()) { it.qualifiedName }
         val scannedRootsByModuleName = scanModuleData
             .mapNotNull { data -> data.declaringClass?.let { data.moduleName to ScannedRoot(it, data.packages) } }
             .groupBy({ it.first }, { it.second })
 
-        return RootDataHolder(packagesByModuleName, rootComponentQualified, importersByImported, scannedRootsByModuleName)
+        return RootDataHolder(
+            packagesByModuleName, rootComponentQualified, importersByImported, scannedRootsByModuleName,
+            enabledPropertiesQualified
+        )
     }
 
     private fun getComponentScanClasses(
@@ -107,7 +113,7 @@ class PackageScanService(private val project: Project) {
         }
         return classesForSearchImport
             .filter { filterComponentScanClass(packages, it) }
-            .flatMapTo(mutableSetOf()) { registrar -> getRegisteredClasses(registrar).map { Registration(it, registrar) } }
+            .flatMapTo(mutableSetOf()) { registrar -> getRegistrations(registrar) }
     }
 
     private fun searchRootClasses(annotationPsiClasses: ScanAnnotationHolder): List<PsiClass> {
@@ -177,7 +183,7 @@ class PackageScanService(private val project: Project) {
         return ModuleRootData(module.name, allPackages, declaringClass = psiClass.qualifiedName)
     }
 
-    private fun getRegisteredClasses(psiClass: PsiClass): Set<PsiClass> {
+    private fun getRegistrations(psiClass: PsiClass): Set<Registration> {
         val module = ModuleUtilCore.findModuleForPsiElement(psiClass) ?: return emptySet()
         val uClass = psiClass.toUElementOfType<UClass>() ?: return emptySet()
 
@@ -196,7 +202,8 @@ class PackageScanService(private val project: Project) {
             .flatMap { holderEnabler.getAnnotationMemberValues(it, setOf(SpringProperties.VALUE)) }
             .flatMap { getPsiClasses(it) }
 
-        return (imported + enabledProperties).toSet()
+        return imported.map { Registration(it, psiClass) }.toSet() +
+                enabledProperties.map { Registration(it, psiClass, enabledProperties = true) }
     }
 
     fun getAllImportClasses(uClass: UClass): Set<PsiClass> {
@@ -358,7 +365,9 @@ class PackageScanService(private val project: Project) {
      * @property rootComponentQualified the application class, for an application's own root.
      * @property declaringClass the configuration that declares the scan, for a root found on a scanned configuration.
      */
-    private data class Registration(val registered: PsiClass, val registrar: PsiClass)
+    private data class Registration(
+        val registered: PsiClass, val registrar: PsiClass, val enabledProperties: Boolean = false
+    )
 
     data class ModuleRootData(
         val moduleName: String,
@@ -388,6 +397,7 @@ data class RootDataHolder(
     val rootComponentQualified: Set<String>,
     val importersByImported: Map<String, Set<String>>,
     private val scannedRootsByModuleName: Map<String, List<ScannedRoot>> = emptyMap(),
+    val enabledPropertiesQualified: Set<String> = emptySet(),
 ) {
     val importQualified: Set<String> get() = importersByImported.keys
 
