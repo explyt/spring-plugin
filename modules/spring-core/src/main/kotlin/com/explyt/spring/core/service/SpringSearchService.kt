@@ -295,9 +295,8 @@ class SpringSearchService(private val project: Project) {
                     )
                     val extraComponents = getExtraComponents(module, modulePackagesHolder)
                     val moduleWithDependenciesBeans = allModuleWithDependenciesBeans + extraComponents
-                    val moduleLibraryBeans = searchBeanPsiClassesByComponentAnnotationLibraryScopeCached(module)
+                    val moduleLibraryBeans = scannedLibraryBeans(module, modulePackagesHolder)
                     val importedPsiBeans = getImportedBeans(modulePackagesHolder, module)
-
 
                     CachedValueProvider.Result(
                         moduleWithDependenciesBeans + moduleLibraryBeans + ProfileSplit(importedPsiBeans),
@@ -375,6 +374,17 @@ class SpringSearchService(private val project: Project) {
         if (packages.isEmpty()) return ProfileSplit.EMPTY
         return beanComponents.filter { checkBeanByPackage(packages, rootDataHolder, it) }
     }
+
+    private fun scannedLibraryBeans(module: Module, rootDataHolder: RootDataHolder): ProfileSplit {
+        val libraryBeans = searchBeanPsiClassesByComponentAnnotationLibraryScopeCached(module)
+        val registeredWithoutScan = libraryBeans.filter { it.isRegisteredWithoutScan() }
+        val stereotypes = libraryBeans.filter { !it.isRegisteredWithoutScan() }
+        return registeredWithoutScan + filterBeansByPackage(stereotypes, rootDataHolder, module)
+    }
+
+    private fun PsiBean.isRegisteredWithoutScan(): Boolean =
+        psiClass.isMetaAnnotatedBy(SpringCoreClasses.CONFIGURATION_PROPERTIES)
+                || psiClass.isMetaAnnotatedBy(SpringCoreClasses.CONFIGURATION)
 
     private fun checkBeanByPackage(packages: Set<String>, rootDataHolder: RootDataHolder, bean: PsiBean): Boolean {
         if (bean.psiClass.qualifiedName?.let { rootDataHolder.isRootComponent(it) } == true) {
