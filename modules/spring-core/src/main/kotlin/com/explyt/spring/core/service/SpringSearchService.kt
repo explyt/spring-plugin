@@ -303,9 +303,15 @@ class SpringSearchService(private val project: Project) {
                         .mapTo(mutableSetOf()) { it.psiClass }
                     val importedPsiBeans = getImportedBeans(modulePackagesHolder, module, scannedClasses)
                     val registrars = importOnlyRegistrars(modulePackagesHolder, module, scannedBeans)
+                    val enabledScannedBeans = enabledPropertiesBeansOfScanned(modulePackagesHolder, module, scannedClasses)
+                    val importedSplit = ProfileSplit(
+                        importedPsiBeans + enabledScannedBeans.keys,
+                        registrars = registrars,
+                        beanRegistrars = enabledScannedBeans
+                    )
 
                     CachedValueProvider.Result(
-                        scannedBeans + ProfileSplit(importedPsiBeans, registrars = registrars),
+                        scannedBeans + importedSplit,
                         ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
                     )
                 }
@@ -373,6 +379,22 @@ class SpringSearchService(private val project: Project) {
             .filter { (imported, importers) -> imported !in scannedClasses && importers.isNotEmpty() }
             .toMap()
     }
+
+    private fun enabledPropertiesBeansOfScanned(
+        modulePackagesHolder: RootDataHolder, module: Module, scannedClasses: Set<PsiClass>
+    ): Map<PsiBean, List<PsiClass>> =
+        modulePackagesHolder.importersByImported.entries.asSequence()
+            .filter { (imported, _) -> imported in modulePackagesHolder.enabledPropertiesQualified }
+            .mapNotNull { (imported, importers) ->
+                val psiClass = findImportClass(imported, module)
+                    ?.takeIf { it in scannedClasses && it.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT) }
+                    ?: return@mapNotNull null
+                val prefix = configurationPropertiesPrefixOf(psiClass, module)
+                val beanName = RegisteredBeanNames.enabledProperties(psiClass, prefix) ?: return@mapNotNull null
+                val enablers = importers.mapNotNull { findImportClass(it, module) }.ifEmpty { return@mapNotNull null }
+                PsiBean(beanName, psiClass, psiClass.getQualifierAnnotation(), psiClass) to enablers
+            }
+            .toMap()
 
     private fun findImportClass(qualifiedName: String, module: Module): PsiClass? =
         JavaPsiFacade.getInstance(project).findClass(
@@ -509,13 +531,22 @@ class SpringSearchService(private val project: Project) {
     private class ProfileSplit(
         val active: Set<PsiBean>,
         val profileInactive: Map<PsiBean, PsiMember> = emptyMap(),
-        val registrars: Map<PsiClass, List<PsiClass>> = emptyMap()
+        val registrars: Map<PsiClass, List<PsiClass>> = emptyMap(),
+        val beanRegistrars: Map<PsiBean, List<PsiClass>> = emptyMap()
     ) {
-        operator fun plus(other: ProfileSplit) =
-            ProfileSplit(active + other.active, profileInactive + other.profileInactive, registrars + other.registrars)
+        operator fun plus(other: ProfileSplit) = ProfileSplit(
+            active + other.active,
+            profileInactive + other.profileInactive,
+            registrars + other.registrars,
+            beanRegistrars + other.beanRegistrars
+        )
 
-        fun filter(predicate: (PsiBean) -> Boolean) =
-            ProfileSplit(active.filterTo(mutableSetOf(), predicate), profileInactive.filterKeys(predicate), registrars)
+        fun filter(predicate: (PsiBean) -> Boolean) = ProfileSplit(
+            active.filterTo(mutableSetOf(), predicate),
+            profileInactive.filterKeys(predicate),
+            registrars,
+            beanRegistrars.filterKeys(predicate)
+        )
 
         companion object {
             val EMPTY = ProfileSplit(emptySet())
@@ -718,7 +749,7 @@ class SpringSearchService(private val project: Project) {
             beansGroupByClass.forEach { (key, value) -> pass.check(key, value) }
             pass.active.filter { it.psiClass != it.psiMember }
                 .forEach { pass.check(it.psiMember, listOf(it)) }
-            val registrarVerdicts = registrarVerdictsByBean(foundBeans, componentBeanSplit(module).registrars, pass)
+            val registrarVerdicts = registrarVerdictsByBean(foundBeans, componentBeanSplit(module), pass)
             pass.exclude(registrarVerdicts.filterValues { it is ConditionVerdict.Inactive }.keys)
 
             val verdicts = conditionVerdictsByBean(foundBeans, pass.carrierVerdicts, registrarVerdicts)
@@ -802,12 +833,13 @@ class SpringSearchService(private val project: Project) {
         getRootListPsiClass(registrar).asReversed().asSequence().map(pass::verdictOf).combined()
 
     private fun registrarVerdictsByBean(
-        beans: Set<PsiBean>, registrars: Map<PsiClass, List<PsiClass>>, pass: ConditionPass
+        beans: Set<PsiBean>, split: ProfileSplit, pass: ConditionPass
     ): Map<PsiBean, ConditionVerdict> {
-        if (registrars.isEmpty()) return emptyMap()
+        if (split.registrars.isEmpty() && split.beanRegistrars.isEmpty()) return emptyMap()
         return beans.asSequence()
             .mapNotNull { bean ->
-                val registrarGroups = getRootPsiClasses(bean).mapNotNull { registrars[it] }
+                val registrarGroups = split.beanRegistrars[bean]?.let(::listOf)
+                    ?: getRootPsiClasses(bean).mapNotNull { split.registrars[it] }
                 if (registrarGroups.isEmpty()) return@mapNotNull null
                 bean to registrarGroups.asSequence()
                     .map { group -> group.asSequence().map { registrarVerdictOf(it, pass) }.anyActive() }
