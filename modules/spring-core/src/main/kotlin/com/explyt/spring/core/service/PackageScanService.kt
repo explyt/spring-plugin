@@ -37,6 +37,7 @@ import com.intellij.psi.PsiAnnotationMemberValue
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiJavaFile
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.search.GlobalSearchScopesCore
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
@@ -46,10 +47,11 @@ import org.jetbrains.uast.*
 @Service(Service.Level.PROJECT)
 class PackageScanService(private val project: Project) {
 
+    /** The scan roots of the production applications: what the running application's context is built from. */
     fun getAllPackages(): RootDataHolder {
         return CachedValuesManager.getManager(project).getCachedValue(project) {
             CachedValueProvider.Result(
-                getAllPackagesInner(),
+                getAllPackagesInner(GlobalSearchScopesCore.projectProductionScope(project)),
                 ModificationTrackerManager.getInstance(project).getUastAnnotationAndLibraryTracker()
             )
         }
@@ -62,6 +64,31 @@ class PackageScanService(private val project: Project) {
                 beanRegistrations(getAllPackages()),
                 trackers.getUastModelAndLibraryTracker(),
                 trackers.getUastAnnotationAndLibraryTracker()
+            )
+        }
+    }
+
+    /** The registrations a test context can reach, including those of registrars declared in test sources. */
+    fun getBeanRegistrationsWithTests(): BeanRegistrations {
+        return CachedValuesManager.getManager(project).getCachedValue(project) {
+            val trackers = ModificationTrackerManager.getInstance(project)
+            CachedValueProvider.Result(
+                beanRegistrations(getAllPackagesWithTests()),
+                trackers.getUastModelAndLibraryTracker(),
+                trackers.getUastAnnotationAndLibraryTracker()
+            )
+        }
+    }
+
+    /**
+     * The scan roots a test context can reach: the production roots plus those of applications, scanned configurations
+     * and registrations declared in test sources. Only queries about test-source code may use them.
+     */
+    fun getAllPackagesWithTests(): RootDataHolder {
+        return CachedValuesManager.getManager(project).getCachedValue(project) {
+            CachedValueProvider.Result(
+                getAllPackagesInner(GlobalSearchScope.projectScope(project)),
+                ModificationTrackerManager.getInstance(project).getUastAnnotationAndLibraryTracker()
             )
         }
     }
@@ -82,19 +109,21 @@ class PackageScanService(private val project: Project) {
             .groupBy({ it.first }, { it.second })
             .mapValues { (_, scanners) -> scanners.toSet() }
 
-    private fun getAllPackagesInner(): RootDataHolder {
+    private fun getAllPackagesInner(sources: GlobalSearchScope): RootDataHolder {
         val annotationPsiClasses = getComponentScanAnnotations()
-        val rootClasses = searchRootClasses(annotationPsiClasses)
+        val rootClasses = searchRootClasses(annotationPsiClasses, sources)
         val rootModuleData = rootClasses.mapNotNull { findRootModulePackages(it) }
         val programConfigRootClasses = AnnotationConfigApplicationService.getRootClasses(rootClasses, rootModuleData)
 
         val rootPackages = rootModuleData.flatMapTo(mutableSetOf()) { it.packages }
-        val scanModuleData = getComponentScanClasses(annotationPsiClasses, rootPackages, programConfigRootClasses)
+        val scanModuleData =
+            getComponentScanClasses(annotationPsiClasses, rootPackages, programConfigRootClasses, sources)
 
         val moduleRootDataList = rootModuleData + scanModuleData
 
         val importAnnotationClass = annotationPsiClasses.importAnnotationClass
-        val registrars = getRegistrarClasses(moduleRootDataList, importAnnotationClass, programConfigRootClasses)
+        val registrars =
+            getRegistrarClasses(moduleRootDataList, importAnnotationClass, programConfigRootClasses, sources)
         val registrations = registrars.flatMapTo(mutableSetOf()) { getRegistrations(it) }
         val propertiesScans = registrars.mapNotNull { propertiesScanOf(it) }
         val importClasses = registrations.mapTo(mutableSetOf()) { it.registered }
@@ -127,11 +156,14 @@ class PackageScanService(private val project: Project) {
             .mapValues { (_, registrars) -> registrars.filterNotNullTo(mutableSetOf()) }
 
     private fun getComponentScanClasses(
-        annotationPsiClasses: ScanAnnotationHolder, rootPackages: MutableSet<String>, programConfigRoots: List<PsiClass>
+        annotationPsiClasses: ScanAnnotationHolder,
+        rootPackages: MutableSet<String>,
+        programConfigRoots: List<PsiClass>,
+        sources: GlobalSearchScope
     ): List<ModuleRootData> {
         val classesForSearchComponentScan = programConfigRoots.ifEmpty {
             annotationPsiClasses.scanAnnotationClass
-                .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, GlobalSearchScope.projectScope(project)) }
+                .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, sources) }
         }
         return classesForSearchComponentScan
             .filter { filterComponentScanClass(rootPackages, it) }
@@ -139,19 +171,22 @@ class PackageScanService(private val project: Project) {
     }
 
     private fun getRegistrarClasses(
-        moduleRootData: List<ModuleRootData>, importAnnotationClass: Set<PsiClass>, programConfigRoots: List<PsiClass>
+        moduleRootData: List<ModuleRootData>,
+        importAnnotationClass: Set<PsiClass>,
+        programConfigRoots: List<PsiClass>,
+        sources: GlobalSearchScope
     ): List<PsiClass> {
         val packages = moduleRootData.flatMapTo(mutableSetOf()) { it.packages }
         val classesForSearchImport = programConfigRoots.ifEmpty {
             importAnnotationClass
-                .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, GlobalSearchScope.projectScope(project)) }
+                .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, sources) }
         }
         return classesForSearchImport
             .filter { filterComponentScanClass(packages, it) }
             .distinct()
     }
 
-    private fun searchRootClasses(annotationPsiClasses: ScanAnnotationHolder): List<PsiClass> {
+    private fun searchRootClasses(annotationPsiClasses: ScanAnnotationHolder, sources: GlobalSearchScope): List<PsiClass> {
         if (Registry.`is`("explyt.spring.root.runConfiguration")) {
             val runConfiguration = RunManager.getInstance(project).selectedConfiguration
                 ?.configuration as? SpringBootRunConfiguration
@@ -161,7 +196,7 @@ class PackageScanService(private val project: Project) {
         }
 
         return annotationPsiClasses.rootAnnotationClass
-                .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, GlobalSearchScope.projectScope(project)) }
+                .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, sources) }
     }
 
     private fun filterComponentScanClass(rootPackages: Set<String>, it: PsiClass?): Boolean {
