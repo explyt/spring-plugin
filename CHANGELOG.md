@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Spring Core
+- fix: After you edit a `String` or primitive constant used in a mapping, such as `@GetMapping(PATH)`, the Endpoints tool window and gutters show the new path instead of the old one
 - fix: Default bean names follow Spring's generator: names starting with two capitals stay unchanged, nested classes are named `outer.Inner`, lowercasing ignores the default locale (#758)
 - fix: Evaluate `@ConditionalOnProperty` and other condition attributes on compiled library classes instead of reporting them undecided because the property name cannot be resolved (#759)
 - fix: The abstract-component bean gutter also lists a generic `@Bean` factory whose type parameter is bounded by the abstract class, shows targets with equal names in a stable order, and the bean gutter of a library class in Native Context Mode lists only the constructors Spring injects through (#600)
