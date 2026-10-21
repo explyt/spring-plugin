@@ -44,7 +44,7 @@ class EnabledPropertiesSecondBeanTest : EnabledPropertiesSecondBeanTestCase() {
         public class PropsConfig {}
     """.trimIndent()
 
-    override fun consumerSource(qualifier: String?, packageName: String) = """
+    override fun consumerSource(qualifier: String?, packageName: String, fieldName: String) = """
         package app;
 
         import $packageName.Props;
@@ -57,7 +57,7 @@ class EnabledPropertiesSecondBeanTest : EnabledPropertiesSecondBeanTestCase() {
         public class Consumer {
             @Autowired
             ${qualifier?.let { "@Qualifier(\"$it\")" } ?: ""}
-            Props props;
+            Props $fieldName;
         }
     """.trimIndent()
 }

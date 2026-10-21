@@ -27,7 +27,7 @@ abstract class EnabledPropertiesSecondBeanTestCase : ExplytInspectionBaseTestCas
 
     protected abstract fun enablerSource(packageName: String): String
 
-    protected abstract fun consumerSource(qualifier: String?, packageName: String): String
+    protected abstract fun consumerSource(qualifier: String?, packageName: String, fieldName: String = SCAN_NAME): String
 
     override fun setUp() {
         super.setUp()
@@ -52,9 +52,22 @@ abstract class EnabledPropertiesSecondBeanTestCase : ExplytInspectionBaseTestCas
     fun testScannedComponentAlsoEnabledMakesUnqualifiedInjectionAmbiguous() {
         addProject(scanned = true, enabled = true)
 
-        val errors = autowiringErrorsOf(consumerSource(qualifier = null, SCANNED_PACKAGE))
+        val errors = autowiringErrorsOf(consumerSource(qualifier = null, SCANNED_PACKAGE, fieldName = NEUTRAL_FIELD))
 
-        assertEquals(listOf("Autowire failed. There is more than one bean of 'Props'"), errors)
+        assertEquals("autowiring errors: $errors", 1, errors.size)
+        assertTrue(
+            "autowiring error: ${errors.single()}",
+            errors.single().startsWith("Autowire failed. There is more than one bean of 'Props'")
+        )
+    }
+
+    fun testScannedComponentAlsoEnabledResolvesByFieldNameMatchingScanBean() {
+        addProject(scanned = true, enabled = true)
+        assertPropertiesBeans(listOf(SCAN_NAME, ENABLED_NAME))
+
+        val errors = autowiringErrorsOf(consumerSource(qualifier = null, SCANNED_PACKAGE, fieldName = SCAN_NAME))
+
+        assertEquals(emptyList<String>(), errors)
     }
 
     fun testScannedComponentAlsoEnabledResolvesEnabledNameQualifier() {
@@ -121,6 +134,7 @@ abstract class EnabledPropertiesSecondBeanTestCase : ExplytInspectionBaseTestCas
         const val PROPERTIES = "$SCANNED_PACKAGE.Props"
         const val UNSCANNED_PROPERTIES = "$UNSCANNED_PACKAGE.Props"
         const val SCAN_NAME = "props"
+        const val NEUTRAL_FIELD = "holder"
         const val ENABLED_NAME = "$PREFIX-$PROPERTIES"
         const val UNSCANNED_ENABLED_NAME = "$PREFIX-$UNSCANNED_PROPERTIES"
     }

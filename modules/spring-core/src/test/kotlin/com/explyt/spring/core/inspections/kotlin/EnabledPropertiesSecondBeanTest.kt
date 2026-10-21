@@ -44,7 +44,7 @@ class EnabledPropertiesSecondBeanTest : EnabledPropertiesSecondBeanTestCase() {
         open class PropsConfig
     """.trimIndent()
 
-    override fun consumerSource(qualifier: String?, packageName: String) = """
+    override fun consumerSource(qualifier: String?, packageName: String, fieldName: String) = """
         package app
 
         import $packageName.Props
@@ -57,7 +57,7 @@ class EnabledPropertiesSecondBeanTest : EnabledPropertiesSecondBeanTestCase() {
         class Consumer {
             @Autowired
             ${qualifier?.let { "@Qualifier(\"$it\")" } ?: ""}
-            lateinit var props: Props
+            lateinit var $fieldName: Props
         }
     """.trimIndent()
 }
