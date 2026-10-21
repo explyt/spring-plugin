@@ -288,8 +288,8 @@ class SpringSearchService(private val project: Project) {
             synchronized(getMutexString(MutexType.SEARCH, module)) {
                 return cachedValuesManager.getCachedValue(module) {
                     val scope = GlobalSearchScope.moduleWithDependenciesScope(module)
-                    val annotationPsiClasses = SpringSearchUtils.getComponentClassAnnotations(module)
                     val modulePackagesHolder = PackageScanService.getInstance(module.project).getAllPackages()
+                    val annotationPsiClasses = projectScanAnnotations(module, modulePackagesHolder)
                     val allModuleWithDependenciesBeans = filterBeansByPackage(
                         searchBeanPsiClassesByAnnotations(module, annotationPsiClasses, scope),
                         modulePackagesHolder, module
@@ -331,8 +331,8 @@ class SpringSearchService(private val project: Project) {
         try {
             return cachedValuesManager.getCachedValue(module) {
                 val scope = GlobalSearchScope.moduleWithDependentsScope(module)
-                val annotationPsiClasses = SpringSearchUtils.getComponentClassAnnotations(module)
                 val modulePackagesHolder = PackageScanService.getInstance(module.project).getAllPackages()
+                val annotationPsiClasses = projectScanAnnotations(module, modulePackagesHolder)
                 val dependentBeans = filterBeansByPackage(
                     searchBeanPsiClassesByAnnotations(module, annotationPsiClasses, scope),
                     modulePackagesHolder, module
@@ -426,6 +426,12 @@ class SpringSearchService(private val project: Project) {
 
         val importedBeans = getImportedBeans(psiClassesTestContext, module)
         return importedBeans
+    }
+
+    private fun projectScanAnnotations(module: Module, rootDataHolder: RootDataHolder): Collection<PsiClass> {
+        val componentAnnotations = SpringSearchUtils.getComponentClassAnnotations(module)
+        if (!rootDataHolder.isEmpty()) return componentAnnotations
+        return componentAnnotations + SpringSearchUtils.getConfigurationPropertiesAnnotations(module)
     }
 
     private fun filterBeansByPackage(
@@ -957,8 +963,8 @@ class SpringSearchService(private val project: Project) {
 
     fun getProjectBeans(module: Module): Set<PsiBean> {
         val scope = GlobalSearchScope.moduleWithDependenciesScope(module)
-        val annotationPsiClasses = SpringSearchUtils.getComponentClassAnnotations(module)
         val modulePackagesHolder = PackageScanService.getInstance(module.project).getAllPackages()
+        val annotationPsiClasses = projectScanAnnotations(module, modulePackagesHolder)
         val allModuleWithDependenciesBeans = filterBeansByPackage(
             searchBeanPsiClassesByAnnotations(module, annotationPsiClasses, scope),
             modulePackagesHolder, module
