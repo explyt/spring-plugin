@@ -61,6 +61,18 @@ abstract class EnabledPropertiesSecondBeanTestCase : ExplytInspectionBaseTestCas
         )
     }
 
+    fun testAmbiguityMessageNamesBothBeans() {
+        addProject(scanned = true, enabled = true)
+        assertPropertiesBeans(listOf(SCAN_NAME, ENABLED_NAME))
+
+        val errors = autowiringErrorsOf(consumerSource(qualifier = null, SCANNED_PACKAGE, fieldName = NEUTRAL_FIELD))
+
+        assertEquals("autowiring errors: $errors", 1, errors.size)
+        val message = errors.single()
+        assertEquals("occurrences of [$SCAN_NAME] in: $message", 1, message.windowed("[$SCAN_NAME]".length).count { it == "[$SCAN_NAME]" })
+        assertEquals("occurrences of [$ENABLED_NAME] in: $message", 1, message.windowed("[$ENABLED_NAME]".length).count { it == "[$ENABLED_NAME]" })
+    }
+
     fun testScannedComponentAlsoEnabledResolvesByFieldNameMatchingScanBean() {
         addProject(scanned = true, enabled = true)
         assertPropertiesBeans(listOf(SCAN_NAME, ENABLED_NAME))
