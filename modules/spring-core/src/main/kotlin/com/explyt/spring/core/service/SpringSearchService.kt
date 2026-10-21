@@ -8,6 +8,7 @@ package com.explyt.spring.core.service
 import com.explyt.base.LibraryClassCache
 import com.explyt.spring.core.JavaEeClasses
 import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.core.properties.references.ActuatorEndpointKeys
 import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
 import com.explyt.spring.core.service.SpringSearchService.Companion.getInstance
 import com.explyt.spring.core.service.beans.discoverer.AdditionalBeansDiscoverer
@@ -746,11 +747,11 @@ class SpringSearchService(private val project: Project) {
 
     private fun searchBeanPsiClassesByComponentAnnotationLibraryScopeCached(module: Module): ProfileSplit {
         return cachedValuesManager.getCachedValue(module) {
-            val annotationPsiClasses = SpringSearchUtils.getComponentClassAnnotations(module) +
-                    SpringSearchUtils.getConfigurationPropertiesAnnotations(module)
             CachedValueProvider.Result(
                 searchBeanPsiClassesByAnnotations(
-                    module, annotationPsiClasses, ModuleUtil.getOnlyLibrarySearchScope(module)
+                    module,
+                    SpringSearchUtils.getRuntimeBeanClassAnnotations(module),
+                    ModuleUtil.getRuntimeLibrarySearchScope(module)
                 ),
                 ModificationTrackerManager.getInstance(project).getLibraryTracker()
             )
@@ -1131,6 +1132,15 @@ object SpringSearchUtils {
                 ModificationTrackerManager.getInstance(project).getUastAnnotationAndLibraryTracker()
             )
         }
+    }
+
+    fun getRuntimeBeanClassAnnotations(module: Module): Collection<PsiClass> {
+        val runtimeScope = module.getModuleRuntimeScope(true)
+        val runtimeAnnotations = listOf(SpringCoreClasses.COMPONENT, SpringCoreClasses.CONFIGURATION_PROPERTIES)
+            .mapNotNull { JavaPsiFacade.getInstance(module.project).findClass(it, runtimeScope) }
+            .flatMap { ActuatorEndpointKeys.annotationWithChildren(it, runtimeScope) }
+        return (getComponentClassAnnotations(module) + getConfigurationPropertiesAnnotations(module) + runtimeAnnotations)
+            .distinctBy { it.qualifiedName }
     }
 
     fun getConfigurationPropertiesAnnotations(module: Module): Collection<PsiClass> {

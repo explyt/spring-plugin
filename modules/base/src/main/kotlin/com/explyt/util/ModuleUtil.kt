@@ -15,6 +15,7 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.GlobalSearchScopeUtil
+import com.intellij.psi.search.ProjectScope
 import org.jetbrains.kotlin.idea.base.projectStructure.hasKotlinJvmRuntime
 import org.jetbrains.kotlin.idea.base.util.allScope
 import org.jetbrains.kotlin.idea.base.util.projectScope
@@ -51,6 +52,9 @@ object ModuleUtil {
             module.project
         )
     }
+
+    fun getRuntimeLibrarySearchScope(module: Module): GlobalSearchScope =
+        module.getModuleRuntimeScope(true).intersectWith(ProjectScope.getLibrariesScope(module.project))
 
     fun isKotlinModule(module: Module): Boolean {
         val scope = module.getModuleWithDependenciesAndLibrariesScope(false)
