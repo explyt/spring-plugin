@@ -8,6 +8,7 @@ package com.explyt.spring.core.inspections
 import com.explyt.inspection.SpringBaseUastLocalInspectionTool
 import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.SpringCoreClasses.LOOKUP
+import com.explyt.spring.core.service.SpringBeanOwner
 import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.util.ExplytAnnotationUtil.getMetaAnnotationMemberValues
 import com.explyt.util.ExplytPsiUtil.getHighlightRange
@@ -30,6 +31,8 @@ class SpringLookupBeanInspection : SpringBaseUastLocalInspectionTool() {
     ): Array<ProblemDescriptor>? {
         val method = uMethod.javaPsi
         val module = ModuleUtilCore.findModuleForPsiElement(method) ?: return null
+        val owner = method.containingClass ?: return null
+        if (!SpringBeanOwner.isProcessedBySpring(module, owner)) return null
         val returnClassQN = method.returnPsiClass?.qualifiedName ?: return null
         val service = SpringSearchServiceFacade.getInstance(module.project)
         val beanByNames = service.getAllBeanByNames(module)

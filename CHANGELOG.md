@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Spring Core
+- fix: `@Lookup`, `@DependsOn`, cache annotation and `@WithUserDetails` bean-name inspections stay silent on classes that are neither active beans nor Spring test classes, since Spring never processes these annotations there (#783)
 - fix: Default bean names follow Spring's generator: names starting with two capitals stay unchanged, nested classes are named `outer.Inner`, lowercasing ignores the default locale (#758)
 - fix: Evaluate `@ConditionalOnProperty` and other condition attributes on compiled library classes instead of reporting them undecided because the property name cannot be resolved (#759)
 - fix: The abstract-component bean gutter also lists a generic `@Bean` factory whose type parameter is bounded by the abstract class, shows targets with equal names in a stable order, and the bean gutter of a library class in Native Context Mode lists only the constructors Spring injects through (#600)
