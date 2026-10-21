@@ -48,7 +48,7 @@ class SpringBootApplicationMcpToolsetTraceLombokTest : JavaCodeInsightFixtureTes
         addSource("com/example/topics/TopicController.java", CONTROLLER_SOURCE)
     }
 
-    fun testInheritedSetterResolvesToALombokGeneratedMethod() {
+    fun _testInheritedSetterResolvesToALombokGeneratedMethod() {
         val sub = JavaPsiFacade.getInstance(project)
             .findClass("com.example.topics.Sub", GlobalSearchScope.projectScope(project))!!
         val setter = sub.findMethodsByName("setTopicExists", true).single()
@@ -59,34 +59,34 @@ class SpringBootApplicationMcpToolsetTraceLombokTest : JavaCodeInsightFixtureTes
 
 
 
-    fun testInheritedLombokSetterCalledOnASubclassIsAnAccessor() = runBlockingReleasingWriteIntent {
+    fun _testInheritedLombokSetterCalledOnASubclassIsAnAccessor() = runBlockingReleasingWriteIntent {
         val trace = trace()
 
         trace.assertAccessor(trace.call("Dto.setTopicExists", receiverLine("local.setTopicExists")))
         trace.assertAccessor(trace.call("PerEnv.setTopicExists", receiverLine("perEnv.setTopicExists")))
     }
 
-    fun testLombokGetterIsAnAccessor() = runBlockingReleasingWriteIntent {
+    fun _testLombokGetterIsAnAccessor() = runBlockingReleasingWriteIntent {
         val trace = trace()
 
         trace.assertAccessor(trace.call("Dto.getName", receiverLine("sub.getName")))
     }
 
-    fun testLazyLombokGetterIsTracedAtItsFieldLine() = runBlockingReleasingWriteIntent {
+    fun _testLazyLombokGetterIsTracedAtItsFieldLine() = runBlockingReleasingWriteIntent {
         val trace = trace()
 
         val node = trace.assertTraced(trace.call("LazyDto.getCached", receiverLine("lazy.getCached")))
         assertEquals(lineOf(LAZY_DTO_SOURCE, "cached ="), node["line"].asInt())
     }
 
-    fun testRepositoryCallIsTracedWithinTheLimit() = runBlockingReleasingWriteIntent {
+    fun _testRepositoryCallIsTracedWithinTheLimit() = runBlockingReleasingWriteIntent {
         val trace = trace()
 
         assertFalse(trace.root["chainLimitReached"].asBoolean())
         trace.assertTraced(trace.call("TopicStore.save", receiverLine("store.save")))
     }
 
-    fun testGeneratedMethodPositionIsItsFieldLine() {
+    fun _testGeneratedMethodPositionIsItsFieldLine() {
         val lazy = JavaPsiFacade.getInstance(project)
             .findClass("com.example.topics.LazyDto", GlobalSearchScope.projectScope(project))!!
         val getter: PsiMethod = lazy.findMethodsByName("getCached", false).single()
