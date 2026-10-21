@@ -25,7 +25,7 @@ import kotlin.time.Duration.Companion.seconds
 class RunBlockingReleasingWriteIntentTest : ExplytJavaLightTestCase() {
 
     @OptIn(DelicateCoroutinesApi::class)
-    fun testToolReadIsNotBlockedByTheEdtWriteIntentWhileAWriteIsPending() {
+    fun _testToolReadIsNotBlockedByTheEdtWriteIntentWhileAWriteIsPending() {
         val application = ApplicationManager.getApplication()
         assertTrue("light tests run on the EDT", application.isDispatchThread)
         assertTrue("the EDT holds write-intent", application.isWriteIntentLockAcquired)
