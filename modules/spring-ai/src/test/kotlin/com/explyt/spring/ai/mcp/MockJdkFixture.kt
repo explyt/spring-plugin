@@ -20,7 +20,7 @@ fun Module.useMockJdk(level: LanguageLevel, disposable: Disposable) {
 }
 
 private fun registeredMockJdk(level: LanguageLevel, disposable: Disposable): Sdk {
-    val sdk = IdeaTestUtil.getMockJdk(level)
+    val sdk = IdeaTestUtil.getMockJdk(level.toJavaVersion())
     val jdkTable = ProjectJdkTable.getInstance()
     return jdkTable.findJdk(sdk.name)
         ?: sdk.also { WriteAction.runAndWait<RuntimeException> { jdkTable.addJdk(it, disposable) } }
