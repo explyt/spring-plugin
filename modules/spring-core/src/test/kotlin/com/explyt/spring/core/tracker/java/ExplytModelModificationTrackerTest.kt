@@ -7,13 +7,18 @@ package com.explyt.spring.core.tracker.java
 
 import com.explyt.spring.core.action.UastModelTrackerInvalidateAction
 import com.explyt.spring.core.tracker.ModificationTrackerManager
+import com.intellij.psi.PsiClassType
 import com.intellij.psi.PsiDocumentManager
+import com.intellij.psi.PsiJavaFile
 import com.intellij.testFramework.LightPlatformCodeInsightTestCase
+import com.intellij.testFramework.LightProjectDescriptor
 import com.intellij.testFramework.fixtures.LightJavaCodeInsightFixtureTestCase
 import java.io.IOException
 
 
 class ExplytModelModificationTrackerTest : LightJavaCodeInsightFixtureTestCase() {
+
+    override fun getProjectDescriptor(): LightProjectDescriptor = JAVA_21
 
     @Throws(IOException::class)
     fun testMoveFile() {
@@ -215,6 +220,69 @@ class ExplytModelModificationTrackerTest : LightJavaCodeInsightFixtureTestCase()
             }""".trimMargin()
         )
         runIsNotModifiedTest()
+    }
+
+    fun testJavaEditStringConstantInitializer() {
+        myFixture.configureByText(
+            "MyPaths.java",
+            """
+                public final class MyPaths {
+                    public static final String PATH = "/a<caret>";
+                }
+            """.trimIndent()
+        )
+        assertFieldTypeResolvesTo("java.lang.String")
+        runModificationTriggeredTest()
+    }
+
+    fun testJavaEditPrimitiveConstantInitializer() {
+        myFixture.configureByText(
+            "MyLimits.java",
+            """
+                public final class MyLimits {
+                    public static final int MAX = 1<caret>;
+                }
+            """.trimIndent()
+        )
+        runModificationTriggeredTest { myFixture.type('0') }
+    }
+
+    fun testJavaEditLoggerConstantInitializer() {
+        myFixture.configureByText(
+            "MyService.java",
+            """
+                public class MyService {
+                    private static final Logger LOG = Logger.getLogger("my<caret>");
+                }
+
+                class Logger {
+                    static Logger getLogger(String name) { return new Logger(); }
+                }
+            """.trimIndent()
+        )
+        assertFieldTypeResolvesTo("Logger")
+        runIsNotModifiedTest()
+    }
+
+    fun testJavaEditMapConstantInitializer() {
+        myFixture.configureByText(
+            "MyService.java",
+            """
+                import java.util.Map;
+
+                public class MyService {
+                    private static final Map<String, String> M = Map.of("k<caret>", "v");
+                }
+            """.trimIndent()
+        )
+        assertFieldTypeResolvesTo("java.util.Map<java.lang.String,java.lang.String>")
+        runIsNotModifiedTest()
+    }
+
+    private fun assertFieldTypeResolvesTo(expected: String) {
+        val type = (myFixture.file as PsiJavaFile).classes.flatMap { it.fields.toList() }.single().type
+        assertEquals("Precondition: the constant's type resolves against the JDK", expected, type.canonicalText)
+        assertNotNull("Precondition: $expected resolves", (type as PsiClassType).resolve())
     }
 
     fun testJavaEditClassName() {
