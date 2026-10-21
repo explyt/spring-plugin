@@ -127,16 +127,27 @@ class SpringSearchServiceFacade(private val project: Project) {
         byBeanPsiType: PsiType? = null,
         qualifier: PsiAnnotation? = null,
         psiElement: PsiElement? = null
-    ): List<PsiMember> {
+    ): List<PsiMember> =
+        findActiveBeans(module, byBeanName, language, byBeanPsiType, qualifier, psiElement)
+            .map { it.psiMember }.distinct()
+
+    fun findActiveBeans(
+        module: Module,
+        byBeanName: String,
+        language: Language,
+        byBeanPsiType: PsiType? = null,
+        qualifier: PsiAnnotation? = null,
+        psiElement: PsiElement? = null
+    ): List<PsiBean> {
         return if (isExternalProjectExist(project)) {
             val beans = nativeSearchService.getAllActiveBeans()
-            nativeSearchService.findActiveBeanDeclarations(beans, byBeanName, language, byBeanPsiType, qualifier)
+            nativeSearchService.findActiveBeans(beans, byBeanName, language, byBeanPsiType, qualifier)
         } else {
             val isTestSource = ExplytPsiUtil.isTestFiles(psiElement)
             val beans = nativeSearchService.filterValidBeans(springSearchService.getActiveBeansClasses(module))
-            nativeSearchService.findActiveBeanDeclarations(
+            nativeSearchService.findActiveBeans(
                 beans, byBeanName, language, byBeanPsiType, qualifier, module
-            ).filter { filterBeanByTest(it, psiElement, isTestSource) }
+            ).filter { filterBeanByTest(it.psiMember, psiElement, isTestSource) }
         }
     }
 
