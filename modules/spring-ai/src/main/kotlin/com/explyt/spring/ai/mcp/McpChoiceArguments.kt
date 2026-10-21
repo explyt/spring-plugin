@@ -5,7 +5,6 @@
 
 package com.explyt.spring.ai.mcp
 
-import com.intellij.mcpserver.mcpFail
 
 /**
  * Reads a string argument that names one of a fixed set of values.

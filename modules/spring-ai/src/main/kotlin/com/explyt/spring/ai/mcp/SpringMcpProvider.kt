@@ -68,17 +68,6 @@ import org.jetbrains.uast.getParentOfType
 import org.jetbrains.uast.getUastParentOfType
 import org.jetbrains.uast.toUElement
 
-private const val MCP_EXPECTED_ERROR_CLASS = "com.intellij.mcpserver.McpExpectedError"
-
-private fun mcpFail(message: String): Nothing = throw createMcpExpectedError(message)
-
-private fun createMcpExpectedError(message: String): Throwable {
-    return runCatching {
-        Class.forName(MCP_EXPECTED_ERROR_CLASS)
-            .getConstructor(String::class.java)
-            .newInstance(message) as Throwable
-    }.getOrElse { IllegalArgumentException(message) }
-}
 
 /**
  * What every tool of this family says about its project argument.
