@@ -9,6 +9,7 @@ import com.explyt.inspection.SpringBaseUastLocalInspectionTool
 import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.service.SpringSearchService
+import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.core.service.conditional.ConditionPropertyValue
 import com.explyt.spring.core.service.conditional.PropertyConditionValues
 import com.explyt.spring.core.util.BeanFactoryMethods
@@ -25,6 +26,7 @@ import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiMethod
+import com.intellij.psi.PsiModifier
 import com.intellij.util.text.VersionComparatorUtil
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UMethod
@@ -62,21 +64,32 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
 
     private fun overridesOfRegisteredBaseFactories(psiClass: PsiClass): List<Collision> {
         if (psiClass.isInterface || !psiClass.hasComponentAnnotation()) return emptyList()
+        val module = ModuleUtilCore.findModuleForPsiElement(psiClass) ?: return emptyList()
+        val registeredClasses by lazy(LazyThreadSafetyMode.NONE) { registeredComponentClassesOf(module) }
         return psiClass.methods.filterNot { it.isConditional() }.flatMap { override ->
             ProgressManager.checkCanceled()
             override.findSuperMethods()
-                .filter { it.isRegisteredFactoryOverriddenBy(override, psiClass) }
+                .filter { it.isFactoryOverriddenBy(override, psiClass) && it.isDeclaredInAnyOf(registeredClasses) }
                 .map { Collision(it.primaryBeanName, it, override, acrossConfigurations = true) }
         }
     }
 
-    private fun PsiMethod.isRegisteredFactoryOverriddenBy(override: PsiMethod, psiClass: PsiClass): Boolean {
+    private fun registeredComponentClassesOf(module: Module): List<PsiClass> =
+        SpringSearchServiceFacade.getInstance(module.project).getAllActiveBeans(module)
+            .filterNot { it.isMember() }
+            .map { it.psiClass }
+
+    private fun PsiMethod.isFactoryOverriddenBy(override: PsiMethod, psiClass: PsiClass): Boolean {
         val declaringClass = containingClass ?: return false
         if (declaringClass.isInterface || isDeclaredIn(psiClass)) return false
+        if (declaringClass.hasModifierProperty(PsiModifier.ABSTRACT)) return false
         if (!isMetaAnnotatedBy(SpringCoreClasses.BEAN) || isConditional()) return false
         if (override.isMetaAnnotatedBy(SpringCoreClasses.BEAN) && override.primaryBeanName != primaryBeanName) return false
         return declaringClass.hasComponentAnnotation()
     }
+
+    private fun PsiMethod.isDeclaredInAnyOf(classes: List<PsiClass>): Boolean =
+        classes.any { manager.areElementsEquivalent(it, containingClass) }
 
     private fun Collision.isReportedByDeclaringComponent(
         psiClass: PsiClass,
