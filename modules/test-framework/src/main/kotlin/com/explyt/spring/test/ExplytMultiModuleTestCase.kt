@@ -97,6 +97,24 @@ abstract class ExplytMultiModuleTestCase : JavaCodeInsightFixtureTestCase() {
     }
 
     /**
+     * Creates a module named [name] with no dependency edge to or from the main [module], mirroring a second
+     * application next to the first one in the same build. The new module gets the same [libraries] and inherits the
+     * project SDK.
+     *
+     * @return the created module, to be passed to [addFileToModule].
+     */
+    protected fun addStandaloneModule(name: String): Module {
+        val sourceRoot = myFixture.tempDirFixture.findOrCreateDir("$name/src")
+        val standalone = PsiTestUtil.addModule(project, JavaModuleType.getModuleType(), name, sourceRoot)
+
+        ModuleRootModificationUtil.setSdkInherited(standalone)
+        attachLibraries(standalone)
+
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
+        return standalone
+    }
+
+    /**
      * Writes [text] to [relativePath] inside the source root of [module] and returns the created
      * [PsiFile]. [relativePath] is relative to that source root, e.g. `com/example/Bean.kt`.
      */
