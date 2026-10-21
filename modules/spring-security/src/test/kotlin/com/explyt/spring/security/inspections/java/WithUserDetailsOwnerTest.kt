@@ -16,6 +16,7 @@ class WithUserDetailsOwnerTest : ExplytInspectionJavaTestCase() {
         TestLibrary.springContext_6_0_7,
         TestLibrary.springTest_6_0_7,
         TestLibrary.springSecurityTest_6_0_7,
+        TestLibrary.springBootTestAutoConfigure_3_1_1,
     )
 
     override fun setUp() {
@@ -31,6 +32,29 @@ class WithUserDetailsOwnerTest : ExplytInspectionJavaTestCase() {
     fun testMissingUserDetailsServiceOnSpringTestClassIsReported() {
         configureOwner(classAnnotation = "@$CONTEXT_CONFIGURATION")
         assertHighlightOn("\"missing\"")
+    }
+
+    fun testMissingUserDetailsServiceOnSpringBootTestClassIsReported() {
+        myFixture.addClass(SPRING_BOOT_TEST_DECLARATION)
+        configureOwner(classAnnotation = "@$SPRING_BOOT_TEST")
+        assertOwnerCarriesNoOwnContextConfiguration(SPRING_BOOT_TEST)
+        assertHighlightOn("\"missing\"")
+    }
+
+    fun testMissingUserDetailsServiceOnWebMvcTestClassIsReported() {
+        configureOwner(classAnnotation = "@$WEB_MVC_TEST")
+        assertOwnerCarriesNoOwnContextConfiguration(WEB_MVC_TEST)
+        assertHighlightOn("\"missing\"")
+    }
+
+    private fun assertOwnerCarriesNoOwnContextConfiguration(testAnnotation: String) {
+        val owner = myFixture.findClass("app.OwnerTest")
+        assertNotNull("Precondition: $testAnnotation resolves", myFixture.findClass(testAnnotation))
+        assertTrue("Precondition: OwnerTest is annotated with $testAnnotation", owner.hasAnnotation(testAnnotation))
+        assertFalse(
+            "Precondition: OwnerTest has no @ContextConfiguration of its own",
+            owner.hasAnnotation(CONTEXT_CONFIGURATION)
+        )
     }
 
     private fun configureOwner(classAnnotation: String) {
@@ -63,5 +87,14 @@ class WithUserDetailsOwnerTest : ExplytInspectionJavaTestCase() {
     private companion object {
         const val WITH_USER_DETAILS = "org.springframework.security.test.context.support.WithUserDetails"
         const val CONTEXT_CONFIGURATION = "org.springframework.test.context.ContextConfiguration"
+        const val SPRING_BOOT_TEST = "org.springframework.boot.test.context.SpringBootTest"
+        const val WEB_MVC_TEST = "org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest"
+        val SPRING_BOOT_TEST_DECLARATION = """
+            package org.springframework.boot.test.context;
+            @java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy.RUNTIME)
+            @java.lang.annotation.Inherited
+            @org.springframework.test.context.BootstrapWith
+            public @interface SpringBootTest {}
+        """.trimIndent()
     }
 }

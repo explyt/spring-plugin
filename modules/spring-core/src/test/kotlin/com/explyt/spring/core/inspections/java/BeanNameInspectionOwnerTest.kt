@@ -105,6 +105,51 @@ class BeanNameInspectionOwnerTest : ExplytInspectionJavaTestCase() {
         assertHighlightOn("\"missing\"")
     }
 
+    fun testLookupOfMissingBeanOnAbstractBaseOfActiveBeanIsReported() {
+        addBeanClass("@org.springframework.stereotype.Component public class Impl extends Base {}")
+        configureBase("public abstract class Base { @${LOOKUP}(\"missing\") public app.A a() { return null; } }")
+        assertSubclassIsBean("app.Impl", "app.Base")
+        assertHighlightOn("\"missing\"")
+    }
+
+    fun testCacheableWithMissingCacheManagerOnAbstractBaseOfActiveBeanIsReported() {
+        addBeanClass("@org.springframework.stereotype.Component public class Impl extends Base {}")
+        configureBase(
+            "public abstract class Base { @${CACHEABLE}(cacheManager = \"missing\") public String find() { return null; } }"
+        )
+        assertSubclassIsBean("app.Impl", "app.Base")
+        assertHighlightOn("\"missing\"")
+    }
+
+    fun testCacheableWithMissingCacheManagerOnInterfaceOfActiveBeanIsReported() {
+        addBeanClass(
+            "@org.springframework.stereotype.Component public class Impl implements Base { public String find() { return null; } }"
+        )
+        configureBase("public interface Base { @${CACHEABLE}(cacheManager = \"missing\") String find(); }")
+        assertSubclassIsBean("app.Impl", "app.Base")
+        assertHighlightOn("\"missing\"")
+    }
+
+    fun testLookupOfMissingBeanOnAbstractBaseThatNoBeanExtendsIsNotReported() {
+        configureBase("public abstract class Base { @${LOOKUP}(\"missing\") public app.A a() { return null; } }")
+        assertOwnerIsNotBean("app.Base")
+        assertNoHighlightOn("\"missing\"")
+    }
+
+    private fun addBeanClass(declaration: String) {
+        myFixture.addClass("package app;\n$declaration")
+    }
+
+    private fun configureBase(declaration: String) {
+        myFixture.configureByText("Base.java", "package app;\n$declaration")
+    }
+
+    private fun assertSubclassIsBean(beanFqn: String, baseFqn: String) {
+        val active = activeBeanClassNames()
+        assertTrue("Precondition: $beanFqn is an active bean, got $active", beanFqn in active)
+        assertFalse("Precondition: $baseFqn is not an active bean itself, got $active", baseFqn in active)
+    }
+
     private fun configureOwner(packageName: String, member: String, classAnnotation: String = "") {
         myFixture.configureByText(
             "Owner.java",
