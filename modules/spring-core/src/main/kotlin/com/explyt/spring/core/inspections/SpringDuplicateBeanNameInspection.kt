@@ -9,6 +9,7 @@ import com.explyt.inspection.SpringBaseUastLocalInspectionTool
 import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.service.SpringSearchService
+import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.core.service.conditional.ConditionPropertyValue
 import com.explyt.spring.core.service.conditional.PropertyConditionValues
 import com.explyt.spring.core.util.BeanFactoryMethods
@@ -16,6 +17,7 @@ import com.explyt.spring.core.util.SpringBootUtil
 import com.explyt.spring.core.util.SpringCoreUtil.hasComponentAnnotation
 import com.explyt.spring.core.util.SpringCoreUtil.resolveBeanName
 import com.explyt.util.ExplytPsiUtil.getMetaAnnotation
+import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
@@ -24,6 +26,7 @@ import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiMethod
+import com.intellij.psi.PsiModifier
 import com.intellij.util.text.VersionComparatorUtil
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UMethod
@@ -56,8 +59,39 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
             }
             names.forEach { firstDeclarations.putIfAbsent(it, method) }
             collision
-        }.toList()
+        }.toList() + overridesOfRegisteredBaseFactories(psiClass)
     }
+
+    private fun overridesOfRegisteredBaseFactories(psiClass: PsiClass): List<Collision> {
+        if (psiClass.isInterface || !psiClass.hasComponentAnnotation()) return emptyList()
+        val module = ModuleUtilCore.findModuleForPsiElement(psiClass) ?: return emptyList()
+        val registeredClasses by lazy(LazyThreadSafetyMode.NONE) { registeredComponentClassesOf(module) }
+        val isRegistered by lazy(LazyThreadSafetyMode.NONE) { psiClass.isAnyOf(registeredClasses) }
+        return psiClass.methods.filterNot { it.isConditional() }.flatMap { override ->
+            ProgressManager.checkCanceled()
+            override.findSuperMethods()
+                .filter { it.isFactoryOverriddenBy(override, psiClass) }
+                .filter { isRegistered && it.containingClass.isAnyOf(registeredClasses) }
+                .map { Collision(it.primaryBeanName, it, override, acrossConfigurations = true) }
+        }
+    }
+
+    private fun registeredComponentClassesOf(module: Module): List<PsiClass> =
+        SpringSearchServiceFacade.getInstance(module.project).getAllActiveBeans(module)
+            .filterNot { it.isMember() }
+            .map { it.psiClass }
+
+    private fun PsiMethod.isFactoryOverriddenBy(override: PsiMethod, psiClass: PsiClass): Boolean {
+        val declaringClass = containingClass ?: return false
+        if (declaringClass.isInterface || isDeclaredIn(psiClass)) return false
+        if (declaringClass.hasModifierProperty(PsiModifier.ABSTRACT)) return false
+        if (!isMetaAnnotatedBy(SpringCoreClasses.BEAN) || isConditional()) return false
+        if (override.isMetaAnnotatedBy(SpringCoreClasses.BEAN) && override.primaryBeanName != primaryBeanName) return false
+        return declaringClass.hasComponentAnnotation()
+    }
+
+    private fun PsiClass?.isAnyOf(classes: List<PsiClass>): Boolean =
+        this != null && classes.any { manager.areElementsEquivalent(it, this) }
 
     private fun Collision.isReportedByDeclaringComponent(
         psiClass: PsiClass,
@@ -94,7 +128,7 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
                 if (springVersion?.isBefore(SPRING_6_0) == false) Overriding.DISALLOWED
                 else Overriding.DISALLOWED_IN_REGISTRATION_ORDER
 
-            CollisionKind.ALIASES -> Overriding.DISALLOWED
+            CollisionKind.ALIASES, CollisionKind.ACROSS_CONFIGURATIONS -> Overriding.DISALLOWED
         }
         return when (val value = PropertyConditionValues(module).valueOf(ALLOW_OVERRIDING_KEY)) {
             is ConditionPropertyValue.Known ->
@@ -109,7 +143,7 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
     }
 
     private fun Collision.allowedOverridingOf(springVersion: String?): Overriding = when (kind) {
-        CollisionKind.PRIMARY_NAMES -> Overriding.ALLOWED_ONE_DROPPED
+        CollisionKind.PRIMARY_NAMES, CollisionKind.ACROSS_CONFIGURATIONS -> Overriding.ALLOWED_ONE_DROPPED
         CollisionKind.ALIASES -> Overriding.ALLOWED
         CollisionKind.PRIMARY_NAME_AND_ALIAS -> {
             val declarationOrderDecides = springVersion?.isBefore(SPRING_6_2_7) == false &&
@@ -127,7 +161,8 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
     private fun String.isBefore(version: String): Boolean = VersionComparatorUtil.compare(this, version) < 0
 
     private val Collision.kind: CollisionKind
-        get() = when (listOf(first, second).count { it.primaryBeanName == beanName }) {
+        get() = if (acrossConfigurations) CollisionKind.ACROSS_CONFIGURATIONS
+        else when (listOf(first, second).count { it.primaryBeanName == beanName }) {
             2 -> CollisionKind.PRIMARY_NAMES
             1 -> CollisionKind.PRIMARY_NAME_AND_ALIAS
             else -> CollisionKind.ALIASES
@@ -196,12 +231,18 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
     private fun PsiMethod.labelIn(psiClass: PsiClass): String =
         if (isDeclaredIn(psiClass)) name else listOfNotNull(containingClass?.name, name).joinToString(".")
 
-    private data class Collision(val beanName: String, val first: PsiMethod, val second: PsiMethod)
+    private data class Collision(
+        val beanName: String,
+        val first: PsiMethod,
+        val second: PsiMethod,
+        val acrossConfigurations: Boolean = false
+    )
 
     private enum class CollisionKind {
         PRIMARY_NAMES,
         PRIMARY_NAME_AND_ALIAS,
-        ALIASES
+        ALIASES,
+        ACROSS_CONFIGURATIONS
     }
 
     private enum class Overriding(val weak: Boolean = false) {
