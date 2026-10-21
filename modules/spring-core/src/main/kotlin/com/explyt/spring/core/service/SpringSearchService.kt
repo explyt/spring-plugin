@@ -347,17 +347,23 @@ class SpringSearchService(private val project: Project) {
      * The active beans a test context of [module] can hold: the production model widened by the scan roots and
      * registrations declared in test sources. Equal to [getActiveBeansClasses] while test sources declare none.
      */
-    fun getActiveBeansClassesWithTests(module: Module): Set<PsiBean> {
+    fun getActiveBeansClassesWithTests(module: Module): Set<PsiBean> = foundBeansWithTests(module).active
+
+    /**
+     * [foundBeans] of a test context of [module]: the same conditional and profile filtering over the beans the
+     * scan roots and registrations declared in test sources add. Equal to [foundBeans] while test sources declare none.
+     */
+    fun foundBeansWithTests(module: Module): FoundBeans {
         val packageScanService = PackageScanService.getInstance(project)
         if (packageScanService.getAllPackagesWithTests() == packageScanService.getAllPackages()) {
-            return getActiveBeansClasses(module)
+            return foundBeans(module)
         }
         synchronized(getMutexString(MutexType.CONDITIONAL_ON, module)) {
             return cachedValuesManager.getCachedValue(module) {
                 val components = componentBeanSplitWithTests(module).active
                 val beans = components + searchComponentPsiClassesByBeanMethods(components) + getStaticBeans(module)
                 CachedValueProvider.Result(
-                    filterByConditionals(module, beans).active,
+                    filterByConditionals(module, beans).withProfileInactive(module),
                     ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
                 )
             }
