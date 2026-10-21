@@ -9,6 +9,7 @@ import com.explyt.base.LibraryClassCache
 import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.util.SpringCoreUtil.isMapWithStringKey
+import com.explyt.spring.core.util.UastUtil.getArgumentValueAsEnumName
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.SpringWebClasses.REQUEST_MAPPING
 import com.explyt.spring.web.SpringWebClasses.RETROFIT_HEADER_PARAM
@@ -21,6 +22,11 @@ import com.explyt.spring.web.editor.openapi.OpenApiUtils.isAbsolutePath
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
 import com.explyt.spring.web.providers.JaxRsRunLineMarkerProvider.Companion.VALUE
 import com.explyt.spring.web.references.contributors.webClient.EndpointResult
+import com.explyt.spring.web.route.RoutePredicates
+import com.explyt.spring.web.route.RoutePrefix
+import com.explyt.spring.web.route.RouteScope
+import com.explyt.spring.web.route.RouterDslRoutes
+import com.explyt.spring.web.util.HandlerMethods.firstPathOrNull
 import com.explyt.util.ExplytAnnotationUtil.getBooleanValue
 import com.explyt.util.ExplytAnnotationUtil.getStringValue
 import com.explyt.util.ExplytKotlinUtil.mapToList
@@ -40,8 +46,8 @@ import com.intellij.psi.*
 import com.intellij.psi.impl.source.PsiClassReferenceType
 import com.intellij.psi.util.parentsOfType
 import org.jetbrains.kotlin.lombok.utils.decapitalize
-import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
-import org.jetbrains.kotlin.psi.KtStringTemplateExpression
+import org.jetbrains.kotlin.psi.KtNullableType
+import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.uast.*
 import org.jetbrains.yaml.YAMLUtil
 import org.jetbrains.yaml.psi.YAMLKeyValue
@@ -75,6 +81,15 @@ object SpringWebUtil {
     fun isFluxWebModule(module: Module): Boolean {
         return JavaPsiFacade.getInstance(module.project)
             .findClass(SpringWebClasses.FLUX, module.moduleWithLibrariesScope) != null
+    }
+
+    /**
+     * Keyed on the servlet `RouterFunction` itself rather than on a web-stack marker, because functional routing is an
+     * opt-in API: a Spring MVC project that never declares one has no such endpoints to find.
+     */
+    fun isWebMvcFnModule(module: Module): Boolean {
+        return JavaPsiFacade.getInstance(module.project)
+            .findClass(SpringWebClasses.SERVLET_ROUTE_FUNCTION, module.moduleWithLibrariesScope) != null
     }
 
     fun isRsWebModule(module: Module): Boolean {
@@ -117,28 +132,25 @@ object SpringWebUtil {
     fun collectRequestParameters(psiMethod: PsiMethod): Collection<PathArgumentInfo> {
         val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return emptyList()
 
-        val annotatedParams = psiMethod.parameterList.parameters
-            .filter { it.isMetaAnnotatedBy(SpringWebClasses.REQUEST_PARAM) }
         val mahRequestParam = SpringSearchService.getInstance(module.project)
             .getMetaAnnotations(module, SpringWebClasses.REQUEST_PARAM)
 
         val requestParamInfos = mutableListOf<PathArgumentInfo>()
-        for (param in annotatedParams) {
-            val annotation = param.annotations.firstOrNull {
-                mahRequestParam.contains(it)
-            } ?: continue
+        for (param in psiMethod.parameterList.parameters) {
+            val annotation = HandlerMethods.bindingAnnotationOf(param) { mahRequestParam.contains(it) } ?: continue
 
             val paramType = param.type
             val isMap = paramType.isMapWithStringKey()
-            val isOptional = !isMap && paramType.isOptional
+            val isOptional = !isMap && param.acceptsMissingValue()
             val typeFqn = getTypeFqn(paramType, psiMethod.language)
 
-            val isRequired = mahRequestParam.getAnnotationMemberValues(annotation, setOf("required"))
-                .map { it.getBooleanValue() }
-                .firstOrNull() ?: true
             val defaultValue = mahRequestParam.getAnnotationMemberValues(annotation, setOf("defaultValue"))
                 .map { it.getStringValue() }
                 .firstOrNull()
+            val declaredRequired = mahRequestParam.getAnnotationMemberValues(annotation, setOf("required"))
+                .map { it.getBooleanValue() }
+                .firstOrNull() ?: true
+            val isRequired = declaredRequired && defaultValue == null
 
             val memberValues = mahRequestParam.getAnnotationMemberValues(annotation, setOf("value", "name"))
             if (memberValues.isEmpty()) {
@@ -174,28 +186,25 @@ object SpringWebUtil {
     fun collectRequestHeaders(psiMethod: PsiMethod): Collection<PathArgumentInfo> {
         val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return emptyList()
 
-        val annotatedParams = psiMethod.parameterList.parameters
-            .filter { it.isMetaAnnotatedBy(SpringWebClasses.REQUEST_HEADER) }
         val mahRequestHeader = SpringSearchService.getInstance(module.project)
             .getMetaAnnotations(module, SpringWebClasses.REQUEST_HEADER)
 
         val requestParamInfos = mutableListOf<PathArgumentInfo>()
-        for (param in annotatedParams) {
-            val annotation = param.annotations.firstOrNull {
-                mahRequestHeader.contains(it)
-            } ?: continue
+        for (param in psiMethod.parameterList.parameters) {
+            val annotation = HandlerMethods.bindingAnnotationOf(param) { mahRequestHeader.contains(it) } ?: continue
 
             val paramType = param.type
             val isMap = paramType.isMapWithStringKey()
-            val isOptional = !isMap && paramType.isOptional
+            val isOptional = !isMap && param.acceptsMissingValue()
             val typeFqn = getTypeFqn(paramType, psiMethod.language)
 
-            val isRequired = mahRequestHeader.getAnnotationMemberValues(annotation, setOf("required"))
-                .map { it.getBooleanValue() }
-                .firstOrNull() ?: true
             val defaultValue = mahRequestHeader.getAnnotationMemberValues(annotation, setOf("defaultValue"))
                 .map { it.getStringValue() }
                 .firstOrNull()
+            val declaredRequired = mahRequestHeader.getAnnotationMemberValues(annotation, setOf("required"))
+                .map { it.getBooleanValue() }
+                .firstOrNull() ?: true
+            val isRequired = declaredRequired && defaultValue == null
 
             val memberValues = mahRequestHeader.getAnnotationMemberValues(annotation, setOf("value", "name"))
             if (memberValues.isEmpty()) {
@@ -231,16 +240,12 @@ object SpringWebUtil {
     fun collectPathVariables(psiMethod: PsiMethod): Collection<PathArgumentInfo> {
         val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return emptyList()
 
-        val annotatedParams = psiMethod.parameterList.parameters
-            .filter { it.isMetaAnnotatedBy(SpringWebClasses.PATH_VARIABLE) }
         val mahPathVariable = SpringSearchService.getInstance(module.project)
             .getMetaAnnotations(module, SpringWebClasses.PATH_VARIABLE)
 
         val pathVariableInfos = mutableListOf<PathArgumentInfo>()
-        for (param in annotatedParams) {
-            val annotation = param.annotations.firstOrNull {
-                mahPathVariable.contains(it)
-            } ?: continue
+        for (param in psiMethod.parameterList.parameters) {
+            val annotation = HandlerMethods.bindingAnnotationOf(param) { mahPathVariable.contains(it) } ?: continue
 
             val paramType = param.type
             val isMap = paramType.isMapWithStringKey()
@@ -280,18 +285,26 @@ object SpringWebUtil {
         return pathVariableInfos
     }
 
+    /**
+     * Whether Spring binds an absent request value to this parameter instead of rejecting the request, which is
+     * `MethodParameter.isOptional`: an `Optional`, a parameter annotated `@Nullable`, and in Kotlin a nullable type
+     * or a parameter with a default value.
+     */
+    fun PsiParameter.acceptsMissingValue(): Boolean {
+        if (type.isOptional) return true
+        if (annotations.any { it.qualifiedName?.substringAfterLast('.') == NULLABLE_SIMPLE_NAME }) return true
+        val kotlinParameter = toUElementOfType<UParameter>()?.sourcePsi as? KtParameter ?: return false
+        return kotlinParameter.typeReference?.typeElement is KtNullableType || kotlinParameter.hasDefaultValue()
+    }
+
     fun getRequestBodyInfo(psiMethod: PsiMethod): PathArgumentInfo? {
         val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return null
 
-        val annotatedParams = psiMethod.parameterList.parameters
-            .filter { it.isMetaAnnotatedBy(SpringWebClasses.REQUEST_BODY) }
         val mahRequestBody = SpringSearchService.getInstance(module.project)
             .getMetaAnnotations(module, SpringWebClasses.REQUEST_BODY)
 
-        for (param in annotatedParams) {
-            val annotation = param.annotations.firstOrNull {
-                mahRequestBody.contains(it)
-            } ?: continue
+        for (param in psiMethod.parameterList.parameters) {
+            val annotation = HandlerMethods.bindingAnnotationOf(param) { mahRequestBody.contains(it) } ?: continue
 
             val paramType = param.type
             val isMap = paramType.isMapWithStringKey()
@@ -313,6 +326,16 @@ object SpringWebUtil {
         return null
     }
 
+    fun isRequestHandlerClass(psiClass: PsiClass): Boolean =
+        psiClass.isMetaAnnotatedBy(SpringWebClasses.CONTROLLER) || psiClass.isMetaAnnotatedBy(SpringWebClasses.FEIGN_CLIENT)
+
+    fun requestMappingSourceOf(method: PsiMethod): PsiMethod? = when {
+        method.isMetaAnnotatedBy(REQUEST_MAPPING) -> method
+        method.isConstructor || method.hasModifierProperty(PsiModifier.STATIC) -> null
+        method.findSuperMethods().isEmpty() -> null
+        else -> HandlerMethods.mappingSourceOf(method) { it.isMetaAnnotatedBy(REQUEST_MAPPING) }
+    }
+
     fun getEndpointInfo(uMethod: UMethod, prefix: String = ""): EndpointInfo? {
         ProgressManager.checkCanceled()
 
@@ -320,33 +343,22 @@ object SpringWebUtil {
 
         val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return null
 
-        if (!psiMethod.isMetaAnnotatedBy(REQUEST_MAPPING)) return null
+        val mappingSource = requestMappingSourceOf(psiMethod) ?: return null
         val psiClass = psiMethod.containingClass ?: return null
         val controllerName = psiClass.name ?: return null
 
-        val requestMappingMah = MetaAnnotationsHolder.of(module, REQUEST_MAPPING)
-        val path = requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("path", "value")).asSequence()
-            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
-            .firstOrNull() ?: ""
+        val mapping = HandlerMethods.methodMapping(mappingSource, MetaAnnotationsHolder.of(module, REQUEST_MAPPING))
+        val path = mapping.firstPathOrNull() ?: return null
         if (isAbsolutePath(path)) return null
-        val produces = requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("produces"))
-            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
-        val consumes = requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("consumes"))
-            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
 
-        val fullPath = simplifyUrl("$prefix/${removeParams(path)}")
-
-        val requestMethods =
-            requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("method"))
-                .map { it.text.split('.').last() }
+        val fullPath = simplifyUrl(MappingPathPlaceholders.resolve(module, "$prefix/${removeParams(path)}"))
 
         val description = uMethod.comments.firstOrNull()?.getCommentText() ?: ""
-        val returnType = uMethod.returnType
-        val returnTypeFqn = getTypeFqn(returnType, psiMethod.language)
+        val returnTypeFqn = getTypeFqn(HandlerSignature.declaredReturnType(psiMethod), psiMethod.language)
 
         return EndpointInfo(
             fullPath,
-            requestMethods,
+            mapping.methods,
             psiMethod,
             uMethod.name,
             controllerName.replace("controller", "", true)
@@ -357,10 +369,23 @@ object SpringWebUtil {
             collectRequestParameters(psiMethod),
             getRequestBodyInfo(psiMethod),
             collectRequestHeaders(psiMethod),
-            produces,
-            consumes
+            mapping.produces,
+            mapping.consumes
         )
     }
+
+    /**
+     * The mapping a `@RequestMapping`-annotated member declares, read through [requestMappingMah] so that `@GetMapping`
+     * and every other composed mapping count: its path values, `""` standing for a mapping that names none, and its
+     * verbs, empty for a mapping that restricts none.
+     */
+    fun requestMappingOf(member: PsiMember, requestMappingMah: MetaAnnotationsHolder): RequestMapping {
+        val mapping = HandlerMethods.methodMapping(member, requestMappingMah)
+        val paths = if (mapping.pathsDeclared) mapping.paths.map { it.path } else listOf("")
+        return RequestMapping(paths, mapping.methods)
+    }
+
+    data class RequestMapping(val paths: List<String>, val methods: List<String>)
 
     fun removeParams(url: String): String {
         val pos = url.indexOfFirst { it == '?' }
@@ -370,7 +395,7 @@ object SpringWebUtil {
 
     fun getJaxRsPaths(psiMember: PsiMember, module: Module): List<String> {
         if (!psiMember.isMetaAnnotatedBy(WebEeClasses.JAX_RS_PATH.allFqns)) return listOf("")
-        val pathTargetClass = WebEeClasses.JAX_RS_PATH.getTargetClass(module)
+        val pathTargetClass = WebEeClasses.JAX_RS_PATH.getTargetClassInDependencies(module)
         val pathMah = MetaAnnotationsHolder.of(module, pathTargetClass)
 
         val paths = pathMah.getAnnotationMemberValues(psiMember, setOf("value"))
@@ -381,7 +406,7 @@ object SpringWebUtil {
     }
 
     fun getJaxRsHttpMethods(psiMethod: PsiMethod, module: Module): List<String> {
-        val httpMethodTargetClass = WebEeClasses.JAX_RS_HTTP_METHOD.getTargetClass(module)
+        val httpMethodTargetClass = WebEeClasses.JAX_RS_HTTP_METHOD.getTargetClassInDependencies(module)
         val httpMethodMah = MetaAnnotationsHolder.of(module, httpMethodTargetClass)
 
         return httpMethodMah.getAnnotationMemberValues(psiMethod, setOf("value"))
@@ -389,14 +414,14 @@ object SpringWebUtil {
     }
 
     fun getJaxRsProduces(psiMethod: PsiMethod, module: Module): List<String> {
-        val producesTargetClass = WebEeClasses.JAX_RS_PRODUCES.getTargetClass(module)
+        val producesTargetClass = WebEeClasses.JAX_RS_PRODUCES.getTargetClassInDependencies(module)
         val producesMah = MetaAnnotationsHolder.of(module, producesTargetClass)
         return producesMah.getAnnotationMemberValues(psiMethod, setOf(VALUE))
             .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
     }
 
     fun getJaxRsConsumes(psiMethod: PsiMethod, module: Module): List<String> {
-        val consumesTargetClass = WebEeClasses.JAX_RS_CONSUMES.getTargetClass(module)
+        val consumesTargetClass = WebEeClasses.JAX_RS_CONSUMES.getTargetClassInDependencies(module)
         val producesMah = MetaAnnotationsHolder.of(module, consumesTargetClass)
         return producesMah.getAnnotationMemberValues(psiMethod, setOf(VALUE))
             .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
@@ -598,45 +623,58 @@ object SpringWebUtil {
         }
     }
 
-    fun getPathFromCallExpression(callExpression: UCallExpression): String {
-        var path = ""
+    /**
+     * The verb of a router DSL route: the called name for `GET`/`POST`/…, and the argument for the generic
+     * `method(HttpMethod.GET, handler)` form, whose name carries no verb.
+     */
+    fun getRequestMethod(callExpression: UCallExpression): String? {
+        val methodName = callExpression.methodName ?: return null
+        if (methodName != SpringWebClasses.ROUTER_DSL_GENERIC_METHOD) return methodName
 
-        var currentNode = callExpression as? UElement
-        while (currentNode != null) {
-            if (currentNode is UCallExpression) {
-                if (currentNode.methodName == "nest") {
-                    val currentNodeParent = currentNode.uastParent
-                    if (currentNodeParent is UExpression) {
-                        val qualifiedExpression = currentNodeParent.sourcePsi
-                        if (qualifiedExpression is KtDotQualifiedExpression) {
-                            path = getUri(qualifiedExpression, path)
-                        }
-                    }
-                } else {
-                    val argument = currentNode.valueArguments.firstOrNull()
-                    if (argument is UPolyadicExpression) {
-                        val operand = argument.operands.firstOrNull()
-                        if (operand is ULiteralExpression) {
-                            path = "$path${operand.value}"
-                        }
-                    } else if (argument is ULiteralExpression) {
-                        path = "$path${argument.value}"
-                    }
-                }
+        return callExpression.getArgumentValueAsEnumName(0)
+    }
+
+    fun getPathsFromCallExpression(callExpression: UCallExpression): List<String> {
+        val ownPaths = getOwnPaths(callExpression) ?: return emptyList()
+        return getEnclosingNestScope(callExpression).then(RouteScope.of(RoutePrefix.Decided(ownPaths))).paths
+    }
+
+    fun getServedRequestMethods(callExpression: UCallExpression, requestMethods: List<String>): List<String>? =
+        getEnclosingNestScope(callExpression).verbs.servedVerbsOf(requestMethods)
+
+    private fun getEnclosingNestScope(callExpression: UCallExpression): RouteScope {
+        var scope = RouteScope.ROOT
+        var currentNode = callExpression.uastParent
+        while (currentNode != null && !scope.isUndecidable) {
+            ProgressManager.checkCanceled()
+            if (currentNode is UCallExpression && isNestCall(currentNode)) {
+                scope = RoutePredicates.scopeOfNest(currentNode).then(scope)
             }
             currentNode = currentNode.uastParent
         }
-        return path
+        return scope
     }
 
-    private fun getUri(statement: KtDotQualifiedExpression, path: String): String {
-        val receiver = statement.receiverExpression
-        if (receiver is KtStringTemplateExpression) {
-            val uri = receiver.entries.joinToString("") { it.text }
-            return "$uri$path"
-        }
-        return path
+    /**
+     * `method(HttpMethod.GET, handler)` takes no URI and serves whatever path encloses it, so it contributes an empty
+     * segment rather than no path at all — returning no path would drop the route.
+     */
+    private fun getOwnPaths(callExpression: UCallExpression): List<String>? {
+        if (RoutePredicates.returnsRequestPredicate(callExpression)) return null
+        if (callExpression.methodName == SpringWebClasses.ROUTER_DSL_GENERIC_METHOD) return listOf("")
+
+        val uriArgument = RouterDslRoutes.uriExpressionOf(callExpression) ?: return null
+        return RoutePathResolver.resolveUriValues(uriArgument).takeIf { it.isNotEmpty() }
     }
+
+    fun isNestCall(call: UCallExpression): Boolean = call.callName() == SpringWebClasses.ROUTE_NEST
+
+    fun getNestPrefixesOrNullIfUnresolved(nestCall: UCallExpression): List<String>? =
+        when (val prefix = RoutePredicates.prefixOfNest(nestCall)) {
+            is RoutePrefix.Decided -> prefix.segments
+            RoutePrefix.PathFree -> emptyList()
+            RoutePrefix.Undecidable -> null
+        }
 
     fun simplifyUrl(urlPath: String): String {
         var result = if (urlPath.startsWith("/")) urlPath else "/$urlPath"
@@ -647,6 +685,48 @@ object SpringWebUtil {
             result = result.substring(0, result.length - 1)
         }
         return result.split('?').first()
+    }
+
+    fun isSamePathTemplate(path: String, otherPath: String): Boolean {
+        val segments = pathTemplateSegments(path)
+        val otherSegments = pathTemplateSegments(otherPath)
+        return segments.size == otherSegments.size && segments.zip(otherSegments).all { (segment, otherSegment) ->
+            segment == otherSegment || isPathTemplateVariable(segment) && isPathTemplateVariable(otherSegment)
+        }
+    }
+
+    fun pathTemplateVariables(path: String): List<String> =
+        pathTemplateSegments(path)
+            .filter { isPathTemplateVariable(it) }
+            .map { it.substring(1, it.length - 1).removePrefix("*").substringBefore(':') }
+
+    private fun pathTemplateSegments(path: String): List<String> {
+        val segments = mutableListOf<String>()
+        val segment = StringBuilder()
+        var depth = 0
+        for (char in simplifyUrl(path)) {
+            if (char == '/' && depth == 0) {
+                segments += segment.toString()
+                segment.clear()
+                continue
+            }
+            if (char == '{') depth++
+            if (char == '}' && depth > 0) depth--
+            segment.append(char)
+        }
+        segments += segment.toString()
+        return segments
+    }
+
+    private fun isPathTemplateVariable(segment: String): Boolean {
+        if (segment.length < 3 || !segment.startsWith('{') || !segment.endsWith('}')) return false
+        var depth = 0
+        for ((index, char) in segment.withIndex()) {
+            if (char == '{') depth++
+            if (char == '}') depth--
+            if (depth < 0 || depth == 0 && index != segment.lastIndex) return false
+        }
+        return depth == 0
     }
 
     fun getHttpMethodIndex(psiMethod: PsiMethod) =
@@ -666,6 +746,8 @@ object SpringWebUtil {
     private fun getRegexByUri(path: String): Regex {
         return endpointRegExByUri.computeIfAbsent(path) {
             val regex = path
+                .replace(TRAILING_CAPTURE_REST, ANY_SEGMENTS)
+                .replace(INNER_DOUBLE_WILDCARD, ANY_SEGMENTS)
                 .replace(TEMPLATE_PARAM_REGEX, "[^/?]+")
                 .replace(MULTIPLE_ASTERISKS, "*")
             Regex("^$regex(\\?.*)?\$")
@@ -679,6 +761,9 @@ object SpringWebUtil {
                 it.name in URL_TEMPLATE_NAMES
                         && it.type.canonicalText == CommonClassNames.JAVA_LANG_STRING
             }
+
+
+    private const val NULLABLE_SIMPLE_NAME = "Nullable"
 
     private val MultipleSlashes = Regex("//+")
     val NameInBracketsRx = Regex("""\{(?<name>[^{}]+)}""")
@@ -719,6 +804,9 @@ object SpringWebUtil {
     private val endpointRegExByUri = ConcurrentHashMap<String, Regex>()
     private val TEMPLATE_PARAM_REGEX = Regex("\\{[^}]+}")
     private val MULTIPLE_ASTERISKS = Regex("\\*{2,}")
+    private val TRAILING_CAPTURE_REST = Regex("""/(?:\{\*[^}]+}|\*\*)$""")
+    private val INNER_DOUBLE_WILDCARD = Regex("""/\*\*(?=/)""")
+    private const val ANY_SEGMENTS = "(?:/.*)?"
 
     const val OPENAPI_BOOLEAN = "type: boolean"
     const val OPENAPI_STRING = "type: string"

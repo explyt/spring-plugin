@@ -23,6 +23,7 @@ object SpringProperties {
     const val SPRING_BEAN_REFERENCE = "spring-bean-reference"
 
     const val SPRING_PROFILES_ACTIVE = "spring.profiles.active"
+    const val SPRING_PROFILES_GROUP = "spring.profiles.group"
 
     const val GET_RESOURCE = "getResource"
     const val GET_RESOURCES = "getResources"
@@ -65,5 +66,8 @@ object SpringProperties {
     const val PROPERTY_COMMENT = "#"
     const val PLACEHOLDER_PREFIX = "\${"
     const val PLACEHOLDER_SUFFIX = "}"
+
+    /** The opener of a SpEL block, which an annotation value resolves after its placeholders. */
+    const val SPEL_PREFIX = "#{"
 
 }

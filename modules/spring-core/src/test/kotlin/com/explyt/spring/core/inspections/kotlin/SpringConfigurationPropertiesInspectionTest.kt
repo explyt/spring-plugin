@@ -78,7 +78,7 @@ class SpringConfigurationPropertiesInspectionTest : ExplytInspectionKotlinTestCa
         myFixture.configureByText(
             "TestClass.kt",
             """
-            <warning>@${SpringCoreClasses.CONFIGURATION_PROPERTIES}("KEBAB")</warning>            
+            <weak_warning>@${SpringCoreClasses.CONFIGURATION_PROPERTIES}("KEBAB")</weak_warning>            
             class TestClass {}
             """.trimIndent()
         )
@@ -90,7 +90,7 @@ class SpringConfigurationPropertiesInspectionTest : ExplytInspectionKotlinTestCa
             "TestClass.kt",
             """                        
             class TestClass {
-                <warning>@${SpringCoreClasses.CONFIGURATION_PROPERTIES}("kebab_kebab")</warning>
+                <weak_warning>@${SpringCoreClasses.CONFIGURATION_PROPERTIES}("kebab_kebab")</weak_warning>
                 fun method():String { return "1"}
             }
             """.trimIndent()

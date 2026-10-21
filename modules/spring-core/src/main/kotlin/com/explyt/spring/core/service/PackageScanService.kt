@@ -9,6 +9,9 @@ import com.explyt.base.LibraryClassCache
 import com.explyt.spring.core.SpringCoreClasses.COMPONENT
 import com.explyt.spring.core.SpringCoreClasses.COMPONENT_SCAN
 import com.explyt.spring.core.SpringCoreClasses.COMPONENT_SCANS
+import com.explyt.spring.core.SpringCoreClasses.CONFIGURATION_PROPERTIES_SCAN
+import com.explyt.spring.core.SpringCoreClasses.ENABLE_AUTO_CONFIGURATION
+import com.explyt.spring.core.SpringCoreClasses.ENABLE_CONFIGURATION_PROPERTIES
 import com.explyt.spring.core.SpringCoreClasses.IMPORT
 import com.explyt.spring.core.SpringCoreClasses.SPRING_BOOT_APPLICATION
 import com.explyt.spring.core.SpringCoreClasses.SPRING_BOOT_TEST
@@ -16,6 +19,8 @@ import com.explyt.spring.core.SpringProperties
 import com.explyt.spring.core.runconfiguration.RunConfigurationUtil
 import com.explyt.spring.core.runconfiguration.SpringBootRunConfiguration
 import com.explyt.spring.core.tracker.ModificationTrackerManager
+import com.explyt.spring.core.util.SpringCoreUtil
+import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytPsiUtil.resolvedPsiClass
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.MetaAnnotationUtil
@@ -26,11 +31,13 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.util.registry.Registry
 import com.intellij.psi.PsiAnnotationMemberValue
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiJavaFile
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.search.GlobalSearchScopesCore
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
@@ -40,65 +47,146 @@ import org.jetbrains.uast.*
 @Service(Service.Level.PROJECT)
 class PackageScanService(private val project: Project) {
 
+    /** The scan roots of the production applications: what the running application's context is built from. */
     fun getAllPackages(): RootDataHolder {
         return CachedValuesManager.getManager(project).getCachedValue(project) {
             CachedValueProvider.Result(
-                getAllPackagesInner(),
+                getAllPackagesInner(GlobalSearchScopesCore.projectProductionScope(project)),
                 ModificationTrackerManager.getInstance(project).getUastAnnotationAndLibraryTracker()
             )
         }
     }
 
-    private fun getAllPackagesInner(): RootDataHolder {
+    fun getBeanRegistrations(): BeanRegistrations {
+        return CachedValuesManager.getManager(project).getCachedValue(project) {
+            val trackers = ModificationTrackerManager.getInstance(project)
+            CachedValueProvider.Result(
+                beanRegistrations(getAllPackages()),
+                trackers.getUastModelAndLibraryTracker(),
+                trackers.getUastAnnotationAndLibraryTracker()
+            )
+        }
+    }
+
+    /** The registrations a test context can reach, including those of registrars declared in test sources. */
+    fun getBeanRegistrationsWithTests(): BeanRegistrations {
+        return CachedValuesManager.getManager(project).getCachedValue(project) {
+            val trackers = ModificationTrackerManager.getInstance(project)
+            CachedValueProvider.Result(
+                beanRegistrations(getAllPackagesWithTests()),
+                trackers.getUastModelAndLibraryTracker(),
+                trackers.getUastAnnotationAndLibraryTracker()
+            )
+        }
+    }
+
+    /**
+     * The scan roots a test context can reach: the production roots plus those of applications, scanned configurations
+     * and registrations declared in test sources. Only queries about test-source code may use them.
+     */
+    fun getAllPackagesWithTests(): RootDataHolder {
+        return CachedValuesManager.getManager(project).getCachedValue(project) {
+            CachedValueProvider.Result(
+                getAllPackagesInner(GlobalSearchScope.projectScope(project)),
+                ModificationTrackerManager.getInstance(project).getUastAnnotationAndLibraryTracker()
+            )
+        }
+    }
+
+    private fun beanRegistrations(holder: RootDataHolder): BeanRegistrations {
+        val importers = holder.importersByImported
+        val scanners = propertiesScannersByScanned(holder.propertiesScans)
+        val registrarsByRegistered = (importers.keys + scanners.keys)
+            .associateWith { importers[it].orEmpty() + scanners[it].orEmpty() }
+        val plainImported = importers.keys - holder.enabledPropertiesImportedQualified
+        val enabledPropertiesQualified = holder.enabledPropertiesImportedQualified + (scanners.keys - plainImported)
+        return BeanRegistrations(registrarsByRegistered, enabledPropertiesQualified)
+    }
+
+    private fun propertiesScannersByScanned(scans: List<PropertiesScan>): Map<String, Set<String>> =
+        scans.asSequence()
+            .flatMap { scan -> scannedProperties(scan).mapNotNull { it.qualifiedName }.map { it to scan.scannerQualified } }
+            .groupBy({ it.first }, { it.second })
+            .mapValues { (_, scanners) -> scanners.toSet() }
+
+    private fun getAllPackagesInner(sources: GlobalSearchScope): RootDataHolder {
         val annotationPsiClasses = getComponentScanAnnotations()
-        val rootClasses = searchRootClasses(annotationPsiClasses)
+        val rootClasses = searchRootClasses(annotationPsiClasses, sources)
         val rootModuleData = rootClasses.mapNotNull { findRootModulePackages(it) }
         val programConfigRootClasses = AnnotationConfigApplicationService.getRootClasses(rootClasses, rootModuleData)
 
         val rootPackages = rootModuleData.flatMapTo(mutableSetOf()) { it.packages }
-        val scanModuleData = getComponentScanClasses(annotationPsiClasses, rootPackages, programConfigRootClasses)
+        val scanModuleData =
+            getComponentScanClasses(annotationPsiClasses, rootPackages, programConfigRootClasses, sources)
 
         val moduleRootDataList = rootModuleData + scanModuleData
 
         val importAnnotationClass = annotationPsiClasses.importAnnotationClass
-        val importClasses = getImportClasses(moduleRootDataList, importAnnotationClass, programConfigRootClasses)
+        val registrars =
+            getRegistrarClasses(moduleRootDataList, importAnnotationClass, programConfigRootClasses, sources)
+        val registrations = registrars.flatMapTo(mutableSetOf()) { getRegistrations(it) }
+        val propertiesScans = registrars.mapNotNull { propertiesScanOf(it) }
+        val importClasses = registrations.mapTo(mutableSetOf()) { it.registered }
         val importModuleRootDataList = importClasses.mapNotNull { toModulePackages(it, true) }
         val allModuleRootDataList = moduleRootDataList + importModuleRootDataList
 
-        val packagesByModuleName = allModuleRootDataList.groupingBy { it.moduleName }
+        val packagesByModuleName = allModuleRootDataList
+            .filterNot { it.rootComponentQualified != null && it.packages.isEmpty() }
+            .groupingBy { it.moduleName }
             .fold(setOf<String>()) { acc, ell -> acc + ell.packages.map { normalizePackage(it) } }
         val rootComponentQualified = moduleRootDataList.mapNotNullTo(mutableSetOf()) { it.rootComponentQualified }
-        val importQualified = importClasses.mapNotNullTo(mutableSetOf()) { it.qualifiedName }
+        val importersByImported = registrarsByRegistered(registrations)
+        val enabledPropertiesImportedQualified = registrations.groupBy { it.registered }
+            .filterValues { group -> group.all { it.enabledProperties } }
+            .keys.mapNotNullTo(mutableSetOf()) { it.qualifiedName }
+        val scannedRootsByModuleName = scanModuleData
+            .mapNotNull { data -> data.declaringClass?.let { data.moduleName to ScannedRoot(it, data.packages) } }
+            .groupBy({ it.first }, { it.second })
 
-        return RootDataHolder(packagesByModuleName, rootComponentQualified, importQualified)
+        return RootDataHolder(
+            packagesByModuleName, rootComponentQualified, importersByImported, scannedRootsByModuleName,
+            enabledPropertiesImportedQualified, propertiesScans
+        )
     }
 
+    private fun registrarsByRegistered(registrations: Collection<Registration>): Map<String, Set<String>> =
+        registrations
+            .mapNotNull { (registered, registrar) -> registered.qualifiedName?.let { it to registrar.qualifiedName } }
+            .groupBy({ it.first }, { it.second })
+            .mapValues { (_, registrars) -> registrars.filterNotNullTo(mutableSetOf()) }
+
     private fun getComponentScanClasses(
-        annotationPsiClasses: ScanAnnotationHolder, rootPackages: MutableSet<String>, programConfigRoots: List<PsiClass>
+        annotationPsiClasses: ScanAnnotationHolder,
+        rootPackages: MutableSet<String>,
+        programConfigRoots: List<PsiClass>,
+        sources: GlobalSearchScope
     ): List<ModuleRootData> {
         val classesForSearchComponentScan = programConfigRoots.ifEmpty {
             annotationPsiClasses.scanAnnotationClass
-                .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, GlobalSearchScope.projectScope(project)) }
+                .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, sources) }
         }
         return classesForSearchComponentScan
             .filter { filterComponentScanClass(rootPackages, it) }
             .mapNotNull { toModulePackages(it) }
     }
 
-    private fun getImportClasses(
-        moduleRootData: List<ModuleRootData>, importAnnotationClass: Set<PsiClass>, programConfigRoots: List<PsiClass>
-    ): Set<PsiClass> {
+    private fun getRegistrarClasses(
+        moduleRootData: List<ModuleRootData>,
+        importAnnotationClass: Set<PsiClass>,
+        programConfigRoots: List<PsiClass>,
+        sources: GlobalSearchScope
+    ): List<PsiClass> {
         val packages = moduleRootData.flatMapTo(mutableSetOf()) { it.packages }
         val classesForSearchImport = programConfigRoots.ifEmpty {
             importAnnotationClass
-                .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, GlobalSearchScope.projectScope(project)) }
+                .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, sources) }
         }
         return classesForSearchImport
             .filter { filterComponentScanClass(packages, it) }
-            .flatMapTo(mutableSetOf()) { getImportClasses(it) }
+            .distinct()
     }
 
-    private fun searchRootClasses(annotationPsiClasses: ScanAnnotationHolder): List<PsiClass> {
+    private fun searchRootClasses(annotationPsiClasses: ScanAnnotationHolder, sources: GlobalSearchScope): List<PsiClass> {
         if (Registry.`is`("explyt.spring.root.runConfiguration")) {
             val runConfiguration = RunManager.getInstance(project).selectedConfiguration
                 ?.configuration as? SpringBootRunConfiguration
@@ -108,7 +196,7 @@ class PackageScanService(private val project: Project) {
         }
 
         return annotationPsiClasses.rootAnnotationClass
-                .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, GlobalSearchScope.projectScope(project)) }
+                .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, sources) }
     }
 
     private fun filterComponentScanClass(rootPackages: Set<String>, it: PsiClass?): Boolean {
@@ -120,17 +208,19 @@ class PackageScanService(private val project: Project) {
         val module = ModuleUtilCore.findModuleForPsiElement(psiClass) ?: return null
         val uClass = psiClass.toUElementOfType<UClass>() ?: return null
 
-        val holderSpringBoot = SpringSearchService.getInstance(project)
-            .getMetaAnnotations(module, SPRING_BOOT_APPLICATION)
+        val holderApplication = SpringSearchService.getInstance(project)
+            .getMetaAnnotations(module, ENABLE_AUTO_CONFIGURATION)
 
-        val springBootAnnotations = uClass.uAnnotations.filter { holderSpringBoot.contains(it) }
-        if (springBootAnnotations.isEmpty()) return null
+        val applicationAnnotations = uClass.uAnnotations.filter { holderApplication.contains(it) }
+        if (applicationAnnotations.isEmpty()) return null
 
         val holderScan = SpringSearchService.getInstance(project).getMetaAnnotations(module, COMPONENT_SCAN)
-        val bootPackages = springBootAnnotations.flatMapTo(mutableSetOf()) { getPackages(it, holderScan) }
+        val bootPackages = applicationAnnotations.asSequence()
+            .filter { holderScan.contains(it) }
+            .flatMapTo(mutableSetOf()) { getPackages(it, holderScan) }
 
         val scanPackages = uClass.uAnnotations.asSequence()
-            .filter { !springBootAnnotations.contains(it) }
+            .filter { !applicationAnnotations.contains(it) }
             .filter { holderScan.contains(it) }
             .flatMapTo(mutableSetOf()) { getPackages(it, holderScan) }
 
@@ -160,10 +250,10 @@ class PackageScanService(private val project: Project) {
 
         val allPackages = packages + packagesScans
         if (allPackages.isEmpty()) return null
-        return ModuleRootData(module.name, allPackages)
+        return ModuleRootData(module.name, allPackages, declaringClass = psiClass.qualifiedName)
     }
 
-    private fun getImportClasses(psiClass: PsiClass): Set<PsiClass> {
+    private fun getRegistrations(psiClass: PsiClass): Set<Registration> {
         val module = ModuleUtilCore.findModuleForPsiElement(psiClass) ?: return emptySet()
         val uClass = psiClass.toUElementOfType<UClass>() ?: return emptySet()
 
@@ -171,9 +261,51 @@ class PackageScanService(private val project: Project) {
         uClass.uAnnotations.find { holderComponent.contains(it) } ?: return emptySet()
 
         val holderImport = SpringSearchService.getInstance(project).getMetaAnnotations(module, IMPORT)
-        return uClass.uAnnotations.asSequence()
+        val imported = uClass.uAnnotations.asSequence()
             .filter { holderImport.contains(it) }
-            .flatMapTo(mutableSetOf()) { getImportClasses(it, holderImport) }
+            .flatMap { getImportClasses(it, holderImport) }
+
+        val holderEnabler = SpringSearchService.getInstance(project)
+            .getMetaAnnotations(module, ENABLE_CONFIGURATION_PROPERTIES)
+        val enabledProperties = uClass.uAnnotations.asSequence()
+            .filter { holderEnabler.contains(it) }
+            .flatMap { holderEnabler.getAnnotationMemberValues(it, setOf(SpringProperties.VALUE)) }
+            .flatMap { getPsiClasses(it) }
+
+        return imported.map { Registration(it, psiClass) }.toSet() +
+                enabledProperties.map { Registration(it, psiClass, enabledProperties = true) }
+    }
+
+    private fun propertiesScanOf(psiClass: PsiClass): PropertiesScan? {
+        val module = ModuleUtilCore.findModuleForPsiElement(psiClass) ?: return null
+        val uClass = psiClass.toUElementOfType<UClass>() ?: return null
+        val scannerQualified = psiClass.qualifiedName ?: return null
+
+        val holderComponent = SpringSearchService.getInstance(project).getMetaAnnotations(module, COMPONENT)
+        uClass.uAnnotations.find { holderComponent.contains(it) } ?: return null
+
+        val holderPropertiesScan = SpringSearchService.getInstance(project)
+            .getMetaAnnotations(module, CONFIGURATION_PROPERTIES_SCAN)
+        val packages = uClass.uAnnotations
+            .filter { holderPropertiesScan.contains(it) }
+            .flatMapTo(mutableSetOf()) { getPackages(it, holderPropertiesScan) }
+            .mapTo(mutableSetOf(), ::normalizePackage)
+        if (packages.isEmpty()) return null
+        return PropertiesScan(scannerQualified, module.name, packages)
+    }
+
+    private fun scannedProperties(scan: PropertiesScan): Sequence<PsiClass> {
+        val module = ModuleManager.getInstance(project).findModuleByName(scan.moduleName) ?: return emptySequence()
+        val packages = scan.packages
+        val scope = GlobalSearchScope.moduleWithDependenciesScope(module)
+        val searchService = SpringSearchService.getInstance(project)
+        return SpringSearchUtils.getConfigurationPropertiesAnnotations(module).asSequence()
+            .filter { searchService.isSearchableAnnotationType(it) }
+            .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, scope) }
+            .filter { candidate -> candidate.qualifiedName?.let { name -> packages.any(name::startsWith) } == true }
+            .filter { SpringCoreUtil.isSpringBeanCandidateClass(it) && SpringCoreUtil.isCandidateComponent(it) }
+            .filterNot { it.isMetaAnnotatedBy(COMPONENT) }
+            .distinct()
     }
 
     fun getAllImportClasses(uClass: UClass): Set<PsiClass> {
@@ -245,18 +377,35 @@ class PackageScanService(private val project: Project) {
     }
 
     fun getSpringBootAppAnnotations(): Set<PsiClass> {
-        val springBootAppClass = LibraryClassCache.searchForLibraryClass(project, SPRING_BOOT_APPLICATION)
-            ?: return emptySet()
-        val childrenBoot = MetaAnnotationUtil.getChildren(springBootAppClass, GlobalSearchScope.allScope(project))
-        return (childrenBoot + springBootAppClass).toSet()
+        val allScope = GlobalSearchScope.allScope(project)
+        return listOfNotNull(
+            LibraryClassCache.searchForLibraryClass(project, ENABLE_AUTO_CONFIGURATION),
+            LibraryClassCache.searchForLibraryClass(project, SPRING_BOOT_APPLICATION),
+        ).flatMapTo(mutableSetOf()) { MetaAnnotationUtil.getChildren(it, allScope) + it }
+    }
+
+    fun applicationClasses(scope: GlobalSearchScope): List<PsiClass> {
+        val fileIndex = ProjectFileIndex.getInstance(project)
+        val inTestSources = { psiClass: PsiClass ->
+            psiClass.containingFile?.virtualFile?.let { fileIndex.isInTestSourceContent(it) } ?: false
+        }
+        return getSpringBootAppAnnotations().asSequence()
+            .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, scope) }
+            .filterNot { it.isAnnotationType }
+            .distinct()
+            .sortedWith(compareBy(inTestSources).thenBy { it.qualifiedName.orEmpty() })
+            .toList()
     }
 
     companion object {
         fun getInstance(project: Project): PackageScanService = project.service()
 
-        fun normalizePackage(packageName: String): String {
+        fun normalizePackage(packageName: String): String =
+            if (packageName.isEmpty()) packageName else normalizePackagePrefix(packageName)
+
+        private fun normalizePackagePrefix(packageName: String): String {
             if (packageName.endsWith(".")) return packageName
-            if (packageName.endsWith("*")) return normalizePackage(packageName.substring(0, packageName.length - 2))
+            if (packageName.endsWith("*")) return normalizePackagePrefix(packageName.substring(0, packageName.length - 2))
             return "$packageName."
         }
 
@@ -314,8 +463,21 @@ class PackageScanService(private val project: Project) {
         }
     }
 
+    /**
+     * @property rootComponentQualified the application class, for an application's own root.
+     * @property declaringClass the configuration that declares the scan, for a root found on a scanned configuration.
+     */
+    private data class Registration(
+        val registered: PsiClass,
+        val registrar: PsiClass,
+        val enabledProperties: Boolean = false,
+    )
+
     data class ModuleRootData(
-        val moduleName: String, val packages: Set<String>, val rootComponentQualified: String? = null
+        val moduleName: String,
+        val packages: Set<String>,
+        val rootComponentQualified: String? = null,
+        val declaringClass: String? = null,
     )
 
     private data class ScanAnnotationHolder(
@@ -325,11 +487,25 @@ class PackageScanService(private val project: Project) {
     )
 }
 
+/**
+ * The packages the application context of each module scans.
+ *
+ * @property packagesByModuleName every scan root, keyed by the module that declares it: an application's own root and
+ * the `@ComponentScan`/`@Import` roots of the configurations it reaches.
+ * @property scannedRootsByModuleName the `@ComponentScan` roots declared by scanned configurations, keyed by the
+ * configuration's module. These are what a dependency module adds to an application that scans it. A dependency module's
+ * own `@SpringBootApplication` root belongs to that other application and is never among them.
+ */
 data class RootDataHolder(
     private val packagesByModuleName: Map<String, Set<String>>,
     val rootComponentQualified: Set<String>,
-    val importQualified: Set<String>
+    val importersByImported: Map<String, Set<String>>,
+    private val scannedRootsByModuleName: Map<String, List<ScannedRoot>> = emptyMap(),
+    internal val enabledPropertiesImportedQualified: Set<String> = emptySet(),
+    internal val propertiesScans: List<PropertiesScan> = emptyList(),
 ) {
+    val importQualified: Set<String> get() = importersByImported.keys
+
     fun isEmpty() = packagesByModuleName.isEmpty()
 
     fun isRootComponent(qualifiedName: String) = rootComponentQualified.contains(qualifiedName)
@@ -339,7 +515,7 @@ data class RootDataHolder(
         val dependentModules = ModuleManager.getInstance(module.project).getModuleDependentModules(module)
         val dependentPackages = dependentModules
             .flatMapTo(mutableSetOf()) { packagesByModuleName.getOrDefault(it.name, emptySet()) }
-        val resultPackages = dependentPackages + packages
+        val resultPackages = dependentPackages + packages + scannedPackagesOfDependencies(module, packages)
         if (resultPackages.isEmpty() && module.name.endsWith(".test")) {
             val mainModuleName = module.name.substringBeforeLast(".test") + ".main"
             val mainModule = ModuleManager.getInstance(module.project)
@@ -348,4 +524,35 @@ data class RootDataHolder(
         }
         return resultPackages
     }
+
+    /**
+     * The `@ComponentScan` roots that configurations in [module]'s dependencies declare, kept only where [module]'s own
+     * scan reaches the configuration that declares them: Spring follows a scan root only from a class it registered.
+     */
+    private fun scannedPackagesOfDependencies(module: Module, ownPackages: Set<String>): Set<String> {
+        if (ownPackages.isEmpty() || scannedRootsByModuleName.isEmpty()) return emptySet()
+        val dependencies = linkedSetOf<Module>().also { ModuleUtilCore.getDependencies(module, it) } - module
+        return dependencies.asSequence()
+            .flatMap { scannedRootsByModuleName[it.name].orEmpty() }
+            .filter { root -> ownPackages.any(root.declaringClass::startsWith) }
+            .flatMapTo(mutableSetOf()) { root -> root.packages.map(PackageScanService::normalizePackage) }
+    }
 }
+
+/** The packages a scanned configuration's `@ComponentScan` adds, and that configuration's qualified name. */
+data class ScannedRoot(val declaringClass: String, val packages: Set<String>)
+
+/** The normalized packages a configuration's `@ConfigurationPropertiesScan` searches, and the module it is declared in. */
+data class PropertiesScan(val scannerQualified: String, val moduleName: String, val packages: Set<String>)
+
+/**
+ * Every class an `@Import`, `@EnableConfigurationProperties` or `@ConfigurationPropertiesScan` registers, with its
+ * registering configurations. Unlike [RootDataHolder] it follows the registered classes themselves, so it is recomputed
+ * when a properties class is renamed, moved or added.
+ *
+ * @property enabledPropertiesQualified the classes registered only as configuration properties, named `prefix-FQN`.
+ */
+data class BeanRegistrations(
+    val registrarsByRegistered: Map<String, Set<String>>,
+    val enabledPropertiesQualified: Set<String>,
+)

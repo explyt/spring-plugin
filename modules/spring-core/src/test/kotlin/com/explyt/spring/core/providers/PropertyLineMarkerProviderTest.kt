@@ -59,6 +59,11 @@ main:
         }.size, 1)
     }
 
+    /**
+     * `logging.level.keys` is declared by both `additional-spring-configuration-metadata.json` and
+     * `spring-configuration-metadata.json` of the same `spring-boot` artifact, which are the same declaration; the
+     * gutter must offer it once.
+     */
     fun testPropertiesToMetadataHintsMapKeysName() {
         myFixture.copyFileToProject("META-INF/additional-spring-configuration-metadata.json")
         myFixture.configureByText(
@@ -71,9 +76,8 @@ main:
         val allBeanGutters = getAllBeanGuttersByIcon(myFixture, icons)
         val gutterTargetString = getGutterTargetString(allBeanGutters)
 
-        assertEquals(gutterTargetString.flatMap { gutter ->
-            gutter.filter { it == "name" }
-        }.size, 2)
+        val targets = gutterTargetString.flatMap { gutter -> gutter.filter { it == "name" } }
+        assertEquals("the same hint declared twice in one artifact must be offered once: $targets", 1, targets.size)
     }
 
     fun testYamlToMetadataHintsMapKeysName() {
@@ -92,8 +96,7 @@ logging:
         val allBeanGutters = getAllBeanGuttersByIcon(myFixture, icons)
         val gutterTargetString = getGutterTargetString(allBeanGutters)
 
-        assertEquals(gutterTargetString.flatMap { gutter ->
-            gutter.filter { it == "name" }
-        }.size, 2)
+        val targets = gutterTargetString.flatMap { gutter -> gutter.filter { it == "name" } }
+        assertEquals("the same hint declared twice in one artifact must be offered once: $targets", 1, targets.size)
     }
 }

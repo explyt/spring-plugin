@@ -12,6 +12,7 @@
     <depends>com.intellij.modules.json</depends>
     <depends optional="true" config-file="spring-core-sh.xml">org.jetbrains.plugins.terminal</depends>
     <depends optional="true" config-file="spring-core-sh.xml">com.jetbrains.sh</depends>
+    <depends optional="true" config-file="spring-core-spellchecker.xml">com.intellij.modules.spellchecker</depends>
 
     <extensionPoints>
         <extensionPoint qualifiedName="com.explyt.spring.core.configurationPropertiesLoader" dynamic="true"
@@ -36,6 +37,8 @@
                 implementation="com.explyt.spring.core.completion.properties.SpringMetadataLibraryConfigurationPropertiesLoader"/>
         <configurationPropertiesLoader
                 implementation="com.explyt.spring.core.completion.properties.ProjectConfigurationPropertiesLoader"/>
+        <configurationPropertiesLoader
+                implementation="com.explyt.spring.core.completion.properties.ActuatorEndpointConfigurationPropertiesLoader"/>
         <configurationFactoriesNamesLoader
                 implementation="com.explyt.spring.core.completion.properties.AutoConfigurationImportsPropertiesLoader"/>
         <configurationFactoriesNamesLoader
@@ -80,6 +83,10 @@
                            displayType="BALLOON"
                            bundle="messages.SpringCoreBundle"
                            key="explyt.spring.common.notifications"/>
+        <notificationGroup id="com.explyt.spring.feedback"
+                           displayType="STICKY_BALLOON"
+                           bundle="messages.SpringCoreBundle"
+                           key="explyt.spring.feedback.notifications"/>
 
         <completion.contributor id="yamlContributor"
                                 language="yaml"
@@ -275,6 +282,17 @@
                          implementationClass="com.explyt.spring.core.inspections.SpringAliasNotMetaAnnotatedInspection"/>
 
         <localInspection language="UAST"
+                         shortName="SpringBeanNameConventionConflict"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.bean.name.convention.conflict.key"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="com.explyt.spring.core.inspections.SpringBeanNameConventionConflictInspection"/>
+
+        <localInspection language="UAST"
                          shortName="SpringUnknownBeanMethodInspection"
                          groupBundle="messages.SpringCoreBundle"
                          groupPath="Explyt Spring"
@@ -296,6 +314,17 @@
                          level="ERROR"
                          implementationClass="com.explyt.spring.core.inspections.SpringConfigurationProxyBeanMethodsInspection"/>
 
+        <localInspection language="UAST"
+                         shortName="SpringDuplicateBeanName"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.bean.name.duplicate.display"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="com.explyt.spring.core.inspections.SpringDuplicateBeanNameInspection"/>
+
         <localInspection language="Properties"
                          shortName="SpringPropertiesInspection"
                          groupBundle="messages.SpringCoreBundle"
@@ -315,7 +344,17 @@
                          key="explyt.spring.inspection.yaml.key"
                          enabledByDefault="true" level="WARNING"
                          implementationClass="com.explyt.spring.core.inspections.SpringYamlInspection"/>
-      
+
+        <localInspection language=""
+                         shortName="SpringRecommendedEnumValueInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.boot"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.properties.value.enum.recommended.name"
+                         enabledByDefault="true" level="WEAK WARNING"
+                         implementationClass="com.explyt.spring.core.inspections.SpringRecommendedEnumValueInspection"/>
+
         <localInspection shortName="SpringBoot3ActuatorHttpExchangesInspection"
                          groupBundle="messages.SpringCoreBundle"
                          groupPath="Explyt Spring"
@@ -527,6 +566,16 @@
                          enabledByDefault="true"
                          level="WARNING"
                          implementationClass="com.explyt.spring.core.inspections.SpringKotlinObjectInspection"/>
+        <localInspection language="UAST"
+                         shortName="SpringAbstractComponentInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.abstract.component"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.core.inspections.SpringAbstractComponentInspection"/>
 
         <localInspection language="UAST"
                          shortName="SpringInterfaceCacheAnnotationsInspection"
@@ -821,6 +870,8 @@
 
         <lang.inspectionSuppressor language="Properties"
                                    implementationClass="com.explyt.spring.core.autoconfigure.AutoConfigureImportsPropertiesInspectionSuppressor"/>
+        <lang.inspectionSuppressor language="yaml"
+                                   implementationClass="com.explyt.spring.core.inspections.SpringConfigurationYamlInspectionSuppressor"/>
 
         <registryKey key="explyt.spring.root.runConfiguration" defaultValue="false"
                      description="Use root class from run configuration for bean search"/>
@@ -831,7 +882,7 @@
         <registryKey key="explyt.statistic.debug" defaultValue="false"
                      description="Enable statistic in debug mode"/>
         <registryKey key="explyt.spring.feedback.nudge.debug" defaultValue="false"
-                     description="Force-show the feedback nudge on next startup (ignores engagement thresholds)"/>
+                     description="Force-show the feedback nudge on the next project startup, ignoring engagement thresholds and the shown/dismissed state"/>
         <registryKey key="explyt.statistic.interval" defaultValue="3600"
                      description="Update statistic interval seconds"/>
         <registryKey key="explyt.spring.agent.path" defaultValue=""

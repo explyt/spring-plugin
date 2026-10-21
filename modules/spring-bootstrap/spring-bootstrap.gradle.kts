@@ -23,6 +23,7 @@ val allCompileProjects = listOf(
     "spring-cloud",
     "spring-initializr",
     "spring-integration",
+    "spring-mybatis",
     "spring-messaging",
     "spring-aop",
     "jpa",
@@ -78,8 +79,6 @@ ext["springPluginName"] = springPluginName
 val distFilePostfix = rootProject.optProperty("distFilePostfix") ?: version
 
 val buildArchiveName = "${springPluginName}-${distFilePostfix}.zip"
-
-val launchUltimate = rootProject.hasProperty("launchUltimate")
 
 val springBootstrapModule = project(":spring-bootstrap")
 val testFramework = project(":test-framework")
@@ -139,7 +138,6 @@ configurations {
     }
 }
 
-val defaultIdeaType: String by rootProject
 val defaultIdeaVersion: String by rootProject
 
 dependencies {
@@ -166,6 +164,19 @@ dependencies {
     }
 }
 
+fun limitChangeNotes(html: String, budget: Int): String {
+    if (html.length <= budget) return html
+    val fullChangelogLink =
+        """<p>See the <a href="https://github.com/explyt/spring-plugin/blob/main/CHANGELOG.md">full changelog</a> for all changes.</p>"""
+    fun String.countOf(tag: String) = Regex(tag).findAll(this).count()
+    return Regex("</li>").findAll(html)
+        .map { html.substring(0, it.range.last + 1) }
+        .filter { it.countOf("<li\\b") == it.countOf("</li>") }
+        .map { it + "</ul>".repeat(it.countOf("<ul\\b") - it.countOf("</ul>")) + fullChangelogLink }
+        .takeWhile { it.length <= budget }
+        .lastOrNull() ?: fullChangelogLink
+}
+
 // See https://github.com/JetBrains/gradle-intellij-plugin/
 @Suppress("UNCHECKED_CAST")
 intellijPlatform {
@@ -174,12 +185,15 @@ intellijPlatform {
         description.set(rootProject.file("PLUGIN-DESCRIPTION.md").readText()
             .let { org.jetbrains.changelog.markdownToHTML(it) })
         changeNotes.set(provider {
-            changelog.renderItem(
-                changelog
-                    .getUnreleased()
-                    .withHeader(false)
-                    .withEmptySections(false),
-                Changelog.OutputType.HTML
+            limitChangeNotes(
+                changelog.renderItem(
+                    changelog
+                        .getUnreleased()
+                        .withHeader(false)
+                        .withEmptySections(false),
+                    Changelog.OutputType.HTML
+                ),
+                budget = 60_000
             )
         })
         ideaVersion {

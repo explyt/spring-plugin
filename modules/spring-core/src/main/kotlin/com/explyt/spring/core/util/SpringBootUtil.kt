@@ -6,11 +6,15 @@
 package com.explyt.spring.core.util
 
 import com.explyt.spring.core.util.SpringCoreUtil.SPRING_BOOT_MAVEN
+import com.explyt.spring.core.util.SpringCoreUtil.SPRING_CORE_MAVEN
 import com.intellij.java.library.JavaLibraryUtil
+import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.util.Key
 import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.psi.PsiElement
+import com.intellij.psi.util.CachedValue
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.util.concurrency.annotations.RequiresReadLock
@@ -21,21 +25,47 @@ private const val SPRING_BOOT_STARTER_SUFFIX = "-starter"
 private const val SPRING_BOOT_MAIN_STARTER = "spring-boot-starter"
 private const val SPRING_BOOT_KAFKA = "spring-kafka"
 private const val SPRING_BOOT_3_VERSION = "3.0"
+private const val SPRING_BOOT_3_4_VERSION = "3.4"
 private const val SPRING_BOOT_4_VERSION = "4.0"
+private val SPRING_CORE_VERSION_KEY = Key.create<CachedValue<String?>>("explyt.spring.core.version")
 
 object SpringBootUtil {
 
     @RequiresReadLock
     fun getSpringBootVersion(psiElement: PsiElement): String {
         val module = ModuleUtilCore.findModuleForPsiElement(psiElement) ?: return ""
-        return CachedValuesManager.getManager(psiElement.project).getCachedValue(module) {
+        return getSpringBootVersion(module)
+    }
+
+    @RequiresReadLock
+    fun getSpringBootVersion(module: Module): String =
+        CachedValuesManager.getManager(module.project).getCachedValue(module) {
             val libraryVersion = JavaLibraryUtil.getLibraryVersion(module, SPRING_BOOT_MAVEN) ?: ""
             CachedValueProvider.Result.create(
                 libraryVersion,
                 ProjectRootManager.getInstance(module.project)
             )
         }
+
+    @RequiresReadLock
+    fun isBelowSpringBoot3(module: Module): Boolean {
+        val version = getSpringBootVersion(module)
+        if (version.isEmpty()) return false
+        return VersionComparatorUtil.compare(version, SPRING_BOOT_3_VERSION) < 0
     }
+
+    @RequiresReadLock
+    fun getSpringCoreVersion(module: Module): String? =
+        CachedValuesManager.getManager(module.project).getCachedValue(module, SPRING_CORE_VERSION_KEY, {
+            CachedValueProvider.Result.create(
+                JavaLibraryUtil.getLibraryVersion(module, SPRING_CORE_MAVEN),
+                ProjectRootManager.getInstance(module.project)
+            )
+        }, false)
+
+    @RequiresReadLock
+    fun getSpringCoreMajorVersion(module: Module): Int? =
+        getSpringCoreVersion(module)?.substringBefore('.')?.toIntOrNull()
 
     /**
      * Returns `true` when the detected Spring Boot version is 3.0 or later.
@@ -49,6 +79,19 @@ object SpringBootUtil {
         val version = getSpringBootVersion(psiElement)
         if (version.isEmpty()) return false
         return VersionComparatorUtil.compare(version, SPRING_BOOT_3_VERSION) >= 0
+    }
+
+    /**
+     * Returns `true` when the detected Spring Boot version is 3.4 or later.
+     * Spring Boot 3.4 upgrades to Spring Framework 6.2, which is where the bean-override annotations
+     * (`@MockitoBean`, `@MockitoSpyBean`, `@TestBean`) appear and where their Spring Boot predecessors are
+     * deprecated for removal, so 3.4 opens the window in which such a migration can already be applied.
+     */
+    @RequiresReadLock
+    fun isAtLeastSpringBoot34(psiElement: PsiElement): Boolean {
+        val version = getSpringBootVersion(psiElement)
+        if (version.isEmpty()) return false
+        return VersionComparatorUtil.compare(version, SPRING_BOOT_3_4_VERSION) >= 0
     }
 
     /**

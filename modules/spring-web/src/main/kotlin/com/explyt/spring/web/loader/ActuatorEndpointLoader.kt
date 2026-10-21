@@ -1,0 +1,375 @@
+/*
+ * Copyright (c) 2026 Explyt Ltd
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+package com.explyt.spring.web.loader
+
+import com.explyt.base.LibraryClassCache
+import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.core.completion.properties.DefinedConfigurationPropertiesSearch
+import com.explyt.spring.core.properties.FoldedPropertyValue
+import com.explyt.spring.core.properties.references.ActuatorEndpoint
+import com.explyt.spring.core.properties.references.ActuatorEndpointKeys
+import com.explyt.spring.core.service.MetaAnnotationsHolder
+import com.explyt.spring.core.service.PackageScanService
+import com.explyt.spring.core.service.SpringSearchService
+import com.explyt.spring.core.service.conditional.ConditionVerdict
+import com.explyt.spring.core.service.conditional.combined
+import com.explyt.spring.core.tracker.ModificationTrackerManager
+import com.explyt.spring.web.SpringWebClasses
+import com.explyt.spring.web.util.ActuatorAccess
+import com.explyt.spring.web.util.ActuatorExposure
+import com.explyt.spring.web.util.ActuatorMediaTypes
+import com.explyt.spring.web.util.ApplicationBasePath
+import com.explyt.spring.web.util.ApplicationModules
+import com.explyt.spring.web.util.EndpointUrlMatcher
+import com.explyt.spring.web.util.SpringWebUtil
+
+import com.explyt.util.ExplytPsiUtil.getMetaAnnotation
+import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
+import com.intellij.openapi.module.Module
+import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.ProjectFileIndex
+import com.intellij.psi.JavaPsiFacade
+import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiClassType
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiEnumConstant
+import com.intellij.psi.PsiMethod
+import com.intellij.psi.PsiParameter
+import com.intellij.psi.PsiReferenceExpression
+import com.intellij.psi.search.searches.AnnotatedElementsSearch
+import com.intellij.psi.util.CachedValueProvider
+import com.intellij.psi.util.CachedValuesManager
+import org.jetbrains.uast.UAnnotation
+import org.jetbrains.uast.UResolvable
+import org.jetbrains.uast.toUElementOfType
+
+/**
+ * Actuator endpoints of the module, one element per operation: the ones the project declares and the built-in ones
+ * its libraries bring, each carrying whether the configuration exposes it over HTTP.
+ *
+ * Every endpoint Boot discovers is listed, an unexposed one included: one with an operation, its web extension's
+ * included, or a servlet endpoint. The exposure is read from configuration that a profile or an
+ * environment variable can override, so hiding an endpoint on a static reading would hide one the running application
+ * may well serve. The access the configuration grants is carried the same way, per operation: under `READ_ONLY` Boot
+ * serves an endpoint's read operations alone, so its other operations read `NONE`.
+ *
+ * Discovery is shared with `management.endpoint.<id>.*` key resolution: both answer "which endpoint ids does this
+ * module declare", and two copies of that answer would disagree the first time the meta-annotation set changes.
+ * A project endpoint redeclaring a built-in id is listed instead of it: Boot's own endpoint beans back off for a
+ * project bean, and two endpoints sharing an id fail the application at startup.
+ *
+ * The path is a server-relative path, never an absolute URL: it is also the key [getEndpointElements] matches a URL
+ * literal against, and a host in it survives [com.explyt.spring.web.util.SpringWebUtil.simplifyUrl] as a path segment
+ * that no literal can match. It would also make the same endpoint a different element in each module that declares a
+ * management port, so a shared endpoint would be listed once per consumer.
+ */
+class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsLoader {
+
+    override fun isApplicable(module: Module) =
+        LibraryClassCache.searchForLibraryClass(project, SpringCoreClasses.ACTUATOR_ENDPOINT) != null
+
+    override fun getType(): EndpointType = EndpointType.ACTUATOR
+
+    override fun getEndpointElements(urlPath: String, module: Module): List<EndpointElement> {
+        val served = ApplicationModules.servingModulesOf(module).ifEmpty { listOf(module) }
+            .flatMap { serving -> searchEndpoints(serving).map { ServedEndpoint(it, serving) } }
+        return EndpointUrlMatcher.match(
+            served, urlPath, EndpointUrlMatcher.Policy.REFERENCE,
+            routeOf = { it.endpoint.path },
+            basePathOf = { ApplicationBasePath.cachedOf(it.servingModule) },
+        ).endpoints.map { it.endpoint }.distinctBy { it.psiElement }
+    }
+
+    private data class ServedEndpoint(val endpoint: EndpointElement, val servingModule: Module)
+
+    override fun searchEndpoints(module: Module): List<EndpointElement> {
+        return CachedValuesManager.getManager(project).getCachedValue(module) {
+            val trackers = ModificationTrackerManager.getInstance(project)
+            // The path is read from the configuration, so a property edit invalidates the result just as code does.
+            CachedValueProvider.Result(
+                doSearchEndpoints(module),
+                trackers.getUastModelAndLibraryTracker(),
+                trackers.getPropertyTracker()
+            )
+        }
+    }
+
+    private fun doSearchEndpoints(module: Module): List<EndpointElement> {
+        val application = applicationClassOf(module)
+        val declared = if (application != null) ActuatorEndpointKeys.endpointsById(module) else ownEndpointsById(module)
+        val builtIn = if (application != null) {
+            ActuatorEndpointKeys.libraryEndpointsById(module).filterKeys { it !in declared }
+        } else {
+            emptyMap()
+        }
+        val endpoints = (declared.values + builtIn.values).flatten()
+        if (endpoints.isEmpty()) return emptyList()
+
+        // Read once: resolving each key on its own rescans every configuration file of the module and its dependencies.
+        val definitions = DefinedConfigurationPropertiesSearch.getInstance(project).getAllProperties(module)
+            .groupBy { it.key }
+        val propertyValue = { key: String ->
+            FoldedPropertyValue.choose(module, definitions[key].orEmpty())?.value?.takeIf { it.isNotBlank() }
+        }
+        val basePath = propertyValue(BASE_PATH_KEY) ?: DEFAULT_BASE_PATH
+        val exposure = ActuatorExposure.of(module, definitions)
+        val access = ActuatorAccess.of(module, definitions)
+        val requestMappingMah by lazy { MetaAnnotationsHolder.of(module, SpringWebClasses.REQUEST_MAPPING) }
+        val customMediaTypes = declaresEndpointMediaTypesBean(module)
+        val beanConditions = BeanConditions(module, endpoints.mapTo(mutableSetOf()) { it.psiClass })
+
+        return endpoints.flatMap {
+            val extensions = ActuatorWebExtensions.appliedTo(it.psiClass, module)
+            val gates = Gates(
+                exposure.exposureOf(it.id), access.accessOf(it), application, customMediaTypes,
+                beanConditions.ofEndpoint(it.psiClass, extensions)
+            )
+            endpointElements(it, basePath, propertyValue, gates, extensions.map { extension -> extension.psiClass }) {
+                requestMappingMah
+            }
+        }
+    }
+
+    private inner class BeanConditions(private val module: Module, beanClasses: Set<PsiClass>) {
+        private val verdictsByClass by lazy {
+            val projectClasses = beanClasses.filter(::isInSourceContent)
+            if (projectClasses.isEmpty()) return@lazy emptyMap()
+            val verdictsByClass = SpringSearchService.getInstance(project).conditionVerdicts(module).entries
+                .groupBy({ it.key.psiClass }, { it.value })
+            projectClasses.mapNotNull { psiClass -> verdictsByClass[psiClass]?.mostActive()?.let { psiClass to it } }
+                .toMap()
+        }
+
+        fun ofEndpoint(endpointClass: PsiClass, appliedExtensions: List<ActuatorWebExtension>): ConditionVerdict? {
+            val endpointVerdict = verdictsByClass[endpointClass]
+            val undecidedExtensions = appliedExtensions.mapNotNull { it.verdict as? ConditionVerdict.Undecided }
+            if (undecidedExtensions.isEmpty()) return endpointVerdict
+            return (listOfNotNull(endpointVerdict) + undecidedExtensions).asSequence().combined()
+        }
+
+        private fun isInSourceContent(psiClass: PsiClass): Boolean {
+            val file = psiClass.containingFile?.virtualFile ?: return false
+            return ProjectFileIndex.getInstance(project).isInSourceContent(file)
+        }
+    }
+
+    /**
+     * The endpoints a module without an application lists: only the ones it declares itself, and none at all once an
+     * application reaches it. An application decides the exposure and access of every endpoint its context holds, so
+     * the library's own reading under its defaults would contradict that verdict. A library no application reaches
+     * keeps its endpoints, under its own configuration, as the only reading there is.
+     */
+    private fun ownEndpointsById(module: Module): Map<String, List<ActuatorEndpoint>> {
+        if (isReachedByApplication(module)) return emptyMap()
+        return ActuatorEndpointKeys.endpointsById(module)
+            .mapValues { (_, endpoints) -> endpoints.filter { declaringModuleOf(it) == module } }
+            .filterValues { it.isNotEmpty() }
+    }
+
+    private fun declaringModuleOf(endpoint: ActuatorEndpoint): Module? =
+        ModuleUtilCore.findModuleForPsiElement(endpoint.psiClass)
+
+    private fun isReachedByApplication(module: Module): Boolean =
+        ApplicationModules.dependentApplicationModules(module).any()
+
+    /**
+     * The Spring Boot application [module] declares, if any. Built-in endpoints belong to the context an application
+     * starts, so only its module lists them, under its configuration: a library module that merely has the Actuator
+     * jar would list them again under the defaults, contradicting the application's verdict. A production application
+     * outranks one in test sources, and the qualified name breaks the remaining ties, so the answer is stable.
+     */
+    private fun applicationClassOf(module: Module): PsiClass? =
+        PackageScanService.getInstance(project).applicationClasses(module.moduleScope).firstOrNull()
+
+    private fun declaresEndpointMediaTypesBean(module: Module): Boolean {
+        val scope = module.getModuleWithDependenciesScope()
+        val bean = JavaPsiFacade.getInstance(project)
+            .findClass(SpringCoreClasses.BEAN, module.getModuleWithDependenciesAndLibrariesScope(false)) ?: return false
+        val fileIndex = ProjectFileIndex.getInstance(project)
+        return AnnotatedElementsSearch.searchPsiMethods(bean, scope).anyMatch { method ->
+            val file = method.containingFile?.virtualFile
+            file != null && fileIndex.isInSourceContent(file) && !fileIndex.isInTestSourceContent(file) &&
+                    (method.returnType as? PsiClassType)?.resolve()?.qualifiedName ==
+                    SpringCoreClasses.ACTUATOR_ENDPOINT_MEDIA_TYPES
+        }
+    }
+
+    /** The two independent conditions under which Boot serves an endpoint, and the application whose context holds it. */
+    private class Gates(
+        val exposure: EndpointExposure,
+        val access: EndpointAccess,
+        val application: PsiClass?,
+        val customMediaTypes: Boolean,
+        val beanCondition: ConditionVerdict?,
+    )
+
+    private fun endpointElements(
+        endpoint: ActuatorEndpoint,
+        basePath: String,
+        propertyValue: (String) -> String?,
+        gates: Gates,
+        webExtensions: List<PsiClass>,
+        requestMappingMah: () -> MetaAnnotationsHolder,
+    ): List<EndpointElement> {
+        // A JMX-only endpoint is not published over HTTP at all, so any path shown for it would be invented.
+        if (endpoint.psiClass.isMetaAnnotatedBy(SpringCoreClasses.ACTUATOR_JMX_ENDPOINT)) return emptyList()
+
+        val mappedId = propertyValue("$PATH_MAPPING_KEY.${endpoint.id}") ?: endpoint.id
+        val endpointPath = joinPath(basePath, mappedId)
+
+        val operations = if (endpoint.psiClass.isMetaAnnotatedBy(CONTROLLER_ENDPOINTS)) {
+            mappingElements(endpoint, endpointPath, gates, requestMappingMah())
+        } else {
+            val operationsOf = { psiClass: PsiClass ->
+                psiClass.allMethods.mapNotNull { operationElement(it, endpoint, endpointPath, gates) }
+            }
+            webExtensions.fold(operationsOf(endpoint.psiClass)) { merged, extension ->
+                merged.overriddenBy(operationsOf(extension))
+            }
+        }
+        if (operations.isNotEmpty() || !endpoint.psiClass.isMetaAnnotatedBy(SpringCoreClasses.ACTUATOR_SERVLET_ENDPOINT)) {
+            return operations
+        }
+        return listOf(endpointElement(endpointPath, emptyList(), endpoint.psiClass, endpoint, gates, gates.access))
+    }
+
+    private fun List<EndpointElement>.overriddenBy(extensionOperations: List<EndpointElement>): List<EndpointElement> {
+        val merged = toMutableList()
+        for (operation in extensionOperations) {
+            val index = merged.indexOfFirst { it.requestPredicate == operation.requestPredicate }
+            if (index >= 0) merged[index] = operation else merged += operation
+        }
+        return merged
+    }
+
+    private val EndpointElement.requestPredicate
+        get() = OperationKey(requestMethods, PATH_VARIABLE.replace(path, "$1*}"), produces, consumesRequestBody)
+
+    private data class OperationKey(
+        val requestMethods: List<String>,
+        val canonicalPath: String,
+        val produces: List<String>,
+        val consumesRequestBody: Boolean,
+    )
+
+    private val EndpointElement.consumesRequestBody: Boolean
+        get() = WRITE_METHOD in requestMethods && (psiElement as? PsiMethod)?.parameterList?.parameters.orEmpty()
+            .any { !it.isMetaAnnotatedBy(SpringCoreClasses.ACTUATOR_SELECTOR) }
+
+    /**
+     * The operations of a controller endpoint: Boot serves its `@RequestMapping` methods under the endpoint path the
+     * way Spring MVC serves a controller's, and forbids it from declaring Actuator operations.
+     */
+    private fun mappingElements(
+        endpoint: ActuatorEndpoint,
+        endpointPath: String,
+        gates: Gates,
+        requestMappingMah: MetaAnnotationsHolder,
+    ): List<EndpointElement> = endpoint.psiClass.allMethods
+        .filter { it.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING) }
+        .flatMap { method ->
+            ProgressManager.checkCanceled()
+            val mapping = SpringWebUtil.requestMappingOf(method, requestMappingMah)
+            // Boot's `ControllerEndpointHandlerMapping` keeps a read-only controller endpoint's GET and HEAD mappings
+            // alone, and narrows a mapping naming no method to those two.
+            val isRead = mapping.methods.isNotEmpty() && mapping.methods.all { it in READ_ONLY_REQUEST_METHODS }
+            val access = ActuatorAccess.ofOperation(gates.access, isRead)
+            mapping.paths.map {
+                endpointElement(joinPath(endpointPath, it), mapping.methods, method, endpoint, gates, access)
+            }
+        }
+
+    private fun operationElement(
+        method: PsiMethod,
+        endpoint: ActuatorEndpoint,
+        endpointPath: String,
+        gates: Gates,
+    ): EndpointElement? {
+        ProgressManager.checkCanceled()
+        val httpMethod = HTTP_METHOD_BY_OPERATION.entries
+            .firstOrNull { method.isMetaAnnotatedBy(it.key) }
+            ?.value ?: return null
+
+        val selectors = selectorPath(method)
+
+        val operation = method.getMetaAnnotation(OPERATION_BY_METHOD.getValue(httpMethod))
+        val produces = ActuatorMediaTypes.producedBy(method, operation, gates.customMediaTypes)
+
+        val access = ActuatorAccess.ofOperation(gates.access, isRead = httpMethod == READ_METHOD)
+        return endpointElement(
+            endpointPath + selectors, listOf(httpMethod), method, endpoint, gates, access, produces
+        )
+    }
+
+    private fun endpointElement(
+        path: String,
+        requestMethods: List<String>,
+        psiElement: PsiElement,
+        endpoint: ActuatorEndpoint,
+        gates: Gates,
+        access: EndpointAccess,
+        produces: ActuatorMediaTypes.Produces? = null,
+    ) = EndpointElement(
+        path, requestMethods, psiElement, endpoint.psiClass, null, getType(),
+        exposure = gates.exposure, produces = produces?.mediaTypes.orEmpty(), access = access,
+        application = gates.application, producesSource = produces?.source, beanCondition = gates.beanCondition
+    )
+
+    private fun selectorPath(method: PsiMethod): String {
+        val selectors = method.parameterList.parameters
+            .filter { it.isMetaAnnotatedBy(SpringCoreClasses.ACTUATOR_SELECTOR) }
+        return selectors.withIndex().joinToString("") { (index, parameter) ->
+            if (index == selectors.lastIndex && capturesAllRemaining(parameter)) {
+                "/{*${parameter.name}}"
+            } else {
+                "/{${parameter.name}}"
+            }
+        }
+    }
+
+    private fun capturesAllRemaining(parameter: PsiParameter): Boolean =
+        selectorMatchOf(parameter) == SpringCoreClasses.ACTUATOR_SELECTOR_MATCH_ALL_REMAINING
+
+    private fun selectorMatchOf(parameter: PsiParameter): String? {
+        val selector = parameter.getMetaAnnotation(SpringCoreClasses.ACTUATOR_SELECTOR) ?: return null
+        val psiMatch = (selector.findAttributeValue(SpringCoreClasses.ACTUATOR_SELECTOR_MATCH) as? PsiReferenceExpression)
+            ?.resolve() as? PsiEnumConstant
+        if (psiMatch != null) return psiMatch.name
+        val uastMatch = selector.toUElementOfType<UAnnotation>()
+            ?.findAttributeValue(SpringCoreClasses.ACTUATOR_SELECTOR_MATCH) as? UResolvable
+        return (uastMatch?.resolve() as? PsiEnumConstant)?.name
+    }
+
+    private fun joinPath(vararg segments: String): String =
+        segments.asSequence()
+            .map { it.trim().trim('/') }
+            .filter { it.isNotEmpty() }
+            .joinToString("/", prefix = "/")
+}
+
+private const val DEFAULT_BASE_PATH = "/actuator"
+private const val BASE_PATH_KEY = "management.endpoints.web.base-path"
+private const val PATH_MAPPING_KEY = "management.endpoints.web.path-mapping"
+private val PATH_VARIABLE = Regex("""(\{\*?).+?}""")
+
+private const val READ_METHOD = "GET"
+private const val WRITE_METHOD = "POST"
+private val READ_ONLY_REQUEST_METHODS = setOf("GET", "HEAD")
+
+private val HTTP_METHOD_BY_OPERATION = mapOf(
+    SpringCoreClasses.ACTUATOR_READ_OPERATION to "GET",
+    SpringCoreClasses.ACTUATOR_WRITE_OPERATION to "POST",
+    SpringCoreClasses.ACTUATOR_DELETE_OPERATION to "DELETE"
+)
+
+private val OPERATION_BY_METHOD = HTTP_METHOD_BY_OPERATION.entries.associate { (operation, method) -> method to operation }
+
+private val CONTROLLER_ENDPOINTS = listOf(
+    SpringCoreClasses.ACTUATOR_CONTROLLER_ENDPOINT,
+    SpringCoreClasses.ACTUATOR_REST_CONTROLLER_ENDPOINT,
+)

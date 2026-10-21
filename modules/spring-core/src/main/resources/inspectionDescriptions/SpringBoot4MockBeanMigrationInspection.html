@@ -5,18 +5,21 @@
 
 <html lang="en">
 <head>
-    <title>Spring Boot 4 MockBean/SpyBean Migration Inspection</title>
+    <title>Spring Boot MockBean/SpyBean Migration Inspection</title>
 </head>
 <body>
 
 <p>
-    Reports Spring Boot's <code>@MockBean</code> / <code>@SpyBean</code> test annotations, which were removed in
-    Spring Boot 4.0, and offers a quick-fix that replaces them with Spring Framework's
+    Reports Spring Boot's <code>@MockBean</code> / <code>@SpyBean</code> test annotations, which are deprecated since
+    Spring Boot 3.4 and removed in Spring Boot 4.0, and offers a quick-fix that replaces them with Spring Framework's
     <code>@MockitoBean</code> / <code>@MockitoSpyBean</code> (updating the import).
 </p>
 
 <p>
-    Only runs in a Spring Boot 4+ project.
+    Runs from Spring Boot 3.4, the version that ships the replacements (Spring Framework 6.2) and deprecates the
+    legacy annotations. While they are still on the classpath the problem is reported as a weak warning, because the
+    IDE already highlights the deprecation itself; what this inspection adds there is the name of the replacement and
+    the quick-fix. After the Spring Boot 4 removal nothing else reports the stale source, so the full warning applies.
 </p>
 
 <p><b>Example:</b></p>

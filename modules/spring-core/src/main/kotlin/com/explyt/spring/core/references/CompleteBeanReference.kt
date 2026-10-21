@@ -12,7 +12,10 @@ import com.intellij.icons.AllIcons
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.*
-import com.intellij.psi.util.parentOfType
+import org.jetbrains.uast.UAnnotation
+import org.jetbrains.uast.UVariable
+import org.jetbrains.uast.getParentOfType
+import org.jetbrains.uast.toUElement
 
 class CompleteBeanReference(element: PsiElement, private val beanName: String, textRange: TextRange) :
     PsiReferenceBase<PsiElement>(element, textRange), PsiReference , HighlightedReference {
@@ -44,11 +47,6 @@ class CompleteBeanReference(element: PsiElement, private val beanName: String, t
         return variants.toTypedArray()
     }
 
-    private fun getPsiType(): PsiType? {
-        return when (val psiElement = element.parentOfType<PsiAnnotation>()?.parent?.parent) {
-            is PsiField -> psiElement.type
-            is PsiParameter -> psiElement.type
-            else -> null
-        }
-    }
+    private fun getPsiType(): PsiType? =
+        (element.toUElement()?.getParentOfType<UAnnotation>()?.uastParent as? UVariable)?.type
 }

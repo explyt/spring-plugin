@@ -38,6 +38,7 @@ class OpenApiResourcesRequestHandler : HttpRequestHandler() {
                 val resourceUrl = OpenApiUtils.resourceUrl(key)
                 content
                     .replace("{RESOURCE_URL}", resourceUrl)
+                    .replace("{OAUTH2_REDIRECT_URL}", OpenApiUtils.oauth2RedirectUrl())
             } else {
                 content
             }

@@ -7,15 +7,21 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.openapi.util.TextRange
+import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
 import com.intellij.psi.impl.FakePsiElement
 import com.intellij.psi.impl.light.LightMethod
+import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.PsiTreeUtil
-import kotlinx.coroutines.runBlocking
+import org.jetbrains.uast.UCallExpression
+import org.jetbrains.uast.UMethod
+import org.jetbrains.uast.toUElement
+import org.jetbrains.uast.visitor.AbstractUastVisitor
 
 class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
 
@@ -23,8 +29,9 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
 
     override val libraries: Array<TestLibrary> = arrayOf(
         TestLibrary.springBootAutoConfigure_3_1_1,
-        TestLibrary.springWeb_6_0_7,
+        TestLibrary.springWebMvc_6_0_7,
         TestLibrary.jakarta_persistence_3_1_0,
+        TestLibrary.kotlin_1_9_22,
     )
 
     private val toolset = SpringBootApplicationMcpToolset()
@@ -34,12 +41,93 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
 
     private fun parseArray(json: String): JsonNode = mapper.readTree(json)
 
+    private fun beansOf(json: String): JsonNode {
+        val page = mapper.readTree(json)
+        assertEquals("Expected an OK envelope, got $page", "OK", page["status"]?.asText())
+        assertEquals("Expected a complete listing of ${page["totalCount"]} beans, got $page", false, page["truncated"]?.asBoolean())
+        return page["beans"]
+    }
+
+    private suspend fun fullListing(applicationClassName: String, beanType: String): String {
+        val beans = mapper.createArrayNode()
+        var offset = 0
+        var revision: String? = null
+        while (true) {
+            val page = mapper.readTree(toolset.applicationBeans(
+                applicationClassName = applicationClassName,
+                projectPath = projectPath(),
+                beanType = beanType,
+                offset = offset,
+                expectedRevision = revision,
+                limit = BoundedPageWriter.MAX_LIMIT,
+                maxChars = BoundedPageWriter.MAX_CHARS
+            ))
+            assertEquals("Expected an OK envelope, got $page", "OK", page["status"]?.asText())
+            page["beans"].forEach { beans.add(it) }
+            revision = page["revision"].asText()
+            if (!page["truncated"].asBoolean()) {
+                assertEquals(page["totalCount"].asInt(), beans.size())
+                val complete = mapper.createObjectNode()
+                    .put("status", "OK")
+                    .put("totalCount", beans.size())
+                    .put("truncated", false)
+                complete.set<JsonNode>("beans", beans)
+                return mapper.writeValueAsString(complete)
+            }
+            val nextOffset = page["nextOffset"].asInt()
+            assertTrue("Continuation must advance, got $page", nextOffset > offset)
+            offset = nextOffset
+        }
+    }
+
     private fun texts(node: JsonNode, field: String): List<String> =
         node.mapNotNull { it[field]?.asText() }
 
     private fun endpointsOf(json: String): JsonNode = mapper.readTree(json)["endpoints"]
 
-    fun testGetAllSpringBootApplications() = runBlocking<Unit> {
+    private fun addKotlinController() {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+        myFixture.addFileToProject("com/example/app/web/KotlinController.kt", """
+            package com.example.app.web
+
+            import com.example.app.service.DemoService
+            import org.springframework.http.ResponseEntity
+            import org.springframework.web.bind.annotation.GetMapping
+            import org.springframework.web.bind.annotation.RequestMapping
+            import org.springframework.web.bind.annotation.RestController
+            import org.springframework.stereotype.Service
+
+            interface RecordLookup {
+                fun findById(id: Long): com.example.app.dto.DemoDto
+            }
+
+            @Service
+            class RecordLookupImpl(private val demoService: DemoService) : RecordLookup {
+                override fun findById(id: Long) = demoService.findById(id)
+            }
+
+            @RestController
+            @RequestMapping("/api/kotlin")
+            class KotlinController(private val service: DemoService, private val records: RecordLookup) {
+                @GetMapping("/wrapped/{id}")
+                fun wrapped(id: Long) = ResponseEntity.ok(service.findById(id))
+
+                @GetMapping("/interface/{id}")
+                fun viaInterface(id: Long) = ResponseEntity.ok(records.findById(id))
+
+                @GetMapping("/trimmed")
+                fun trimmed(sourceKey: String): ResponseEntity<*> {
+                    val key = sourceKey.trim()
+                    return ResponseEntity.ok(service.findById(key.toLong()))
+                }
+
+                @GetMapping("/no-service")
+                fun noService(sourceKey: String) = ResponseEntity.ok(sourceKey.trim())
+            }
+        """.trimIndent())
+    }
+
+    fun testGetAllSpringBootApplications() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val result = toolset.getAllSpringBootApplications(projectPath())
@@ -49,52 +137,40 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         assertEquals("com.example.app.DemoApplication", applications[0]["fullyQualifiedClassName"].asText())
     }
 
-    fun testApplicationBeansComponent() = runBlocking<Unit> {
+    fun testApplicationBeansComponent() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
-        val result = toolset.applicationBeans(
-            applicationClassName = "com.example.app.DemoApplication",
-            projectPath = projectPath(),
-            beanType = "COMPONENT"
-        )
-        val classNames = texts(parseArray(result), "className")
+        val result = fullListing("com.example.app.DemoApplication", "COMPONENT")
+        val classNames = texts(beansOf(result), "className")
         assertTrue(
             "Expected DemoService as COMPONENT bean, got $classNames",
             classNames.contains("com.example.app.service.DemoService")
         )
     }
 
-    fun testApplicationBeansController() = runBlocking<Unit> {
+    fun testApplicationBeansController() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
-        val result = toolset.applicationBeans(
-            applicationClassName = "com.example.app.DemoApplication",
-            projectPath = projectPath(),
-            beanType = "CONTROLLER"
-        )
-        val classNames = texts(parseArray(result), "className")
+        val result = fullListing("com.example.app.DemoApplication", "CONTROLLER")
+        val classNames = texts(beansOf(result), "className")
         assertTrue(
             "Expected DemoController as CONTROLLER bean, got $classNames",
             classNames.contains("com.example.app.web.DemoController")
         )
     }
 
-    fun testApplicationBeansRepository() = runBlocking<Unit> {
+    fun testApplicationBeansRepository() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
-        val result = toolset.applicationBeans(
-            applicationClassName = "com.example.app.DemoApplication",
-            projectPath = projectPath(),
-            beanType = "REPOSITORY"
-        )
-        val classNames = texts(parseArray(result), "className")
+        val result = fullListing("com.example.app.DemoApplication", "REPOSITORY")
+        val classNames = texts(beansOf(result), "className")
         assertTrue(
             "Expected DemoRepository as REPOSITORY bean, got $classNames",
             classNames.contains("com.example.app.repository.DemoRepository")
         )
     }
 
-    fun testApplicationBeansInvalidBeanTypeFails() = runBlocking<Unit> {
+    fun testApplicationBeansInvalidBeanTypeFails() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         try {
@@ -109,7 +185,34 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         }
     }
 
-    fun testFindEndpoint() = runBlocking<Unit> {
+    /**
+     * A `@Bean` whose return type comes from the JDK belongs to the application just as much as a `@Service`.
+     *
+     * The listing used to take the declaring module from the bean's *type*, so `java.time.Clock` resolved to no
+     * project module and the bean was dropped - invisible to a caller asking what the application declares.
+     */
+    fun testApplicationBeansKeepsALibraryTypedFactoryBean() = runBlockingReleasingWriteIntent<Unit> {
+        myFixture.copyDirectoryToProject("beanQuery", "")
+
+        val result = fullListing("com.explyt.demo.App", "COMPONENT")
+
+        val page = mapper.readTree(result)
+        assertTrue("The listing is a paged envelope, got $page", page.isObject)
+        val beans = beansOf(result)
+        assertTrue("Rows are served under 'beans', got $page", beans.isArray)
+        val clock = beans.firstOrNull { it["beanName"].asText() == "systemClock" }
+        assertNotNull("Expected systemClock among ${texts(beans, "beanName")}", clock)
+        assertEquals("java.time.Clock", clock!!["className"].asText())
+        assertEquals(
+            "A row names the bean, the model that answered and where it is declared, and nothing else: what the " +
+                    "model cannot promise as a whole follows from 'source' and is not repeated on every row",
+            setOf("beanName", "className", "moduleName", "source", "origin"),
+            clock.fieldNames().asSequence().toSet()
+        )
+        assertEquals("A static answer says it is the module estimate through its source", "STATIC", clock["source"].asText())
+    }
+
+    fun testFindEndpoint() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val result = toolset.findEndpoint(
@@ -117,7 +220,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
             projectPath = projectPath(),
             httpMethod = "GET"
         )
-        val endpoints = parseArray(result)
+        val endpoints = endpointsOf(result)
 
         assertEquals(1, endpoints.size())
         val endpoint = endpoints[0]
@@ -128,7 +231,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         assertTrue("Expected GET in $httpMethods", httpMethods.contains("GET"))
     }
 
-    fun testFindEndpointNoMatch() = runBlocking<Unit> {
+    fun testFindEndpointNoMatch() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val result = toolset.findEndpoint(
@@ -136,11 +239,75 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
             projectPath = projectPath(),
             httpMethod = ""
         )
-        val endpoints = parseArray(result)
-        assertEquals("Expected no matching endpoints, got $endpoints", 0, endpoints.size())
+        val root = mapper.readTree(result)
+        assertEquals("Expected no matching endpoints, got ${root["endpoints"]}", 0, root["endpoints"].size())
+        assertEquals(0, root["totalCount"].asInt())
+        assertEquals(false, root["truncated"].asBoolean())
+        assertEquals("A pattern sharing no leading segment with any route has no neighbourhood",
+            0, root["nearestByPrefix"].size())
+        assertTrue(root["sharedPrefix"].isNull)
     }
 
-    fun testGetHttpEndpoints() = runBlocking<Unit> {
+    /**
+     * A miss is the moment the tool is most useful to an agent about to add a route, and `[]` told it nothing.
+     * The routes sharing the longest leading path with the pattern name the controller the new route belongs
+     * to and the conventions it has to follow.
+     */
+    fun testFindEndpointMissListsTheNearestRoutes() = runBlockingReleasingWriteIntent<Unit> {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+
+        val root = mapper.readTree(
+            toolset.findEndpoint(urlPattern = "/api/routes/export/preview", projectPath = projectPath(), httpMethod = "GET")
+        )
+
+        assertEquals(0, root["endpoints"].size())
+        assertEquals("/api/routes/export", root["sharedPrefix"].asText())
+        assertEquals(
+            "Expected the two /api/routes siblings and nothing from the other controllers",
+            listOf("/api/routes/export", "/api/routes/{id}"),
+            texts(root["nearestByPrefix"], "fullPath")
+        )
+        val nearest = root["nearestByPrefix"].first()
+        assertEquals("com.example.app.web.RouteController", nearest["controllerClass"].asText())
+        assertFalse("The neighbourhood is compact: no per-method signature", nearest.has("parameters"))
+    }
+
+    /** The neighbourhood is context, not an answer, so the HTTP method filter must not thin it out. */
+    fun testNearestRoutesIgnoreTheHttpMethodFilter() = runBlockingReleasingWriteIntent<Unit> {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+
+        val root = mapper.readTree(
+            toolset.findEndpoint(urlPattern = "/api/demo/items/{id}/history", projectPath = projectPath(), httpMethod = "DELETE")
+        )
+
+        assertEquals(0, root["endpoints"].size())
+        assertEquals(
+            setOf("/api/demo/items/{id}"),
+            texts(root["nearestByPrefix"], "fullPath").toSet()
+        )
+    }
+
+    /**
+     * When a literal route and a `{template}` route both match one URL, Spring dispatches to the literal one.
+     * A caller asking "which handler serves this URL" reads the answer off the first element, so the order is
+     * part of the contract, not presentation.
+     */
+    fun testFindEndpointOrdersTheDispatchingRouteFirst() = runBlockingReleasingWriteIntent<Unit> {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+
+        val root = mapper.readTree(
+            toolset.findEndpoint(urlPattern = "/api/routes/export", projectPath = projectPath(), httpMethod = "GET")
+        )
+
+        assertEquals(
+            listOf("/api/routes/export", "/api/routes/{id}"),
+            texts(root["endpoints"], "fullPath")
+        )
+        assertEquals(2, root["totalCount"].asInt())
+        assertEquals("Nothing nearest is reported when something matched", 0, root["nearestByPrefix"].size())
+    }
+
+    fun testGetHttpEndpoints() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val result = toolset.getHttpEndpoints(
@@ -162,7 +329,43 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         assertEquals("Expected truncated=false for the small fixture", false, root["truncated"].asBoolean())
     }
 
-    fun testGetEndpointContract() = runBlocking<Unit> {
+    /** Spring registers the inherited handler of each controller bean, so each controller is its own endpoint. */
+    fun testGetHttpEndpointsListsEveryControllerInheritingTheSameMapping() = runBlockingReleasingWriteIntent<Unit> {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+        myFixture.addFileToProject("com/example/app/web/inherited/InheritedControllers.kt", """
+            package com.example.app.web.inherited
+
+            import org.springframework.web.bind.annotation.GetMapping
+            import org.springframework.web.bind.annotation.PathVariable
+            import org.springframework.web.bind.annotation.RestController
+
+            open class BaseRouteController {
+                @GetMapping("/api/base/{id}")
+                fun get(@PathVariable id: String) = id
+            }
+
+            @RestController
+            class RouteViaBase : BaseRouteController()
+
+            @RestController
+            class ProbeViaBase : BaseRouteController()
+        """.trimIndent())
+
+        val endpoints = endpointsOf(
+            toolset.getHttpEndpoints(projectPath = projectPath(), controllerFilter = "ViaBase", compact = true)
+        ).filter { it["fullPath"].asText() == "/api/base/{id}" }
+
+        assertEquals(
+            setOf(
+                "com.example.app.web.inherited.RouteViaBase",
+                "com.example.app.web.inherited.ProbeViaBase",
+            ),
+            endpoints.map { it["controllerClass"].asText() }.toSet()
+        )
+        assertEquals("one endpoint per controller, got $endpoints", 2, endpoints.size)
+    }
+
+    fun testGetEndpointContract() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val result = toolset.getEndpointContract(
@@ -170,7 +373,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
             projectPath = projectPath(),
             httpMethod = "GET"
         )
-        val contracts = parseArray(result)
+        val contracts = endpointsOf(result)
         assertEquals(1, contracts.size())
         val contract = contracts[0]
         assertEquals("/api/demo/items/{id}", contract["fullPath"].asText())
@@ -185,7 +388,490 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         assertEquals("id", pathParam!!["name"].asText())
     }
 
-    fun testTraceCallChainFileNotFoundFails() = runBlocking<Unit> {
+    fun testEndpointContractFindsServiceInsideResponseEntity() = runBlockingReleasingWriteIntent<Unit> {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+
+        val contract = endpointsOf(toolset.getEndpointContract(
+            urlPattern = "/api/demo/wrapped/{id}",
+            projectPath = projectPath(),
+            httpMethod = "GET",
+        ))[0]
+        val serviceCall = contract["serviceCall"]
+
+        assertEquals("com.example.app.service.DemoService.findById", serviceCall["target"].asText())
+        assertTrue(serviceCall["filePath"].asText().endsWith("com/example/app/service/DemoService.java"))
+        assertEquals(33, serviceCall["line"].asInt())
+    }
+
+    fun testEndpointContractFindsServiceInKotlinExpressionBody() = runBlockingReleasingWriteIntent<Unit> {
+        addKotlinController()
+
+        val contract = endpointsOf(toolset.getEndpointContract(
+            urlPattern = "/api/kotlin/wrapped/{id}",
+            projectPath = projectPath(),
+        ))[0]
+
+        assertEquals("com.example.app.service.DemoService.findById", contract["serviceCall"]["target"].asText())
+    }
+
+    fun testEndpointContractSkipsTrimBeforeServiceCall() = runBlockingReleasingWriteIntent<Unit> {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+
+        val contract = endpointsOf(toolset.getEndpointContract(
+            urlPattern = "/api/demo/trimmed",
+            projectPath = projectPath(),
+        ))[0]
+
+        assertEquals("com.example.app.service.DemoService.findById", contract["serviceCall"]["target"].asText())
+    }
+
+    fun testEndpointContractSkipsKotlinTrimBeforeServiceCall() = runBlockingReleasingWriteIntent<Unit> {
+        addKotlinController()
+        val controller = JavaPsiFacade.getInstance(project)
+            .findClass("com.example.app.web.KotlinController", GlobalSearchScope.allScope(project))!!
+        val method = controller.findMethodsByName("trimmed", false).single().toUElement() as UMethod
+        val trimTargets = mutableListOf<String>()
+        method.accept(object : AbstractUastVisitor() {
+            override fun visitCallExpression(node: UCallExpression): Boolean {
+                if (node.methodName == "trim") {
+                    node.resolve()?.let { trimTargets += "${it.containingClass?.qualifiedName}.${it.name}" }
+                }
+                return false
+            }
+        })
+        assertTrue("Fixture must resolve kotlin.text.StringsKt.trim, got $trimTargets",
+            "kotlin.text.StringsKt.trim" in trimTargets)
+
+        val contract = endpointsOf(toolset.getEndpointContract(
+            urlPattern = "/api/kotlin/trimmed",
+            projectPath = projectPath(),
+        )).single()
+
+        assertEquals("com.example.app.service.DemoService.findById", contract["serviceCall"]["target"].asText())
+    }
+
+    fun testEndpointContractHasNoServiceCallForFrameworkOnlyHandler() = runBlockingReleasingWriteIntent<Unit> {
+        addKotlinController()
+
+        val contract = endpointsOf(toolset.getEndpointContract(
+            urlPattern = "/api/kotlin/no-service",
+            projectPath = projectPath(),
+        ))[0]
+
+        assertTrue(contract["serviceCall"].isNull)
+    }
+
+    fun testEndpointContractFindsServiceThroughInjectedInterface() = runBlockingReleasingWriteIntent<Unit> {
+        addKotlinController()
+
+        val contract = endpointsOf(toolset.getEndpointContract(
+            urlPattern = "/api/kotlin/interface/{id}",
+            projectPath = projectPath(),
+        ))[0]
+
+        val serviceCall = contract["serviceCall"]
+        assertEquals("com.example.app.web.RecordLookup.findById", serviceCall["target"].asText())
+        assertTrue(serviceCall["filePath"].asText().endsWith("com/example/app/web/KotlinController.kt"))
+        assertEquals(11, serviceCall["line"].asInt())
+    }
+
+    fun testEndpointContractRejectsManuallyCreatedServiceField() = runBlockingReleasingWriteIntent<Unit> {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+
+        val contract = endpointsOf(toolset.getEndpointContract(
+            urlPattern = "/api/demo/manually-created/{id}",
+            projectPath = projectPath(),
+        ))[0]
+
+        assertTrue(contract["serviceCall"].isNull)
+    }
+
+    fun testEndpointContractRejectsServiceFieldBuiltInsideConstructor() = runBlockingReleasingWriteIntent<Unit> {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+        myFixture.addFileToProject("com/example/app/web/LocallyCreatedController.java", """
+            package com.example.app.web;
+
+            import com.example.app.dto.DemoDto;
+            import com.example.app.service.DemoService;
+            import org.springframework.web.bind.annotation.GetMapping;
+            import org.springframework.web.bind.annotation.RestController;
+
+            @RestController
+            public class LocallyCreatedController {
+                private final DemoService service;
+
+                public LocallyCreatedController(DemoService service) {
+                    this.service = new DemoService(null);
+                }
+
+                @GetMapping("/api/local/{id}")
+                public DemoDto get(Long id) {
+                    return service.findById(id);
+                }
+            }
+        """.trimIndent())
+
+        val contract = endpointsOf(toolset.getEndpointContract(
+            urlPattern = "/api/local/{id}",
+            projectPath = projectPath(),
+        )).single()
+
+        assertTrue(contract["serviceCall"].isNull)
+    }
+
+    fun testEndpointContractPreservesNestedKotlinGenericNullability() = runBlockingReleasingWriteIntent<Unit> {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+        myFixture.addFileToProject("com/example/app/web/SchemaController.kt", """
+            package com.example.app.web
+
+            import org.springframework.web.bind.annotation.GetMapping
+            import org.springframework.web.bind.annotation.RestController
+
+            data class RecordsDto(
+                val rows: List<List<String?>>,
+                val solid: List<List<String>>,
+                val nullableRow: List<List<String>?>,
+            )
+
+            @RestController
+            class SchemaController {
+                @GetMapping("/api/schema/rows")
+                fun rows(): RecordsDto = RecordsDto(emptyList(), emptyList(), emptyList())
+            }
+        """.trimIndent())
+
+        val contract = endpointsOf(toolset.getEndpointContract(
+            urlPattern = "/api/schema/rows",
+            projectPath = projectPath(),
+        )).single()
+        val fields = contract["responseSchema"]["fields"].associateBy { it["name"].asText() }
+
+        assertEquals("java.util.List<java.util.List<java.lang.String?>>", fields.getValue("rows")["type"].asText())
+        assertEquals("java.util.List<java.util.List<java.lang.String>>", fields.getValue("solid")["type"].asText())
+        assertEquals("java.util.List<java.util.List<java.lang.String>?>", fields.getValue("nullableRow")["type"].asText())
+        assertFalse(fields.getValue("rows")["nullable"].asBoolean())
+    }
+
+    private fun addMultipartController() {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+        myFixture.addFileToProject("com/example/app/web/MultipartController.java", """
+            package com.example.app.web;
+
+            import com.example.app.dto.DemoDto;
+            import java.util.List;
+            import org.springframework.web.bind.annotation.GetMapping;
+            import org.springframework.web.bind.annotation.PostMapping;
+            import org.springframework.web.bind.annotation.RequestParam;
+            import org.springframework.web.bind.annotation.RequestPart;
+            import org.springframework.web.bind.annotation.RestController;
+            import org.springframework.web.multipart.MultipartFile;
+
+            @RestController
+            public class MultipartController {
+                @PostMapping("/api/multipart/upload")
+                public String upload(
+                        @RequestParam("file") MultipartFile upload,
+                        @RequestParam("files") List<MultipartFile> files,
+                        @RequestParam("images") MultipartFile[] images,
+                        @RequestPart("metadata") DemoDto dto,
+                        @RequestPart(value = "optional", required = false) DemoDto opt) {
+                    return "ok";
+                }
+
+                @GetMapping("/api/multipart/find")
+                public String find(@RequestParam("q") String query) {
+                    return query;
+                }
+
+                @PostMapping("/api/multipart/servlet")
+                public String servlet(@RequestParam("servletPart") jakarta.servlet.http.Part part) {
+                    return part.getName();
+                }
+
+                @PostMapping("/api/multipart/named-map")
+                public String namedMap(@RequestParam("values") java.util.Map<String, MultipartFile> values) {
+                    return "ok";
+                }
+            }
+        """.trimIndent())
+    }
+
+    fun testEndpointContractReportsKotlinMultipartFile() = runBlockingReleasingWriteIntent<Unit> {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+        myFixture.addFileToProject("com/example/app/web/KotlinMultipartController.kt", """
+            package com.example.app.web
+
+            import org.springframework.web.bind.annotation.PostMapping
+            import org.springframework.web.bind.annotation.RequestParam
+            import org.springframework.web.bind.annotation.RestController
+            import org.springframework.web.multipart.MultipartFile
+
+            @RestController
+            class KotlinMultipartController {
+                @PostMapping("/api/multipart/kotlin")
+                fun upload(@RequestParam("file") upload: MultipartFile): String = upload.name
+            }
+        """.trimIndent())
+
+        val contract = endpointsOf(toolset.getEndpointContract(
+            urlPattern = "/api/multipart/kotlin",
+            projectPath = projectPath(),
+        )).single()
+        val parameters = contract["parameters"]
+
+        assertEquals(1, parameters.size())
+        assertEquals("file", parameters[0]["name"].asText())
+        assertEquals("PART", parameters[0]["source"].asText())
+        assertEquals("org.springframework.web.multipart.MultipartFile", parameters[0]["type"].asText())
+    }
+
+    fun testEndpointContractReportsMultipartParts() = runBlockingReleasingWriteIntent<Unit> {
+        addMultipartController()
+
+        val contract = endpointsOf(toolset.getEndpointContract(
+            urlPattern = "/api/multipart/upload",
+            projectPath = projectPath(),
+        )).single()
+        val parameters = contract["parameters"]
+        val byName = parameters.associateBy { it["name"].asText() }
+
+        assertEquals(5, parameters.size())
+        assertEquals("PART", byName.getValue("file")["source"].asText())
+        assertEquals(setOf("file", "files", "images", "metadata", "optional"), byName.keys)
+        assertEquals("PART", byName.getValue("files")["source"].asText())
+        assertEquals("PART", byName.getValue("images")["source"].asText())
+        assertEquals("PART", byName.getValue("metadata")["source"].asText())
+        assertEquals("PART", byName.getValue("optional")["source"].asText())
+        assertTrue(byName.getValue("metadata")["required"].asBoolean())
+        assertFalse(byName.getValue("optional")["required"].asBoolean())
+        assertEquals("org.springframework.web.multipart.MultipartFile", byName.getValue("file")["type"].asText())
+        assertEquals("com.example.app.dto.DemoDto", byName.getValue("metadata")["type"].asText())
+    }
+
+    fun testNamedMapOfMultipartFilesIsNotAFilePart() = runBlockingReleasingWriteIntent<Unit> {
+        addMultipartController()
+
+        val contract = endpointsOf(toolset.getEndpointContract(
+            urlPattern = "/api/multipart/named-map",
+            projectPath = projectPath(),
+        )).single()
+        val parameter = contract["parameters"].single()
+
+        assertEquals("values", parameter["name"].asText())
+        assertEquals("QUERY", parameter["source"].asText())
+    }
+
+    fun testEndpointContractReportsServletMultipartPart() = runBlockingReleasingWriteIntent<Unit> {
+        addMultipartController()
+
+        val contract = endpointsOf(toolset.getEndpointContract(
+            urlPattern = "/api/multipart/servlet",
+            projectPath = projectPath(),
+        )).single()
+        val parameter = contract["parameters"].single()
+
+        assertEquals("servletPart", parameter["name"].asText())
+        assertEquals("PART", parameter["source"].asText())
+        assertEquals("jakarta.servlet.http.Part", parameter["type"].asText())
+        assertTrue(parameter["required"].asBoolean())
+    }
+
+    fun testHttpEndpointListingKeepsMultipartAndQuerySources() = runBlockingReleasingWriteIntent<Unit> {
+        addMultipartController()
+
+        val endpoints = endpointsOf(toolset.getHttpEndpoints(
+            projectPath = projectPath(),
+            controllerFilter = "MultipartController",
+        ))
+        val upload = endpoints.single { it["methodName"].asText() == "upload" }
+        val find = endpoints.single { it["methodName"].asText() == "find" }
+        val uploadParams = upload["parameters"]
+
+        assertEquals("Expected upload parameters in $upload", 5, uploadParams.size())
+        assertEquals(5, uploadParams.count { it["source"].asText() == "PART" })
+        assertEquals("QUERY", find["parameters"].single()["source"].asText())
+        assertEquals("q", find["parameters"].single()["name"].asText())
+    }
+
+    /**
+     * Every handler parameter must appear in the contract, whatever binds it.
+     *
+     * A parameter bound by a custom `HandlerMethodArgumentResolver` carries no binding annotation, so an
+     * enumeration driven purely by annotations dropped it silently — and a dropped parameter is
+     * indistinguishable from one that was never declared. The two have opposite meanings when the parameter is
+     * the one carrying authorization: reading the tool's output alone, an endpoint that authenticates its caller
+     * looks exactly like one that does not. Without a resolver in sight, `currentUser` gets Spring's default:
+     * a non-simple type is a model attribute.
+     */
+    fun testEndpointContractReportsEveryParameterSource() = runBlockingReleasingWriteIntent<Unit> {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+
+        val result = toolset.getEndpointContract(
+            urlPattern = "/api/resolver/items/{id}",
+            projectPath = projectPath(),
+            httpMethod = "GET"
+        )
+        val contract = endpointsOf(result)[0]
+        val parameters = contract["parameters"]
+        val bySource = parameters.associate { it["name"].asText() to it["source"].asText() }
+
+        assertEquals(
+            "Every declared parameter must be reported, whatever binds it",
+            mapOf(
+                "id" to "PATH",
+                "q" to "QUERY",
+                "sid" to "COOKIE",
+                "currentUser" to "MODEL",
+                "webRequest" to "FRAMEWORK",
+                "locale" to "FRAMEWORK",
+            ),
+            bySource
+        )
+    }
+
+    /** The same completeness must hold for the endpoint listing, which shares the parameter enumeration. */
+    fun testHttpEndpointsReportTheResolverBoundParameter() = runBlockingReleasingWriteIntent<Unit> {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+
+        val result = toolset.getHttpEndpoints(
+            projectPath = projectPath(),
+            controllerFilter = "ResolverController",
+            endpointType = ""
+        )
+        val endpoint = endpointsOf(result).first { it["methodName"].asText() == "getItem" }
+        val names = endpoint["parameters"].map { it["name"].asText() }
+
+        assertTrue(
+            "Expected the resolver-bound 'currentUser' to be listed, got $names",
+            names.contains("currentUser")
+        )
+    }
+
+    /**
+     * An unclassified parameter must not claim a requiredness it cannot know. The four annotation-bound sources
+     * declare it; a resolver's contract is private to the resolver, so `required` stays null rather than
+     * defaulting to a plausible-looking boolean.
+     */
+    fun testUnclassifiedParameterDoesNotAssertRequiredness() = runBlockingReleasingWriteIntent<Unit> {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+
+        val result = toolset.getEndpointContract(
+            urlPattern = "/api/resolver/items/{id}",
+            projectPath = projectPath(),
+            httpMethod = "GET"
+        )
+        val parameters = endpointsOf(result)[0]["parameters"]
+
+        val currentUser = parameters.first { it["name"].asText() == "currentUser" }
+        assertTrue("Expected 'required' to be null for a resolver-bound parameter", currentUser["required"].isNull)
+
+        val pathParam = parameters.first { it["name"].asText() == "id" }
+        assertEquals("A @PathVariable still declares its requiredness", true, pathParam["required"].asBoolean())
+    }
+
+    /**
+     * The listing is the tool called *first*, before the caller knows which controllers exist — exactly when the
+     * `controllerFilter` / `endpointType` filters cannot help. On a real project it returned 136 endpoints as
+     * 122 722 characters of single-line JSON, most of it `parameters` arrays, which a line-based reader cannot
+     * chunk. `compact` drops the two per-endpoint arrays so an inventory fits in a context window.
+     */
+    fun testCompactListingOmitsParametersAndReturnType() = runBlockingReleasingWriteIntent<Unit> {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+
+        val endpoint = endpointsOf(
+            toolset.getHttpEndpoints(
+                projectPath = projectPath(),
+                controllerFilter = "ResolverController",
+                endpointType = "",
+                compact = true
+            )
+        ).first { it["methodName"].asText() == "getItem" }
+
+        assertFalse("compact must omit 'parameters', got $endpoint", endpoint.has("parameters"))
+        assertFalse("compact must omit 'returnType', got $endpoint", endpoint.has("returnType"))
+        // Everything an inventory needs is still there.
+        assertEquals("/api/resolver/items/{id}", endpoint["fullPath"].asText())
+        assertEquals("com.example.app.web.ResolverController", endpoint["controllerClass"].asText())
+        assertTrue("Expected a line number in $endpoint", endpoint["line"].isInt)
+    }
+
+    /** The default stays whole: `compact` is opt-in, so an existing caller sees no change. */
+    fun testDefaultListingKeepsParametersAndReturnType() = runBlockingReleasingWriteIntent<Unit> {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+
+        val endpoint = endpointsOf(
+            toolset.getHttpEndpoints(
+                projectPath = projectPath(),
+                controllerFilter = "ResolverController",
+                endpointType = ""
+            )
+        ).first { it["methodName"].asText() == "getItem" }
+
+        assertTrue("The default listing must keep 'parameters', got $endpoint", endpoint.has("parameters"))
+        assertTrue("The default listing must keep 'returnType', got $endpoint", endpoint.has("returnType"))
+    }
+
+    /** Paging metadata describes the page, not the projection, so it must survive `compact`. */
+    fun testCompactListingKeepsPagingMetadata() = runBlockingReleasingWriteIntent<Unit> {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+
+        val root = mapper.readTree(
+            toolset.getHttpEndpoints(
+                projectPath = projectPath(),
+                controllerFilter = "",
+                endpointType = "",
+                compact = true
+            )
+        )
+
+        assertEquals("totalCount must match the returned page for a small fixture",
+            root["endpoints"].size(), root["totalCount"].asInt())
+        assertEquals(0, root["offset"].asInt())
+        assertEquals(false, root["truncated"].asBoolean())
+    }
+
+    /**
+     * The response field names are part of the tool's contract, and a mismatch between them and the description
+     * is not cosmetic: a first parse written against `httpMethod` / `path` / `lineNumber` yields silent nulls
+     * rather than an error, costing a whole call to notice. This pins the names the description promises.
+     */
+    fun testListingFieldNamesMatchTheDocumentedContract() = runBlockingReleasingWriteIntent<Unit> {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+
+        val endpoints = endpointsOf(
+            toolset.getHttpEndpoints(projectPath = projectPath(), controllerFilter = "DemoController", endpointType = "")
+        )
+        val withoutMediaTypes = endpoints.single { it["methodName"].asText() == "wrapped" }
+        val withMediaTypes = endpoints.single { it["methodName"].asText() == "createItem" }
+
+        val documented = setOf(
+            "httpMethods", "fullPath", "controllerClass", "methodName",
+            "filePath", "line", "parameters", "returnType", "endpointType",
+        )
+        assertEquals(
+            "Endpoint field names drifted from the documented contract",
+            documented,
+            withoutMediaTypes.fieldNames().asSequence().toSet()
+        )
+        assertEquals(
+            "A mapping declaring media types adds exactly 'consumes' and 'produces'",
+            documented + setOf("consumes", "produces"),
+            withMediaTypes.fieldNames().asSequence().toSet()
+        )
+        assertTrue("'httpMethods' is an array, not a scalar", withoutMediaTypes["httpMethods"].isArray)
+        assertTrue("'consumes' is an array, not a scalar", withMediaTypes["consumes"].isArray)
+
+        val compact = endpointsOf(
+            toolset.getHttpEndpoints(projectPath = projectPath(), controllerFilter = "DemoController", compact = true)
+        ).single { it["methodName"].asText() == "wrapped" }
+        assertEquals(
+            "A compact record of a mapping without media types keeps its shape",
+            documented - setOf("parameters", "returnType"),
+            compact.fieldNames().asSequence().toSet()
+        )
+    }
+
+    fun testTraceCallChainFileNotFoundFails() = runBlockingReleasingWriteIntent<Unit> {
         // `traceCallChain` resolves files via `LocalFileSystem` using `project.basePath + filePath`.
         // In a light test fixture, testdata lives in an in-memory temp VFS, so any real path
         // lookup must fail. This covers the explicit file-not-found error branch.
@@ -272,18 +958,19 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testGetSpringDataEntities() = runBlocking<Unit> {
+    fun testGetSpringDataEntities() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val result = toolset.getSpringDataEntities(
             projectPath = projectPath(),
-            packageFilter = "com.example.app"
+            packageFilter = "com.example.app",
+            includeDetails = true
         )
-        val entities = parseArray(result)
-        assertEquals(1, entities.size())
-        val entity = entities[0]
+        val page = parseArray(result)
+        assertEquals("The fixture declares four entities under 'com.example.app'", 4, page["totalCount"].asInt())
+        val entities = page["entities"]
+        val entity = entities.first { it["className"].asText() == "com.example.app.entity.DemoEntity" }
         assertEquals("DemoEntity", entity["name"].asText())
-        assertEquals("com.example.app.entity.DemoEntity", entity["className"].asText())
         assertEquals("demo_table", entity["tableName"].asText())
 
         val fields = entity["fields"]
@@ -300,7 +987,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
 
     // ---- additional coverage for uncovered branches ----
 
-    fun testApplicationBeansMissingApplicationClassFails() = runBlocking<Unit> {
+    fun testApplicationBeansMissingApplicationClassFails() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         try {
@@ -315,7 +1002,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         }
     }
 
-    fun testFindEndpointBlankUrlPatternFails() = runBlocking<Unit> {
+    fun testFindEndpointBlankUrlPatternFails() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         try {
@@ -330,7 +1017,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         }
     }
 
-    fun testFindEndpointPartialUrlMatch() = runBlocking<Unit> {
+    fun testFindEndpointPartialUrlMatch() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val result = toolset.findEndpoint(
@@ -338,14 +1025,14 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
             projectPath = projectPath(),
             httpMethod = ""
         )
-        val methodNames = texts(parseArray(result), "methodName").toSet()
+        val methodNames = texts(endpointsOf(result), "methodName").toSet()
         assertTrue(
             "Expected partial-url match to return getItem + createItem, got $methodNames",
             methodNames.containsAll(setOf("getItem", "createItem"))
         )
     }
 
-    fun testFindEndpointHttpMethodFilterExcludes() = runBlocking<Unit> {
+    fun testFindEndpointHttpMethodFilterExcludes() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val result = toolset.findEndpoint(
@@ -353,14 +1040,14 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
             projectPath = projectPath(),
             httpMethod = "PUT"
         )
-        val endpoints = parseArray(result)
+        val endpoints = endpointsOf(result)
         assertEquals(
             "Expected no endpoints for PUT filter on GET/POST endpoints, got $endpoints",
             0, endpoints.size()
         )
     }
 
-    fun testGetHttpEndpointsEndpointTypeFilter() = runBlocking<Unit> {
+    fun testGetHttpEndpointsEndpointTypeFilter() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val mvcResult = toolset.getHttpEndpoints(
@@ -386,7 +1073,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testGetHttpEndpointsControllerFilterNoMatch() = runBlocking<Unit> {
+    fun testGetHttpEndpointsControllerFilterNoMatch() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val result = toolset.getHttpEndpoints(
@@ -401,7 +1088,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testGetEndpointContractBlankUrlPatternFails() = runBlocking<Unit> {
+    fun testGetEndpointContractBlankUrlPatternFails() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         try {
@@ -416,7 +1103,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         }
     }
 
-    fun testGetEndpointContractPostWithRequestBody() = runBlocking<Unit> {
+    fun testGetEndpointContractPostWithRequestBody() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val result = toolset.getEndpointContract(
@@ -424,7 +1111,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
             projectPath = projectPath(),
             httpMethod = "POST"
         )
-        val contracts = parseArray(result)
+        val contracts = endpointsOf(result)
         assertEquals(1, contracts.size())
         val contract = contracts[0]
         assertEquals("createItem", contract["methodName"].asText())
@@ -464,17 +1151,18 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         }
     }
 
-    fun testGetSpringDataEntitiesPackageFilterNoMatch() = runBlocking<Unit> {
+    fun testGetSpringDataEntitiesPackageFilterNoMatch() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val result = toolset.getSpringDataEntities(
             projectPath = projectPath(),
             packageFilter = "com.example.does.not.exist"
         )
-        val entities = parseArray(result)
+        val page = parseArray(result)
         assertEquals(
-            "Expected no entities for unrelated package filter, got $entities",
-            0, entities.size()
+            "Expected no entities for unrelated package filter, got $page",
+            0, page["totalCount"].asInt()
         )
+        assertEquals(0, page["entities"].size())
     }
 }

@@ -5,6 +5,7 @@
 
 package com.explyt.spring.core.tracker
 
+import com.explyt.spring.core.SpringProperties.ADDITIONAL_CONFIGURATION_METADATA_FILE_NAME
 import com.intellij.java.library.JavaLibraryModificationTracker
 import com.intellij.lang.properties.psi.PropertiesFile
 import com.intellij.openapi.project.Project
@@ -22,6 +23,7 @@ import com.intellij.psi.util.CachedValue
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.PsiTreeUtil
+import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtClassBody
 import org.jetbrains.kotlin.psi.KtFunction
 import org.jetbrains.kotlin.psi.KtProperty
@@ -34,6 +36,10 @@ import org.jetbrains.yaml.psi.YAMLFile
 @Suppress("UnstableApiUsage")
 class ExplytModelModificationTracker(project: Project) : SimpleModificationTracker() {
     private val javaLibraryTracker: ModificationTracker = JavaLibraryModificationTracker.getInstance(project)
+
+    fun getOnlyModelModificationCount(): Long {
+        return super.getModificationCount()
+    }
 
     override fun getModificationCount(): Long {
         return super.getModificationCount() + javaLibraryTracker.modificationCount
@@ -118,6 +124,11 @@ internal class MyUastPsiTreeChangeAdapter(
             propertyTracker.incModificationCount()
             return
         }
+        // The project's own metadata feeds the property and hint catalogues cached against this tracker.
+        if (psiFile?.name == ADDITIONAL_CONFIGURATION_METADATA_FILE_NAME) {
+            modelTracker.incModificationCount()
+            return
+        }
         if (psiFile !is PsiClassOwner) {
             return
         }
@@ -139,6 +150,11 @@ internal class MyUastPsiTreeChangeAdapter(
         }
         //added or removed comment
         if (eventType == CHILD_REPLACED && isClassOrMethodCommented(event)) {
+            modelTracker.incModificationCount()
+            return
+        }
+
+        if (isWithinConstant(parent)) {
             modelTracker.incModificationCount()
             return
         }
@@ -363,6 +379,23 @@ internal class MyUastPsiTreeChangeAdapter(
         return child is PsiClass || child is PsiMethod || child is KtFunction
                 || child is PsiField || child is KtProperty
     }
+
+    /**
+     * A compile-time constant feeds annotation values - `@GetMapping(PATH)`, `@Value(KEY)` - that the model reads
+     * through it, so editing the constant edits the model even though no annotation changed.
+     */
+    private fun isWithinConstant(element: PsiElement?): Boolean {
+        if (element == null || element is PsiFile) return false
+        PsiTreeUtil.getParentOfType(element, PsiField::class.java, false)?.let { field ->
+            return field.hasModifierProperty(PsiModifier.STATIC) && field.hasModifierProperty(PsiModifier.FINAL)
+                    && field.canFeedAnAnnotationValue()
+        }
+        val property = PsiTreeUtil.getParentOfType(element, KtProperty::class.java, false) ?: return false
+        return !property.isLocal && property.hasModifier(KtTokens.CONST_KEYWORD)
+    }
+
+    private fun PsiField.canFeedAnAnnotationValue(): Boolean =
+        type is PsiPrimitiveType || type.equalsToText(CommonClassNames.JAVA_LANG_STRING)
 
     private fun isClassOrMethodCommented(event: PsiTreeChangeEvent): Boolean {
         val newChild = event.newChild ?: return false

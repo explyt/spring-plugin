@@ -31,9 +31,9 @@ We want the repository to be contribution-friendly **without putting important f
 ## 3. Quickstart (5 minutes)
 
 ### Prerequisites
-- **JDK 21.** The build targets Java 21. Gradle's toolchain support (foojay resolver) can auto-provision it, but having a JDK 21 installed avoids surprises.
+- **JDK 25.** This branch targets Java 25 (`261` and older target 21). Gradle's toolchain support (foojay resolver) can auto-provision it, but having a JDK 25 installed avoids surprises.
 - **Git** and a **GitHub account** (fork + PR workflow).
-- **IntelliJ IDEA** (Community is fine) to edit the code. The sandbox the plugin launches into is **IntelliJ IDEA Community 2026.1** by default (`defaultIdeaVersion` / `defaultIdeaType=IC` in `gradle.properties`).
+- **IntelliJ IDEA** (the free tier is fine) to edit the code. The sandbox the plugin launches into is **IntelliJ IDEA 2026.2** by default (`defaultIdeaVersion` in `gradle.properties`). Since 2025.3 IntelliJ IDEA ships as a single unified distribution, so the sandbox identifies itself as `IU-262.…` even without a subscription — Ultimate-only functionality stays gated behind one.
 
 ### Clone and launch a sandbox IDE
 ```bash
@@ -104,10 +104,11 @@ Most inspection tests have a Java and a Kotlin twin under `inspections/java/` an
 **Code style.** Keep it Kotlin-idiomatic and consistent with the surrounding code. Every source file carries the Apache-2.0 SPDX header:
 ```kotlin
 /*
- * Copyright (c) 2024 Explyt Ltd
+ * Copyright (c) <year> Explyt Ltd
  * SPDX-License-Identifier: Apache-2.0
  */
 ```
+Use the year the file is created as `<year>`; existing headers are not updated.
 
 ## 6. Submitting contributions
 1. **Fork the repository** to create your own working copy.
@@ -125,6 +126,8 @@ Please make sure your pull request (PR) meets the following criteria:
 - **Code style:** clean, well-structured, Kotlin-idiomatic, SPDX header present.
 - **Documentation:** update relevant docs (README / wiki / messages) when behavior or usage changes.
 - **Testing:** include or update tests; state how you verified the change.
+- **Changelog:** add your entry under `## [Unreleased]`, never into an already-released section. Maintainers handle release sections and version bumps.
+- **Reference the issue in the changelog line too:** end the entry with `(#123)` when it answers a reported issue, the way the released sections do. `Closes #123` in the pull request is what closes the issue, but a change can reach `main` without a pull request; the changelog line is the one artifact every change has, so it is what keeps a shipped fix traceable to the report it answers.
 
 ## 8. Review and approval process
 After you submit a pull request, the Explyt team will:
@@ -133,7 +136,7 @@ After you submit a pull request, the Explyt team will:
 - **Approve and merge** the PR once it is ready. Only maintainers have merge permissions.
 
 ## 9. Where to ask questions
-- 💬 **Telegram:** [English](https://t.me/explytspring_en) · [Russian](https://t.me/explytspring)
+- 💬 **Discord:** [Explyt Spring server](https://discord.gg/NMThzdNB9) (English)
 - 🗨️ **GitHub Discussions:** <https://github.com/explyt/spring-plugin/discussions> — Q&A, ideas, and show & tell.
 - 🐛 **Bugs / features:** [open an issue](https://github.com/explyt/spring-plugin/issues/new/choose).
 

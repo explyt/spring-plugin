@@ -6,7 +6,7 @@
 package com.explyt.spring.ai.action
 
 import com.explyt.spring.ai.SpringAiBundle
-import com.explyt.spring.ai.service.AiPluginService
+
 import com.explyt.spring.core.util.ActionUtil
 import com.explyt.util.ExplytDbConstants
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
@@ -18,6 +18,7 @@ import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VirtualFile
 import org.jetbrains.kotlin.idea.core.util.toPsiFile
 import org.jetbrains.uast.UFile
 import org.jetbrains.uast.toUElement
@@ -44,13 +45,18 @@ class ConvertEntityToDbScriptAction : AnAction(SpringAiBundle.message("explyt.sp
 
     override fun actionPerformed(e: AnActionEvent) {
         val project: Project = e.project ?: return
+        val selectedFiles = e.getData(CommonDataKeys.VIRTUAL_FILE_ARRAY) ?: return
 
-        val dtoPsiClasses = e.getData(CommonDataKeys.VIRTUAL_FILE_ARRAY)
-            ?.mapNotNull { it.toPsiFile(project)?.toUElement() as? UFile }
-            ?.flatMap { it.classes }
-            ?.filter { it.javaPsi.isMetaAnnotatedBy(JPA_ANNOTATIONS) } ?: return
-        val uClass = dtoPsiClasses.firstOrNull() ?: return
-        val module = ModuleUtilCore.findModuleForPsiElement(uClass.javaPsi) ?: return
+        submitAiPromptInSmartMode(project) { composeRequest(project, selectedFiles) }
+    }
+
+    private fun composeRequest(project: Project, selectedFiles: Array<VirtualFile>): AiPromptRequest? {
+        val dtoPsiClasses = selectedFiles
+            .mapNotNull { it.toPsiFile(project)?.toUElement() as? UFile }
+            .flatMap { it.classes }
+            .filter { it.javaPsi.isMetaAnnotatedBy(JPA_ANNOTATIONS) }
+        val uClass = dtoPsiClasses.firstOrNull() ?: return null
+        val module = ModuleUtilCore.findModuleForPsiElement(uClass.javaPsi) ?: return null
 
         val entityName = uClass.javaPsi.name
         val virtualFiles = dtoPsiClasses.mapNotNull { it.javaPsi.containingFile?.virtualFile }
@@ -62,7 +68,7 @@ class ConvertEntityToDbScriptAction : AnAction(SpringAiBundle.message("explyt.sp
             $dbTypeSentence $dbToolSentence Save result files to the corresponding directory. 
             $liquibaseFormatAskSentence                                     
         """.trimIndent()
-        AiPluginService.getInstance(project).performPrompt(prompt, virtualFiles)
+        return AiPromptRequest(prompt, virtualFiles)
     }
 
     private fun getDbToolSentence(module: Module): String {

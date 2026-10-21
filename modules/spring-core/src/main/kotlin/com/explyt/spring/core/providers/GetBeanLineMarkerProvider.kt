@@ -48,7 +48,10 @@ class GetBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             else -> null
         } ?: psiElement.getUastParentOfType<UBinaryExpressionWithType>()?.type
 
-        val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBeanDependencies)
+        val builder = NavigationGutterIconBuilder.create(
+            SpringIcons.SpringBeanDependencies,
+            SpringCoreBundle.message("explyt.spring.gutter.group.bean")
+        )
             .setAlignment(GutterIconRenderer.Alignment.LEFT)
             .setTargets(NotNullLazyValue.lazy { getBeans(psiElement, name, requiredType) })
             .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.bean.candidate"))

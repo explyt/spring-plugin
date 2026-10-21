@@ -24,7 +24,7 @@ class PropertyNameProfileSearcher : ProfileSearcher {
         return CachedValuesManager.getManager(project).getCachedValue(module) {
             CachedValueProvider.Result(
                 getProfilesFromProperties(module, propertiesSearch) { property ->
-                    property.sourceFile.startsWith("application.")
+                    ProfileGroups.isProfileIndependentApplicationConfig(property.sourceFile)
                 },
                 ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
             )

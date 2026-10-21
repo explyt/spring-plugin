@@ -64,9 +64,9 @@ main:
             """.trimIndent()
         )
         doTest(
-            "TUESDAY",
-            "WEDNESDAY",
-            "THURSDAY",
+            "tuesday",
+            "wednesday",
+            "thursday",
         )
     }
 

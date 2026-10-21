@@ -32,19 +32,22 @@ class SpringBeanService {
         val beanPsiClass = psiType.resolveBeanPsiClass ?: return emptySet()
         val searchServiceFacade = SpringSearchServiceFacade.getInstance(module.project)
 
-        val excludedBeans = searchServiceFacade.getExcludedBeansClasses(module)
+        val excludedBeans = searchServiceFacade.getBeansExcludedByCondition(module)
         val classInheritors = SpringSearchUtils.searchClassInheritors(beanPsiClass)
             .asSequence()
             .filter { it.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT) }
             .filter { inheritor -> excludedBeans.none { it.psiMember == inheritor } }
             .toSet()
-        val allBeansPsiMethods = searchServiceFacade.getComponentBeanPsiMethods(module)
-            .filterTo(mutableSetOf()) { psiMethod -> excludedBeans.none { it.psiMember == psiMethod } }
-        val beansPsiMethods = SpringSearchUtils
-            .getBeansPsiMethodsCheckMultipleBean(psiType, allBeansPsiMethods, beanPsiType).toSet()
+        val factoryMethods = searchServiceFacade.getComponentBeanFactoryMethods(module)
+            .filterKeys { psiMethod -> excludedBeans.none { it.psiMember == psiMethod } }
+        val matchingFactoryMethods = SpringSearchUtils
+            .getBeansPsiMethodsCheckMultipleBean(psiType, factoryMethods.values.toSet(), beanPsiType).toSet()
+        val beansPsiMethods = factoryMethods.filterValues { it in matchingFactoryMethods }
 
         val beanCandidatesByComponent = getBeanCandidatesInPsiModifierListOwner(module, classInheritors, SpringCoreClasses.COMPONENT)
-        val beanCandidatesByMethod = getBeanCandidatesInPsiModifierListOwner(module, beansPsiMethods, SpringCoreClasses.BEAN)
+        val beanCandidatesByMethod = getBeanCandidatesInPsiModifierListOwner(
+            module, beansPsiMethods.keys, SpringCoreClasses.BEAN, beansPsiMethods
+        )
 
         var beanCandidatesByResolveClass: Set<PsiBean> = setOf()
         if (beanPsiClass.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT)
@@ -58,12 +61,13 @@ class SpringBeanService {
     private fun getBeanCandidatesInPsiModifierListOwner(
         module: Module,
         owners: Set<PsiMember>,
-        annotationName: String
+        annotationName: String,
+        factoryMethods: Map<PsiMethod, PsiMethod> = emptyMap()
     ): Set<PsiBean> {
         val beanCandidates = mutableSetOf<PsiBean>()
         owners.forEach { owner ->
             val psiClass = if (owner is PsiMethod) {
-                owner.returnType?.resolveBeanPsiClass
+                (factoryMethods[owner] ?: owner).returnType?.resolveBeanPsiClass
             } else {
                 owner.resolvePsiClass
             }

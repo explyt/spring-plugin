@@ -5,8 +5,8 @@
 
 package com.explyt.spring.core.properties.references
 
+import com.explyt.spring.core.completion.properties.MetadataDeclarations
 import com.explyt.spring.core.completion.properties.SpringConfigurationPropertiesSearch
-import com.intellij.json.psi.JsonProperty
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
@@ -21,33 +21,14 @@ open class MetaConfigurationKeyReference(
     textRange: TextRange? = null
 ) : PsiReferenceBase.Poly<PsiElement>(element, textRange, false) {
     override fun multiResolve(incompleteCode: Boolean): Array<ResolveResult> {
-        val metadataProperties = SpringConfigurationPropertiesSearch.getInstance(module.project)
+        val declarations = SpringConfigurationPropertiesSearch.getInstance(module.project)
             .getElementNameProperties(module)
-        var result: List<JsonProperty> = metadataProperties.asSequence()
             .filter { it.name == propertyKey }
-            .mapTo(mutableListOf()) { it.jsonProperty }
-
-        result = getOnlySourceIfExist(result)
+        // The same key is declared by both metadata files of an artifact and again in its sources jar; they are one
+        // declaration, so only the preferred copy of each artifact is offered.
+        val result = MetadataDeclarations
+            .distinct(declarations, { it.name }, { it.jsonProperty.containingFile })
+            .map { it.jsonProperty }
         return PsiElementResolveResult.createResults(result)
     }
-
-    private fun getOnlySourceIfExist(result: List<JsonProperty>): List<JsonProperty> {
-        if (result.size <= 1) {
-            return result
-        }
-
-        val resultWithSources = mutableListOf<JsonProperty>()
-        for (it in result) {
-            val path = it.containingFile.containingDirectory.virtualFile.canonicalPath
-            if (path != null && path.contains("sources")) {
-                resultWithSources.add(it)
-            }
-        }
-        if (resultWithSources.isNotEmpty()) {
-            return resultWithSources
-        }
-
-        return result
-    }
-
 }

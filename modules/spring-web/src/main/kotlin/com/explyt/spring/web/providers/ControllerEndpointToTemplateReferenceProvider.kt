@@ -23,6 +23,7 @@ import com.intellij.psi.impl.source.resolve.reference.impl.providers.FileReferen
 import com.intellij.psi.impl.source.resolve.reference.impl.providers.FileReferenceSet
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
+import com.intellij.psi.util.PsiModificationTracker
 import com.intellij.psi.util.childrenOfType
 import com.intellij.util.ProcessingContext
 import org.jetbrains.uast.*
@@ -82,7 +83,19 @@ class ControllerEndpointToTemplateReferenceProvider : UastInjectionHostReference
             ?.value
     }
 
-    private fun findPathInUsage(psiMethod: PsiMethod): String? {
+    /**
+     * The literal the project passes to a template resolver setter such as `setPrefix`.
+     *
+     * Asked for every string returned from a `@Controller` method, while the answer depends only on the project's
+     * calls to one library method, so it is cached on that method. The cached value is the immutable path, not the
+     * reference set the search produces.
+     */
+    private fun findPathInUsage(psiMethod: PsiMethod): String? =
+        CachedValuesManager.getCachedValue(psiMethod) {
+            CachedValueProvider.Result.create(searchPathInUsage(psiMethod), PsiModificationTracker.MODIFICATION_COUNT)
+        }
+
+    private fun searchPathInUsage(psiMethod: PsiMethod): String? {
         return SpringSearchUtils.getAllReferencesToElement(psiMethod).asSequence()
             .filterIsInstance<PsiReferenceExpression>()
             .map { it.element }
