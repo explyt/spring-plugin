@@ -140,13 +140,13 @@ object ActuatorEndpointKeys {
 
     private class Discovery(
         val endpointScope: GlobalSearchScope,
-        val accessScope: GlobalSearchScope,
+        val accessScopes: List<GlobalSearchScope>,
         val annotations: Collection<PsiClass>,
     )
 
     private fun projectDiscovery(module: Module) = Discovery(
         endpointScope = GlobalSearchScope.moduleWithDependenciesScope(module),
-        accessScope = GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module).union(runtimeLibraries(module)),
+        accessScopes = listOf(GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module), runtimeLibraries(module)),
         annotations = compileAndRuntimeEndpointAnnotations(module)
     )
 
@@ -168,7 +168,7 @@ object ActuatorEndpointKeys {
         val facade = JavaPsiFacade.getInstance(module.project)
         facade.findClass(SpringCoreClasses.ACTUATOR_ENDPOINT_AUTO_CONFIGURATION, libraries) ?: return null
         val endpointAnnotation = facade.findClass(SpringCoreClasses.ACTUATOR_ENDPOINT, libraries) ?: return null
-        return Discovery(libraries, libraries, annotationWithChildren(endpointAnnotation, libraries))
+        return Discovery(libraries, listOf(libraries), annotationWithChildren(endpointAnnotation, libraries))
     }
 
     fun annotationWithChildren(annotation: PsiClass, scope: GlobalSearchScope): Collection<PsiClass> {
@@ -183,8 +183,8 @@ object ActuatorEndpointKeys {
     }
 
     private fun findEndpoints(project: Project, discovery: Discovery): Map<String, List<ActuatorEndpoint>> {
-        val accessAvailable = JavaPsiFacade.getInstance(project)
-            .findClass(SpringCoreClasses.ACTUATOR_ENDPOINT_ACCESS, discovery.accessScope) != null
+        val facade = JavaPsiFacade.getInstance(project)
+        val accessAvailable = discovery.accessScopes.any { facade.findClass(SpringCoreClasses.ACTUATOR_ENDPOINT_ACCESS, it) != null }
 
         val result = LinkedHashMap<String, MutableList<ActuatorEndpoint>>()
         for (annotationClass in discovery.annotations) {
