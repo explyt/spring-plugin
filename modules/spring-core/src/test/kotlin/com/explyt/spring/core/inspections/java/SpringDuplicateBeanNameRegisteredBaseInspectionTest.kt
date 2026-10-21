@@ -89,11 +89,59 @@ class SpringDuplicateBeanNameRegisteredBaseInspectionTest : ExplytBaseLightTestC
         )
     }
 
+    fun testOverrideInSubclassWithInactiveProfileOfRegisteredBaseIsNotReported() {
+        val problems = highlights(
+            baseAnnotations = "@Configuration",
+            overrideAnnotation = "@Bean @Override",
+            childAnnotations = "@Configuration @Profile(\"off\")",
+            childScanned = false,
+        )
+
+        val profile = myFixture.findClass("demo.Child").getAnnotation(PROFILE)
+        assertEquals("Precondition: demo.Child is active only in profile 'off'", "\"off\"", profile?.findAttributeValue("value")?.text)
+        assertNull("Precondition: no profile is activated", myFixture.findFileInTempDir("application.properties"))
+        assertInactiveBean("demo.Child")
+        assertScannedBean("demo.Base")
+        assertEmpty(problems.filter { it.severity >= HighlightSeverity.WARNING })
+    }
+
+    fun testOverrideInSubclassOutsideScanRootsOfRegisteredBaseIsNotReported() {
+        val problems = highlights(
+            baseAnnotations = "@Configuration",
+            overrideAnnotation = "@Bean @Override",
+            childPackage = "outside",
+            childScanned = false,
+        )
+
+        assertNotScannedBean("outside.Child")
+        assertScannedBean("demo.Base")
+        assertEmpty(problems.filter { it.severity >= HighlightSeverity.WARNING })
+    }
+
+    fun testOverrideInAbstractSubclassOfRegisteredBaseIsNotReported() {
+        val problems = highlights(
+            baseAnnotations = "@Configuration",
+            overrideAnnotation = "@Bean @Override",
+            childModifiers = "abstract",
+            childScanned = false,
+        )
+
+        val child = myFixture.findClass("demo.Child")
+        assertTrue("Precondition: demo.Child is abstract, so no scan registers it", child.hasModifierProperty(PsiModifier.ABSTRACT))
+        assertInactiveBean("demo.Child")
+        assertScannedBean("demo.Base")
+        assertEmpty(problems.filter { it.severity >= HighlightSeverity.WARNING })
+    }
+
     private fun highlights(
         baseAnnotations: String,
         overrideAnnotation: String,
         basePackage: String = "demo",
         baseModifiers: String = "",
+        childAnnotations: String = "@Configuration",
+        childPackage: String = "demo",
+        childModifiers: String = "",
+        childScanned: Boolean = true,
     ): List<HighlightInfo> {
         myFixture.addFileToProject(
             "demo/App.java",
@@ -125,27 +173,29 @@ class SpringDuplicateBeanNameRegisteredBaseInspectionTest : ExplytBaseLightTestC
             """.trimIndent()
         )
         val child = myFixture.addFileToProject(
-            "demo/Child.java",
+            "$childPackage/Child.java",
             """
-            package demo;
+            package $childPackage;
 
             import model.Dog;
             import org.springframework.context.annotation.Bean;
             import org.springframework.context.annotation.Configuration;
+            import org.springframework.context.annotation.Profile;
 
-            @Configuration
-            public class Child extends $basePackage.Base {
+            $childAnnotations
+            public $childModifiers class Child extends $basePackage.Base {
                 $overrideAnnotation public Dog animal() { return new Dog(); }
             }
             """.trimIndent()
         )
         myFixture.configureFromExistingVirtualFile(child.virtualFile)
         val base = myFixture.findClass("$basePackage.Base")
-        assertTrue("Precondition: demo.Child is a @Configuration", myFixture.findClass("demo.Child").hasAnnotation(CONFIGURATION))
-        assertEquals("Precondition: demo.Child extends $basePackage.Base", base, myFixture.findClass("demo.Child").superClass)
+        val childClass = myFixture.findClass("$childPackage.Child")
+        assertTrue("Precondition: $childPackage.Child is a @Configuration", childClass.hasAnnotation(CONFIGURATION))
+        assertEquals("Precondition: $childPackage.Child extends $basePackage.Base", base, childClass.superClass)
         val inspectionId = SpringDuplicateBeanNameInspection().shortName
         val problems = myFixture.doHighlighting().filter { it.inspectionToolId == inspectionId }
-        assertScannedBean("demo.Child")
+        if (childScanned) assertScannedBean("$childPackage.Child")
         return problems
     }
 
@@ -160,6 +210,10 @@ class SpringDuplicateBeanNameRegisteredBaseInspectionTest : ExplytBaseLightTestC
 
     private fun assertNotScannedBean(qualifiedName: String) {
         assertFalse("Precondition: $qualifiedName is outside the application's scan roots", qualifiedName in activeBeanClasses())
+    }
+
+    private fun assertInactiveBean(qualifiedName: String) {
+        assertFalse("Precondition: $qualifiedName is not an active bean", qualifiedName in activeBeanClasses())
     }
 
     private fun assertStartupFailure(problems: List<HighlightInfo>) {
