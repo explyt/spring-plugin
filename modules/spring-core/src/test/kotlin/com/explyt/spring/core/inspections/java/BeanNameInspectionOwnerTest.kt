@@ -136,6 +136,38 @@ class BeanNameInspectionOwnerTest : ExplytInspectionJavaTestCase() {
         assertNoHighlightOn("\"missing\"")
     }
 
+    fun testCacheableWithMissingCacheManagerOnImplementationReturnedByBeanFactoryIsReported() {
+        addBeanClass("public interface Foo { String find(); }")
+        addBeanClass(
+            "@org.springframework.context.annotation.Configuration public class FooConfig { " +
+                "@org.springframework.context.annotation.Bean public Foo foo() { return new FooImpl(); } }"
+        )
+        configureFooImpl()
+        assertFactoryBeanDeclaresOnlyInterface()
+        assertHighlightOn("\"missing\"")
+    }
+
+    fun testCacheableWithMissingCacheManagerOnImplementationThatNoBeanFactoryReturnsIsNotReported() {
+        addBeanClass("public interface Foo { String find(); }")
+        configureFooImpl()
+        assertOwnerIsNotBean("app.FooImpl")
+        assertNoHighlightOn("\"missing\"")
+    }
+
+    private fun configureFooImpl() {
+        myFixture.configureByText(
+            "FooImpl.java",
+            "package app;\npublic class FooImpl implements Foo { " +
+                "@${CACHEABLE}(cacheManager = \"missing\") public String find() { return null; } }"
+        )
+    }
+
+    private fun assertFactoryBeanDeclaresOnlyInterface() {
+        val active = activeBeanClassNames()
+        assertTrue("Precondition: an active bean has psiClass app.Foo, got $active", "app.Foo" in active)
+        assertFalse("Precondition: app.FooImpl is not an active bean class, got $active", "app.FooImpl" in active)
+    }
+
     private fun addBeanClass(declaration: String) {
         myFixture.addClass("package app;\n$declaration")
     }

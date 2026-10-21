@@ -132,6 +132,43 @@ class BeanNameInspectionOwnerTest : ExplytInspectionKotlinTestCase() {
         assertNoHighlightOn("\"missing\"")
     }
 
+    fun testCacheableWithMissingCacheManagerOnImplementationReturnedByBeanFactoryIsReported() {
+        addAppFile("Foo.kt", "interface Foo { fun find(): String? }")
+        addAppFile(
+            "FooConfig.kt",
+            "@org.springframework.context.annotation.Configuration open class FooConfig { " +
+                "@org.springframework.context.annotation.Bean open fun foo(): Foo = FooImpl() }"
+        )
+        configureFooImpl()
+        assertFactoryBeanDeclaresOnlyInterface()
+        assertHighlightOn("\"missing\"")
+    }
+
+    fun testCacheableWithMissingCacheManagerOnImplementationThatNoBeanFactoryReturnsIsNotReported() {
+        addAppFile("Foo.kt", "interface Foo { fun find(): String? }")
+        configureFooImpl()
+        assertOwnerIsNotBean("app.FooImpl")
+        assertNoHighlightOn("\"missing\"")
+    }
+
+    private fun addAppFile(fileName: String, declaration: String) {
+        myFixture.addFileToProject("app/$fileName", "package app\n$declaration")
+    }
+
+    private fun configureFooImpl() {
+        myFixture.configureByText(
+            "FooImpl.kt",
+            "package app\nopen class FooImpl : Foo { " +
+                "@$CACHEABLE(cacheManager = \"missing\") override fun find(): String? = null }"
+        )
+    }
+
+    private fun assertFactoryBeanDeclaresOnlyInterface() {
+        val active = activeBeanClassNames()
+        assertTrue("Precondition: an active bean has psiClass app.Foo, got $active", "app.Foo" in active)
+        assertFalse("Precondition: app.FooImpl is not an active bean class, got $active", "app.FooImpl" in active)
+    }
+
     private fun addBeanClass(declaration: String) {
         myFixture.addFileToProject("app/Impl.kt", "package app\n$declaration")
     }
