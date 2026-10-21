@@ -109,6 +109,50 @@ class SomeServiceTest {
 
     fun testBeanAliasQualifier() = assertBeanNameQualifier("@Bean(name = [\"x\", \"y\"])", "y")
 
+    fun testQualifierByTwoCapitalDefaultNameResolves() =
+        assertDefaultNameQualifier("ABTestController", emptyList())
+
+    fun testQualifierByDecapitalizedTwoCapitalNameIsUnknown() =
+        assertDefaultNameQualifier("aBTestController", listOf("Autowire failed. No beans of 'Handler' found"))
+
+    fun testQualifierByOrdinaryDefaultNameResolves() =
+        assertDefaultNameQualifier("otherHandler", emptyList())
+
+    private fun assertDefaultNameQualifier(qualifier: String, expectedErrors: List<String>) {
+        myFixture.configureByText(
+            "App.kt",
+            """
+            package beanname
+            import org.springframework.boot.autoconfigure.SpringBootApplication
+            import org.springframework.beans.factory.annotation.Autowired
+            import org.springframework.beans.factory.annotation.Qualifier
+            import org.springframework.stereotype.Component
+            @SpringBootApplication
+            open class App
+            interface Handler
+            @Component
+            class ABTestController : Handler
+            @Component
+            class OtherHandler : Handler
+            @Component
+            class Consumer {
+                @Autowired
+                @Qualifier("$qualifier")
+                lateinit var handler: Handler
+            }
+            """.trimIndent()
+        )
+        val scope = GlobalSearchScope.projectScope(project)
+        val facade = JavaPsiFacade.getInstance(project)
+        assertNotNull(facade.findClass("beanname.ABTestController", scope)!!.getAnnotation(SpringCoreClasses.COMPONENT))
+        assertNotNull(facade.findClass("beanname.OtherHandler", scope)!!.getAnnotation(SpringCoreClasses.COMPONENT))
+        val injection = facade.findClass("beanname.Consumer", scope)!!.findFieldByName("handler", false)!!
+        assertEquals(listOf(qualifier), injection.getAnnotation(SpringCoreClasses.QUALIFIER)!!.getStringMemberValues())
+        val errors = myFixture.doHighlighting().mapNotNull { it.description }
+            .filter { it.startsWith("Autowire failed") || it.startsWith("Cannot find bean") }
+        assertEquals(expectedErrors, errors)
+    }
+
     fun testComposedBeanNameAliasQualifier() {
         myFixture.configureByText(
             "App.kt",
