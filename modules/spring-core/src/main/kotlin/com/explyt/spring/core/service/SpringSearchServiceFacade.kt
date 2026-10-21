@@ -164,7 +164,9 @@ class SpringSearchServiceFacade(private val project: Project) {
             nativeSearchService.findActiveBeans(beans, byBeanName, language, byBeanPsiType, qualifier)
         } else {
             val isTestSource = ExplytPsiUtil.isTestFiles(psiElement)
-            val beans = nativeSearchService.filterValidBeans(springSearchService.getActiveBeansClasses(module))
+            val activeBeans = if (isTestSource) springSearchService.getActiveBeansClassesWithTests(module)
+            else springSearchService.getActiveBeansClasses(module)
+            val beans = nativeSearchService.filterValidBeans(activeBeans)
             nativeSearchService.findActiveBeans(
                 beans, byBeanName, language, byBeanPsiType, qualifier, module
             ).filter { filterBeanByTest(it.psiMember, psiElement, isTestSource) }
