@@ -248,10 +248,12 @@ object SpringCoreUtil {
         return resolveBeanNameByPsiAnnotations(SpringSearchUtils.getComponentClassAnnotations(module))
     }
 
+    fun PsiClass.resolveExplicitBeanName(module: Module): String? =
+        resolveBeanNameByAnnotations(SpringSearchUtils.getComponentClassAnnotations(module).mapNotNull { it.qualifiedName })
+
     private fun PsiClass.resolveBeanNameByPsiAnnotations(annotationPsiClasses: Collection<PsiClass>): String {
         val annotationNames = annotationPsiClasses.mapNotNull { it.qualifiedName }
-        return this.resolveBeanNameByAnnotations(annotationNames)
-            ?: getBeanName()
+        return RegisteredBeanNames.scanned(this, resolveBeanNameByAnnotations(annotationNames))
             ?: throw IllegalArgumentException("Illegal bean $this")
     }
 
