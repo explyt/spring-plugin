@@ -7,12 +7,13 @@ package com.explyt.spring.ai.mcp.entities
 
 import com.explyt.spring.ai.mcp.EntityFieldJson
 import com.explyt.spring.ai.mcp.EntityIndexJson
+import com.explyt.spring.ai.mcp.WholeAnswer
 import com.explyt.spring.ai.mcp.beans.BeanQueryRevision
+import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.intellij.openapi.project.Project
-import com.intellij.psi.util.PsiModificationTracker
 
 /** Schema of one entity: everything a compact listing deliberately leaves out. */
 data class EntitySchema(
@@ -79,19 +80,25 @@ class EntityInventory(private val mapper: ObjectMapper = ObjectMapper()) {
     companion object {
 
         /**
-         * Opaque version of one answer: the PSI state it was read from, plus the question that was asked.
+         * Opaque version of one answer: the model state it was read from, the answer itself, and the question.
          *
-         * The stamp is deliberately the whole project's modification count rather than something narrower -
-         * an edit to any entity changes which columns a later page would describe, and a continuation that
-         * missed it would serve a page of a result set that no longer exists.
+         * The stamp is the Spring model's revision tracker: a structural source edit, a configuration edit or a
+         * classpath change moves it, while indexing, dropped PSI caches and edits of unrelated files leave it
+         * alone. That tracker ignores method bodies, field initializers and field types, which the endpoint,
+         * contract and trace tools read from PSI on every call, so the [WholeAnswer.digest] of the served answer
+         * is bound as well: a continuation never serves a page of a result set that no longer exists.
          *
          * Paging parameters are stripped rather than trusted to be absent: binding `limit` would turn every
          * page-size change into `RESULT_CHANGED` for an answer that did not change at all.
          */
-        fun revision(project: Project, normalizedQuery: Map<String, String?>): String = BeanQueryRevision.compute(
-            PsiModificationTracker.getInstance(project).modificationCount.toString(),
-            normalizedQuery.filterKeys { it !in PAGING_KEYS }
-        )
+        fun revision(project: Project, normalizedQuery: Map<String, String?>, answerDigest: String? = null): String {
+            val modelStamp =
+                ModificationTrackerManager.getInstance(project).getModelRevisionTracker().modificationCount.toString()
+            return BeanQueryRevision.compute(
+                answerDigest?.let { "$modelStamp:$it" } ?: modelStamp,
+                normalizedQuery.filterKeys { it !in PAGING_KEYS }
+            )
+        }
 
         private val PAGING_KEYS = setOf("offset", "limit", "maxChars", "expectedRevision")
     }
