@@ -10,6 +10,7 @@ import com.explyt.spring.core.JavaEeClasses
 import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.inspections.quickfix.AddQualifierQuickFix
+import com.explyt.spring.core.service.SpringBeanOwner
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.core.util.SpringCoreUtil
@@ -319,15 +320,8 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
     private fun isBeanExist(module: Module, psiClass: PsiClass): Boolean {
         if (!psiClass.isValid) return false
         if (SpringCoreUtil.isComponentCandidate(psiClass)) return true
-        if (psiClass.isSpringTestClass()) return true
-
-        return SpringSearchServiceFacade.getInstance(module.project).getAllActiveBeans(module).asSequence()
-            .filter { it.psiClass.qualifiedName == psiClass.qualifiedName }
-            .toList().isNotEmpty()
+        return SpringBeanOwner.isProcessedBySpring(module, psiClass)
     }
-
-    private fun PsiClass.isSpringTestClass(): Boolean =
-        isMetaAnnotatedBy(SpringCoreClasses.CONTEXT_CONFIGURATION)
 
     private fun getProblemByMethodWithoutParams(
         method: PsiMethod,
