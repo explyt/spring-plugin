@@ -10,6 +10,7 @@ import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.openapi.module.Module
 import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiMethod
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.InheritanceUtil
@@ -53,7 +54,7 @@ object SpringBeanOwner {
         val factoryReturnTypes = HashSet<PsiClass>()
         SpringSearchServiceFacade.getInstance(module.project).getAllActiveBeans(module).forEach { bean ->
             val beanClass = bean.psiClass
-            if (bean.factoryMethod != null) factoryReturnTypes += beanClass
+            if (bean.psiMember is PsiMethod) factoryReturnTypes += beanClass
             if (hierarchy.add(beanClass)) {
                 InheritanceUtil.getSuperClasses(beanClass, hierarchy, true)
             }
