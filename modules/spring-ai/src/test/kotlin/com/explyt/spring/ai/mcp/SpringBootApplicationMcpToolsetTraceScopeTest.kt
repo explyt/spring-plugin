@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.explyt.spring.web.service.SpringWebEndpointsSearcher
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.application.WriteAction
+import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.openapi.util.TextRange
@@ -21,7 +22,10 @@ import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.patterns.PlatformPatterns
 import com.intellij.pom.java.LanguageLevel
 import com.intellij.psi.JavaPsiFacade
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiFile
+import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.PsiReference
 import com.intellij.psi.PsiReferenceBase
@@ -628,6 +632,80 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
         assertEquals("INVALID_ARGUMENT", root["error"]["code"].asText())
     }
 
+    fun testPagesContinueAfterANoteIsEdited() = pagesContinueAfter(UnrelatedPsiChange.NOTE_EDITED)
+
+    fun testPagesContinueAfterPsiCachesAreDropped() = pagesContinueAfter(UnrelatedPsiChange.PSI_CACHES_DROPPED)
+
+    fun testPagesContinueAfterDumbMode() = pagesContinueAfter(UnrelatedPsiChange.DUMB_MODE_CYCLED)
+
+    fun testRevisionIsRejectedAfterANewBeanInTheTracedFile() = runBlockingReleasingWriteIntent<Unit> {
+        val first = tracePage(limit = 3)
+        assertTruncatedFirstPage(TRACE, first)
+
+        val source = mainSourceFile()
+        val documents = PsiDocumentManager.getInstance(project)
+        val document = documents.getDocument(source)!!
+        WriteCommandAction.runWriteCommandAction(project) {
+            document.insertString(document.textLength, "\n\n@Service\nclass AddedLater\n")
+            documents.commitDocument(document)
+        }
+
+        val second = tracePage(limit = 3, offset = 3, expectedRevision = first["revision"].asText())
+        assertResultChanged(TRACE, "a new @Service", second)
+    }
+
+    fun testRevisionIsRejectedAfterACallIsAddedToTheHandlerBody() = rejectedAfterBodyEdit(
+        change = "a call added to the handler body",
+        old = "val rows = service.activity(id, parseWindow(window))",
+        new = "WindowFormat.normalize(window)\n        val rows = service.activity(id, parseWindow(window))",
+    )
+
+    fun testRevisionIsRejectedAfterACallInTheHandlerBodyIsRedirected() = rejectedAfterBodyEdit(
+        change = "a call in the handler body redirected from parseWindow to basisFor",
+        old = "service.activity(id, parseWindow(window))",
+        new = "service.activity(id, basisFor(window))",
+    )
+
+    private fun rejectedAfterBodyEdit(change: String, old: String, new: String) = runBlockingReleasingWriteIntent<Unit> {
+        val first = tracePage(limit = 3)
+        assertTruncatedFirstPage(TRACE, first)
+
+        val documents = PsiDocumentManager.getInstance(project)
+        val document = documents.getDocument(mainSourceFile())!!
+        val start = document.text.indexOf(old)
+        assertTrue("Precondition: '$old' occurs once in the traced file", start >= 0 && document.text.indexOf(old, start + 1) < 0)
+        WriteCommandAction.runWriteCommandAction(project) {
+            document.replaceString(start, start + old.length, new)
+            documents.commitDocument(document)
+        }
+
+        val second = tracePage(limit = 3, offset = 3, expectedRevision = first["revision"].asText())
+        assertResultChanged(TRACE, change, second)
+    }
+
+    private fun pagesContinueAfter(change: UnrelatedPsiChange) = runBlockingReleasingWriteIntent<Unit> {
+        val note = noteNextToTheSources()
+        val first = tracePage(limit = 3)
+        assertTruncatedFirstPage(TRACE, first)
+
+        change.applyTo(project) { note }
+
+        val second = tracePage(limit = 3, offset = 3, expectedRevision = first["revision"].asText())
+        assertContinued(TRACE, change.description, second)
+    }
+
+    private fun mainSourceFile(): PsiFile {
+        val file = LocalFileSystem.getInstance()
+            .refreshAndFindFileByPath("${project.basePath}/$MAIN_ROOT/com/example/links/ShortLinks.kt")!!
+        return PsiManager.getInstance(project).findFile(file)!!
+    }
+
+    private fun noteNextToTheSources(): PsiFile {
+        File(project.basePath!!, "$MAIN_ROOT/notes.md").writeText("# Notes\n")
+        val file = LocalFileSystem.getInstance().refreshAndFindFileByPath("${project.basePath}/$MAIN_ROOT/notes.md")!!
+        return PsiManager.getInstance(project).findFile(file)!!
+    }
+
     private suspend fun tracePage(
         limit: Int,
         offset: Int = 0,
@@ -702,6 +780,7 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
     }
 
     private companion object {
+        const val TRACE = "explyt_trace_spring_call_chain"
         const val MAIN_ROOT = "traceMain"
         const val TEST_ROOT = "traceTest"
         const val LONG_ROOT = "traceLong"

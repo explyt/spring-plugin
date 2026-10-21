@@ -266,12 +266,12 @@ class SpringBootApplicationMcpToolset : McpToolset {
             ?.let { McpChoiceArguments.optional(it, "origin", BeanOrigin.names) }
             ?.let(BeanOrigin::valueOf)
         val page = PageRequest(offset = offset, limit = limit, maxChars = maxChars, expectedRevision = expectedRevision)
-        val listing = withContext(Dispatchers.IO) {
+        return withContext(Dispatchers.IO) {
             smartReadAction(project) {
                 val applicationPsiClass = ApplicationClassName
                     .findClass(project, applicationClassName, project.projectScope())
                     ?: mcpFail("Spring Boot Application class not found $applicationClassName")
-                try {
+                val listing = try {
                     McpBeanSearchService.getInstance(project)
                         .getProjectBeansMcp(applicationPsiClass, preference, contextId)
                 } catch (e: BeanQueryException) {
@@ -279,40 +279,52 @@ class SpringBootApplicationMcpToolset : McpToolset {
                     // read as the latter, so the caller is told what to disambiguate instead.
                     mcpFail("${e.problem.code}: ${e.problem.message}")
                 }
+            val ofType = listing.rows.filter { it.beanType == mcpBeanType }
+            val (inactiveLibrary, listable) = ofType.partition {
+                originFilter == null && it.inactive && it.origin == BeanOrigin.LIBRARY
             }
-        }
-        val ofType = listing.rows.filter { it.beanType == mcpBeanType }
-        val (inactiveLibrary, listable) = ofType.partition {
-            originFilter == null && it.inactive && it.origin == BeanOrigin.LIBRARY
-        }
-        val beans = listable
-            .filter { originFilter == null || it.origin == originFilter }
-            .sortedWith(BEAN_LISTING_ORDER)
-        val unknownOriginCount = if (originFilter == null) 0 else ofType.count { it.origin == null }
-        val revision = BeanQueryRevision.compute(
-            listing.modelStamp,
-            mapOf(
+            val beans = listable
+                .filter { originFilter == null || it.origin == originFilter }
+                .sortedWith(BEAN_LISTING_ORDER)
+            val unknownOriginCount = if (originFilter == null) 0 else ofType.count { it.origin == null }
+            val envelope = mapper.createObjectNode()
+            if (unknownOriginCount > 0) envelope.put(FIELD_UNKNOWN_ORIGIN_COUNT, unknownOriginCount)
+            if (inactiveLibrary.isNotEmpty()) envelope.put(FIELD_INACTIVE_LIBRARY_COUNT, inactiveLibrary.size)
+            if (listing.limitations.isNotEmpty()) {
+                envelope.putArray(FIELD_LIMITATIONS).apply { listing.limitations.forEach(::add) }
+            }
+            val beansQuestion = mapOf(
+                "tool" to "explyt_get_spring_beans",
+                "modelStamp" to listing.modelStamp,
                 "applicationClassName" to applicationClassName.trim(),
                 "beanType" to mcpBeanType.name,
                 "source" to preference.name,
                 "contextId" to contextId,
                 "origin" to originFilter?.name,
             )
-        )
-        val envelope = mapper.createObjectNode()
-        if (unknownOriginCount > 0) envelope.put(FIELD_UNKNOWN_ORIGIN_COUNT, unknownOriginCount)
-        if (inactiveLibrary.isNotEmpty()) envelope.put(FIELD_INACTIVE_LIBRARY_COUNT, inactiveLibrary.size)
-        if (listing.limitations.isNotEmpty()) {
-            envelope.putArray(FIELD_LIMITATIONS).apply { listing.limitations.forEach(::add) }
+            val answer = WholeAnswerCache.getInstance(project).answerFor(beansQuestion, beans.size) {
+                WholeAnswer.project(envelope, beans.size, { index -> beans[index].toRow() })
+            }
+            val revision = BeanQueryRevision.compute(
+                listing.modelStamp + ":" + answer.digest,
+                mapOf(
+                    "applicationClassName" to applicationClassName.trim(),
+                    "beanType" to mcpBeanType.name,
+                    "source" to preference.name,
+                    "contextId" to contextId,
+                    "origin" to originFilter?.name,
+                )
+            )
+            BoundedPageWriter().write(
+                envelope = envelope,
+                itemsField = FIELD_BEANS,
+                totalCount = answer.totalCount,
+                itemAt = answer::itemAt,
+                revision = revision,
+                page = page,
+            )
+            }
         }
-        return BoundedPageWriter().write(
-            envelope = envelope,
-            itemsField = FIELD_BEANS,
-            totalCount = beans.size,
-            itemAt = { index -> beans[index].toRow() },
-            revision = revision,
-            page = page,
-        )
     }
 
     private fun SpringBean.toRow(): ObjectNode =
@@ -1651,6 +1663,10 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 val module = ModuleUtilCore.findModuleForPsiElement(psiMethod)
                 val chain = CallChainTracer(project, MAX_TRACED_METHODS).trace(psiMethod, effectiveDepth, route?.startBody)
                 val tests = module?.takeIf { includeTests }?.let { CallChainTestReferences(it, project) }
+                val envelope = mapper.createObjectNode().put(FIELD_CHAIN_LIMIT_REACHED, chain.truncated)
+                val answer = WholeAnswer.project(envelope, chain.methods.size, { id ->
+                    mapper.valueToTree(toCallChainNodeJson(id, chain.methods[id], chain, tests, project, route))
+                })
                 val revision = EntityInventory.revision(
                     project,
                     mapOf(
@@ -1658,16 +1674,15 @@ class SpringBootApplicationMcpToolset : McpToolset {
                         "line" to line.toString(),
                         "depth" to effectiveDepth.toString(),
                         "includeTests" to includeTests.toString(),
-                    )
+                    ),
+                    answer.digest,
                 )
 
                 BoundedPageWriter().write(
-                    envelope = mapper.createObjectNode().put(FIELD_CHAIN_LIMIT_REACHED, chain.truncated),
+                    envelope = envelope,
                     itemsField = FIELD_CHAIN,
-                    totalCount = chain.methods.size,
-                    itemAt = { id ->
-                        mapper.valueToTree(toCallChainNodeJson(id, chain.methods[id], chain, tests, project, route))
-                    },
+                    totalCount = answer.totalCount,
+                    itemAt = answer::itemAt,
                     revision = revision,
                     page = page,
                 )
@@ -1862,21 +1877,31 @@ class SpringBootApplicationMcpToolset : McpToolset {
         return withContext(Dispatchers.IO) {
             smartReadAction(project) {
                 val records = inventory.ordered(entityRecords(project, packagePrefix, entityName))
+                val entitiesQuestion = mapOf(
+                    "tool" to "explyt_get_spring_data_entities",
+                    "packageFilter" to packagePrefix,
+                    "className" to entityName,
+                    "includeDetails" to includeDetails.toString(),
+                )
+                val answer = WholeAnswerCache.getInstance(project).answerFor(entitiesQuestion, records.size) {
+                    WholeAnswer.project(mapper.createObjectNode(), records.size, { index ->
+                        records[index].let { if (includeDetails) inventory.details(it) else inventory.compact(it) }
+                    })
+                }
                 val revision = EntityInventory.revision(
                     project,
                     mapOf(
                         "packageFilter" to packagePrefix,
                         "className" to entityName,
                         "includeDetails" to includeDetails.toString()
-                    )
+                    ),
+                    answer.digest,
                 )
                 writer.write(
                     envelope = mapper.createObjectNode(),
                     itemsField = "entities",
-                    totalCount = records.size,
-                    itemAt = { index ->
-                        records[index].let { if (includeDetails) inventory.details(it) else inventory.compact(it) }
-                    },
+                    totalCount = answer.totalCount,
+                    itemAt = answer::itemAt,
                     revision = revision,
                     page = page
                 )
@@ -1887,9 +1912,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
     /**
      * Every entity the query selects, each able to read its own schema but none having read it yet.
      *
-     * Expanding fields, relationships and indexes is the expensive half of this tool, and a page of ten names
-     * must not pay for it across the whole project: the schema is read by [EntityInventory.details], for the
-     * records of the requested page only, inside this same read action.
+     * Expanding fields, relationships and indexes is the expensive half of this tool, so an inventory without
+     * `includeDetails` never reads a schema. With it, every selected schema is read once per PSI state, because
+     * the revision fingerprints the whole answer: [WholeAnswerCache] keeps that projection for the later pages.
      */
     private fun entityRecords(project: Project, packagePrefix: String?, entityName: String?): List<EntityRecord> {
         val javaPsiFacade = JavaPsiFacade.getInstance(project)

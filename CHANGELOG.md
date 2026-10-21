@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Spring Core
+- fix: After you edit a `String` or primitive constant used in a mapping, such as `@GetMapping(PATH)`, the Endpoints tool window and gutters show the new path instead of the old one
 - fix: `@Lookup`, `@DependsOn` and cache annotation bean-name inspections stay silent on classes Spring neither registers as beans nor processes as test classes; abstract bases and interfaces of active beans still report (#783)
 - fix: Default bean names follow Spring's generator: names starting with two capitals stay unchanged, nested classes are named `outer.Inner`, lowercasing ignores the default locale (#758)
 - fix: Evaluate `@ConditionalOnProperty` and other condition attributes on compiled library classes instead of reporting them undecided because the property name cannot be resolved (#759)
@@ -193,6 +194,7 @@
 
 ### Spring MCP
 
+- fix: Paged MCP answers keep their revision across indexing, cache drops and edits outside the Spring model, so the next page no longer fails with RESULT_CHANGED, while any edit that changes the answer itself, such as a call added to a handler body, a DTO field type or a mapping path constant, now does
 - fix: Name a trace node of a Kotlin companion member in `explyt_trace_spring_call_chain` after its outer class, as the call targets already are (#591)
 - fix: Name `CONDITIONS_NOT_EVALUATED` in the envelope-level `limitations` of every page of `explyt_find_spring_endpoint`, `explyt_get_spring_http_endpoints` and `explyt_get_spring_endpoint_contract` while bean condition evaluation is disabled, as `explyt_get_spring_beans` does, so an endpoint without `beanCondition` is no longer read as one whose bean is active (#635)
 - feat: Bound the answers of `explyt_find_spring_endpoint`, `explyt_get_spring_http_endpoints` and `explyt_get_spring_endpoint_contract` by `maxChars` and continue them with `offset` and `expectedRevision`, as the bean, entity and trace tools do: every current key stays and `status`, `revision`, `offset` and `nextOffset` are added, a continuation of another query or of an edited project answers `RESULT_CHANGED`, one endpoint larger than the budget answers `RESPONSE_TOO_LARGE` naming the budget that fetches it, the neighbourhood of a miss is kept on the first page within the budget with `nearestByPrefixTruncated` when cut, and the listing comes in a stable order so pages never overlap (#635)
