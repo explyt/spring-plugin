@@ -66,10 +66,12 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
         if (psiClass.isInterface || !psiClass.hasComponentAnnotation()) return emptyList()
         val module = ModuleUtilCore.findModuleForPsiElement(psiClass) ?: return emptyList()
         val registeredClasses by lazy(LazyThreadSafetyMode.NONE) { registeredComponentClassesOf(module) }
+        val isRegistered by lazy(LazyThreadSafetyMode.NONE) { psiClass.isAnyOf(registeredClasses) }
         return psiClass.methods.filterNot { it.isConditional() }.flatMap { override ->
             ProgressManager.checkCanceled()
             override.findSuperMethods()
-                .filter { it.isFactoryOverriddenBy(override, psiClass) && it.isDeclaredInAnyOf(registeredClasses) }
+                .filter { it.isFactoryOverriddenBy(override, psiClass) }
+                .filter { isRegistered && it.containingClass.isAnyOf(registeredClasses) }
                 .map { Collision(it.primaryBeanName, it, override, acrossConfigurations = true) }
         }
     }
@@ -88,8 +90,8 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
         return declaringClass.hasComponentAnnotation()
     }
 
-    private fun PsiMethod.isDeclaredInAnyOf(classes: List<PsiClass>): Boolean =
-        classes.any { manager.areElementsEquivalent(it, containingClass) }
+    private fun PsiClass?.isAnyOf(classes: List<PsiClass>): Boolean =
+        this != null && classes.any { manager.areElementsEquivalent(it, this) }
 
     private fun Collision.isReportedByDeclaringComponent(
         psiClass: PsiClass,
