@@ -76,6 +76,9 @@ object OpenApiUtils {
     fun proxyUrl(): String =
         "${localServer()}$OPENAPI_INTERNAL_CORS"
 
+    fun oauth2RedirectUrl(): String =
+        "${localServer()}$OPENAPI_OAUTH2_REDIRECT"
+
     fun localServer(): String =
         "http://localhost:${BuiltInServerManager.getInstance().port}"
 
@@ -179,6 +182,14 @@ object OpenApiUtils {
 
     const val EXPLYT_OPENAPI = "explyt-openapi"
     const val OPENAPI_INTERNAL_CORS = "/${EXPLYT_OPENAPI}_internal-cors"
+
+    /**
+     * Stable path of the Swagger UI OAuth2 redirect page.
+     *
+     * An OAuth2 provider only redirects to a `redirect_uri` registered with it beforehand, so this
+     * URL must not carry the per-session specification key that [resourceUrl] appends.
+     */
+    const val OPENAPI_OAUTH2_REDIRECT = "/${EXPLYT_OPENAPI}_oauth2-redirect"
     const val OPENAPI_ORIGINAL_URL = "${EXPLYT_OPENAPI}_original-url"
     const val OPENAPI_AUTH_HEADER = "${EXPLYT_OPENAPI}_auth-header"
     const val OPENAPI_EDITOR_TYPE_ID = "explyt.web.openapi.ui.editor"

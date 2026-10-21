@@ -6,8 +6,7 @@
 [![GitHub stars](https://img.shields.io/github/stars/explyt/spring-plugin?label=Stars)](https://github.com/explyt/spring-plugin/stargazers)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE.md)
 ![Build](https://github.com/explyt/spring-plugin/actions/workflows/build.yaml/badge.svg)
-[![Telegram EN](https://img.shields.io/badge/Telegram-EN-26A5E4?logo=telegram)](https://t.me/explytspring_en)
-[![Telegram RU](https://img.shields.io/badge/Telegram-RU-26A5E4?logo=telegram)](https://t.me/explytspring)
+[![Discord](https://img.shields.io/badge/Discord-join-5865F2?logo=discord&logoColor=white)](https://discord.gg/NMThzdNB9)
 
 > ### Runtime-accurate Spring tooling for IntelliJ IDEA Community — free.
 
@@ -40,7 +39,7 @@ Legend: ✅ first-class · ◐ partial / setup-dependent · ❌ not available
 | **Native context mode** — real bean metadata via javaagent (conditional/factory/library beans) | ✅ | ◐ static model; runtime via Actuator | ◐ needs running app + Actuator | ❌ |
 | **Spring Debugger** — context tree, transactions, runtime property resolution | ✅ | ◐ | ◐ | ❌ |
 | **Swagger UI HTTP client + `.http`/`.rest` runners** in CE | ✅ | ◐ | ◐ via extensions | ❌ |
-| **Spring-aware MCP tools** for AI agents (7 tools, 2025.2+) | ✅ | ❌ | ❌ | ❌ |
+| **Spring-aware MCP tools** for AI agents (8 tools, 2025.2+) | ✅ | ❌ | ❌ | ❌ |
 | **Kotlin-first Spring inspections** — `internal`/`object` beans, `coRouter` | ✅ | ◐ | ◐ | ❌ |
 
 <!-- ASSET-TODO [P1] Static analysis vs Native mode — side-by-side proof
@@ -89,7 +88,7 @@ The **Explyt Endpoints** tool window lists MVC/WebFlux endpoints, router functio
 
 ### 🤖 Kotlin-first & AI-agent ready
 
-Kotlin-specific Spring inspections catch an `internal` `@Bean` whose JVM name is mangled and an `object` declared as `@Component`, with quick-fixes. Kotlin `coRouter` endpoints are supported. For agentic clients, Explyt ships **7 Spring-aware MCP tools** on the bundled JetBrains MCP Server (IDEA 2025.2+).
+Kotlin-specific Spring inspections catch an `internal` `@Bean` whose JVM name is mangled and an `object` declared as `@Component`, with quick-fixes. Kotlin `coRouter` endpoints are supported. For agentic clients, Explyt ships **8 Spring-aware MCP tools** on the bundled JetBrains MCP Server (IDEA 2025.2+).
 
 → [MCP tools](https://github.com/explyt/spring-plugin/wiki/MCP-Tools)
 
@@ -166,7 +165,7 @@ Contributions are welcome! New here? Clone, run `./gradlew :spring-bootstrap:run
 
 - 🐛 **Issues / feature requests:** [GitHub Issues](https://github.com/explyt/spring-plugin/issues)
 - 🗨️ **Discussions:** [GitHub Discussions](https://github.com/explyt/spring-plugin/discussions) — Q&A, ideas, show & tell
-- 💬 **Telegram:** [English](https://t.me/explytspring_en) · RU [channel](https://t.me/explytspring) / [chat](https://t.me/explytspringchat)
+- 💬 **Discord:** [Join the Explyt Spring server](https://discord.gg/NMThzdNB9) — questions and discussion in English
 - 📚 **Docs:** [explyt.ai/docs](https://explyt.ai/docs/category/explyt-spring?utm_campaign=explytai&utm_source=github&utm_medium=springexplyt) · [Wiki](https://github.com/explyt/spring-plugin/wiki)
 
 If Explyt saves you time, please ⭐ [**star the repo**](https://github.com/explyt/spring-plugin) and 🗳️ [**leave a Marketplace rating**](https://plugins.jetbrains.com/plugin/28675-spring-explyt/reviews).

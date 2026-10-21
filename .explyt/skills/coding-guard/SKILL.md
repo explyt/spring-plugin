@@ -89,7 +89,7 @@ Put new code in the module that owns the feature area; shared utilities go to `b
 
 "Slow operation on EDT" is a dedicated component in this repo's bug-report form — it is a known recurring defect class. Rules:
 
-- **Never** perform file I/O, network calls, indexes access, or heavy PSI work on the EDT.
+- **Never** perform file I/O, network calls, slow/index-backed/blocking or unknown-cost PSI work on the EDT. A separately proven short read-only access is allowed only when the specific IntelliJ callback contract permits it and its cost is bounded.
 - PSI reads happen under a read action; PSI/document/VFS writes under a write action (`WriteCommandAction` for document/PSI modifications, as quick fixes here do).
 - Prefer `smartReadAction` / dumb-mode-aware code for index-dependent work; expect and handle `IndexNotReadyException` paths by design, not by catching blindly.
 - Add `ProgressManager.checkCanceled()` inside loops that run under a read action or in long computations.
@@ -97,7 +97,9 @@ Put new code in the module that owns the feature area; shared utilities go to `b
 - Don't store raw `PsiElement` in fields or pass it across async/invokeLater boundaries — use `SmartPsiElementPointer` and check `isValid` on access.
 - Cache PSI getter results in local `val`s inside hot code (line markers, inspections, completion) — getters traverse the tree on every call.
 - Line marker providers, inspections, and completion contributors are hot paths: no resolve-heavy work in `getLineMarkerInfo` for leaf elements beyond what the platform contract allows; follow the patterns of existing providers in the same package.
-- **Do not make state-synchronizing platform callbacks asynchronous without proving the callback contract permits it.** In particular, `ExplytRunManagerListener.runConfigurationChanged` must make a linked project's renamed `runConfigurationName` visible before the callback returns because `RunConfigurationExtractor` may read it immediately. Keep cheap/stable-identity checks first, but retain a synchronous fallback for legacy links that require PSI resolution.
+- **Do not make state-synchronizing platform callbacks asynchronous without proving the callback contract permits it.** For `ExplytRunManagerListener.runConfigurationChanged`, update links synchronously only when `configuration.mainClassName` matches the stored `qualifiedMainClassName` using stable metadata. Legacy and Kotlin-façade links have no equivalent non-PSI identity: schedule `NativeLinkRepairService`'s smart-mode background repair instead of resolving `configuration.mainClass` with `runReadActionBlocking` on the EDT. `RunConfigurationExtractor`'s path fallback must keep a sync started before repair working with the renamed configuration.
+- **`AnAction.getActionUpdateThread() = BGT` applies only to `update()`, not `actionPerformed()`.** Any PSI, index, project-model, UAST, or VFS work in `actionPerformed()` must be moved to a cancellable background read action or pooled task, with only UI/write operations returned to the EDT.
+- **Treat static slow-operation reports as reachability hypotheses.** Before changing code, verify loader/type filters, guards, dynamic dispatch and read-lock branches; a broad interface sink or a sink after an excluded branch is not proof that the runtime path is reachable.
 
 ---
 
@@ -149,7 +151,7 @@ Put new code in the module that owns the feature area; shared utilities go to `b
 ## 8. PR hygiene (from CONTRIBUTING.md)
 
 - One logical change per PR; reference the related issue (`Closes #123`).
-- Branch names like `feature/kotlin-bean-inspection` or `fix/openapi-npe`.
+- Branch names `username/feature-name`, e.g. `imuromtsev/kotlin-bean-inspection` (CONTRIBUTING.md).
 - Clean, Kotlin-idiomatic code with the SPDX header present in every new file.
 - Update docs/messages when behavior or usage changes; state how you verified the change.
 

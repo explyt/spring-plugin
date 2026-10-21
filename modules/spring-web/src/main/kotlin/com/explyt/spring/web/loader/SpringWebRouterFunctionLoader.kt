@@ -9,57 +9,35 @@ import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.codeInspection.isInheritorOf
-import com.intellij.psi.*
-import com.intellij.psi.util.PsiLiteralUtil
-import com.intellij.psi.util.childrenOfType
+import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiMethod
+import com.intellij.psi.PsiType
 
 class SpringWebRouterFunctionLoader : EndpointHandler {
 
     override fun handleEndpoints(componentPsiClass: PsiClass): List<EndpointElement> {
-        val routeFunctionMethods = componentPsiClass.methods
+        return componentPsiClass.methods.asSequence()
             .filter { it.isMetaAnnotatedBy(SpringCoreClasses.BEAN) }
-            .filter { it.returnType?.isInheritorOf(SpringWebClasses.ROUTE_FUNCTION) == true }
+            .mapNotNull { method -> endpointTypeOf(method.returnType)?.let { method to it } }
             .toSet()
-
-        return routeFunctionMethods.flatMap { getRouteFunctionUrl(componentPsiClass, it) }
+            .flatMap { (method, endpointType) -> routeEndpoints(componentPsiClass, method, endpointType) }
     }
 
-    private fun getRouteFunctionUrl(containingClass: PsiClass, psiMethod: PsiMethod): List<EndpointElement> {
-        val codeBlock = psiMethod.childrenOfType<PsiCodeBlock>().firstOrNull() ?: return emptyList()
-        val returnStatement = codeBlock.childrenOfType<PsiReturnStatement>().firstOrNull() ?: return emptyList()
-        val returnValue = returnStatement.returnValue ?: return emptyList()
-        return findSimpleRouteMethod(returnValue, psiMethod, containingClass)
+    /**
+     * The builder API is mirrored in both stacks, so the bean's own type decides which one a route belongs to.
+     */
+    private fun endpointTypeOf(returnType: PsiType?): EndpointType? = when {
+        returnType == null -> null
+        returnType.isInheritorOf(SpringWebClasses.ROUTE_FUNCTION) -> EndpointType.SPRING_WEBFLUX
+        returnType.isInheritorOf(SpringWebClasses.SERVLET_ROUTE_FUNCTION) -> EndpointType.SPRING_MVC
+        else -> null
     }
 
-    private fun findSimpleRouteMethod(
-        expression: PsiExpression,
+    private fun routeEndpoints(
+        containingClass: PsiClass,
         psiMethod: PsiMethod,
-        containingClass: PsiClass
-    ): List<EndpointElement> {
-        val result = mutableListOf<EndpointElement>()
-
-        val refException = expression.childrenOfType<PsiReferenceExpression>().firstOrNull() ?: return emptyList()
-        val methodCallException =
-            refException.childrenOfType<PsiMethodCallExpression>().firstOrNull() ?: return emptyList()
-        val methods = methodCallException.resolveMethod() ?: return emptyList()
-
-        if (methods.containingClass?.qualifiedName == SpringWebClasses.ROUTE_FUNCTION_BUILDER) {
-            val psiLiteralExpression = methodCallException.argumentList.expressions.firstOrNull()
-            if (psiLiteralExpression != null && psiLiteralExpression is PsiLiteralExpression) {
-                val url = PsiLiteralUtil.getStringLiteralContent(psiLiteralExpression)
-                if (url != null) {
-                    result += EndpointElement(
-                        url,
-                        listOf(methods.name),
-                        psiMethod,
-                        containingClass,
-                        null,
-                        EndpointType.SPRING_WEBFLUX
-                    )
-                    result += findSimpleRouteMethod(methodCallException, psiMethod, containingClass)
-                }
-            }
-        }
-        return result
+        endpointType: EndpointType
+    ): List<EndpointElement> = RouterBuilderRouteWalker.routesOf(psiMethod).map { route ->
+        EndpointElement(route.path, listOf(route.verb), psiMethod, containingClass, null, endpointType)
     }
 }

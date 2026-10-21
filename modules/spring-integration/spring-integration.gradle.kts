@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+
 plugins {
     java
     id("org.jetbrains.intellij.platform.module")
@@ -34,7 +36,6 @@ tasks {
     verifyPlugin { enabled = false }
 }
 
-val defaultIdeaType: String by rootProject
 val defaultIdeaVersion: String by rootProject
 
 dependencies {
@@ -44,7 +45,12 @@ dependencies {
             useInstaller = false
         }
         bundledPlugins(springCoreProject.ext["intellijPlugins"] as List<String> + intellijPlugins)
+        testFramework(TestFrameworkType.Platform)
+        testFramework(TestFrameworkType.Plugin.Java)
     }
+    testImplementation(project(":test-framework"))
+    testImplementation("junit:junit:4.13.2")
+    testRuntimeOnly("org.junit.vintage:junit-vintage-engine")
 }
 
 kotlin {

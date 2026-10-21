@@ -11,10 +11,10 @@ import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.web.SpringWebBundle
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
-import com.explyt.spring.web.providers.EndpointUsageSearcher.findMockMvcEndpointUsage
-import com.explyt.spring.web.providers.EndpointUsageSearcher.findOpenApiJsonEndpoints
-import com.explyt.spring.web.providers.EndpointUsageSearcher.findOpenApiYamlEndpoints
-import com.explyt.spring.web.providers.EndpointUsageSearcher.findWebTestClientEndpointUsage
+
+import com.explyt.spring.web.providers.EndpointUsageSearcher.findOpenApiOperations
+import com.explyt.spring.web.providers.EndpointUsageSearcher.findTestRequestUsage
+
 import com.explyt.spring.web.util.SpringWebUtil
 import com.intellij.codeInsight.daemon.GutterIconNavigationHandler
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
@@ -34,23 +34,25 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.util.PsiUtilCore
 import com.intellij.ui.awt.RelativePoint
+import org.jetbrains.annotations.VisibleForTesting
 import java.awt.event.MouseEvent
 
-class EndpointIconGutterHandler(private val endpointInfo: EndpointInfo) : GutterIconNavigationHandler<PsiElement> {
+class EndpointIconGutterHandler(
+    @get:VisibleForTesting val endpointInfo: EndpointInfo,
+    private val statisticActionId: StatisticActionId = StatisticActionId.GUTTER_CONTROLLER_ENDPOINT_USAGE,
+    @get:VisibleForTesting val offersOpenApiDescription: Boolean = true,
+) : GutterIconNavigationHandler<PsiElement> {
 
     override fun navigate(e: MouseEvent, psiElement: PsiElement) {
         val module = ModuleUtilCore.findModuleForPsiElement(psiElement) ?: return
-        StatisticService.getInstance().addActionUsage(StatisticActionId.GUTTER_CONTROLLER_ENDPOINT_USAGE)
+        StatisticService.getInstance().addActionUsage(statisticActionId)
 
         val path = endpointInfo.path
         val requestMethods = endpointInfo.requestMethods
 
-        val openapiEndpoints = findOpenApiJsonEndpoints(path, requestMethods, module) +
-                findOpenApiYamlEndpoints(path, requestMethods, module)
+        val (openapiEndpoints, undocumentedMethods) = findOpenApiOperations(path, requestMethods, module)
 
-        val testEndpointUsages =
-            findMockMvcEndpointUsage(path, requestMethods, module) +
-                    findWebTestClientEndpointUsage(path, requestMethods, module)
+        val testEndpointUsages = findTestRequestUsage(path, requestMethods, module)
 
         val navigatableLineMarker = createNavigatableLinemarker(openapiEndpoints + testEndpointUsages, psiElement)
 
@@ -69,7 +71,7 @@ class EndpointIconGutterHandler(private val endpointInfo: EndpointInfo) : Gutter
                 endpointInfo,
                 editor,
                 navigatableLineMarker,
-                openapiEndpoints,
+                undocumentedMethods,
                 e
             )
         popup.show(RelativePoint(e))
@@ -82,7 +84,7 @@ class EndpointIconGutterHandler(private val endpointInfo: EndpointInfo) : Gutter
         if (endpointUsages.isEmpty()) return null
 
         return NavigationGutterIconBuilder
-            .create(SpringIcons.ReadAccess)
+            .create(SpringIcons.ReadAccess, SpringWebBundle.message("explyt.spring.web.gutter.endpoint.group"))
             .setTargets(endpointUsages)
             .setTargetRenderer { SpringWebUtil.getTargetRenderer() }
             .setPopupTitle(SpringWebBundle.message("explyt.spring.web.gutter.endpoint.popup"))
@@ -94,14 +96,14 @@ class EndpointIconGutterHandler(private val endpointInfo: EndpointInfo) : Gutter
         endpointInfo: EndpointInfo,
         editor: Editor,
         navigatableLineMarker: RelatedItemLineMarkerInfo<PsiElement>?,
-        openapiEndpoints: List<PsiElement>,
+        undocumentedMethods: List<String>,
         mouseEvent: MouseEvent
     ): JBPopup {
         val intention = AddEndpointToOpenApiIntention(endpointInfo)
 
         val actions = mutableListOf<AnAction>()
 
-        if (openapiEndpoints.isEmpty())
+        if (offersOpenApiDescription && undocumentedMethods.isNotEmpty())
             actions.add(
                 ApplyIntentionAction(
                     intention,

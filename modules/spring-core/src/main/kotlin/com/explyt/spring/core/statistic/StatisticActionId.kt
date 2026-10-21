@@ -27,6 +27,7 @@ enum class StatisticActionId(description: String) {
 
     GUTTER_BEAN_USAGE("Gutter line marker for Spring bean go to usage"),
     GUTTER_BEAN_DECLARATION("Gutter line marker for Spring bean go to declaration"),
+    GUTTER_ABSTRACT_COMPONENT("Gutter line marker for abstract Spring component go to implementations and usages"),
     GUTTER_BEAN_FACTORY_GET_BEAN("Gutter line marker for getBean method of BeanFactory to go to mentioned bean"),
 
     GUTTER_BEAN_LIBRARY_USAGE("Gutter line marker for Spring bean library go to usage"),
@@ -46,6 +47,7 @@ enum class StatisticActionId(description: String) {
     GUTTER_OPENAPI_ENDPOINT_OPEN_IN_SWAGGER("Gutter line marker for openapi navigating to swagger preview"),
     GUTTER_OPENAPI_CONTROLLER_OPEN_IN_SWAGGER("Gutter line marker for controller/feignClient generating openapi preview"),
     GUTTER_CONTROLLER_ENDPOINT_USAGE("Gutter line marker for Controllers - navigation to endpoint usage"),
+    GUTTER_ACTUATOR_ENDPOINT_USAGE("Gutter line marker for Actuator endpoint operations - navigation to endpoint usage"),
 
     GUTTER_DEBUG_DATA_METHOD_EVALUATE("Gutter line marker for spring data debug method evaluate"),
 
@@ -99,4 +101,9 @@ enum class StatisticActionId(description: String) {
     GENERATE_WEB_METHOD("Method generate - Spring Web Method from generate menu"),
     GENERATE_HTTP_CLIENT_METHOD("Method generate - Curl to HttpClient method"),
     GENERATE_SPRING_BOOT_BEAN_ANALYZE("Generate code block - Spring Boot startup wrapper for beans analyzer"),
+
+    FEEDBACK_NUDGE_SHOWN("Feedback nudge - shown"),
+    FEEDBACK_NUDGE_RATE_CLICKED("Feedback nudge - Rate on Marketplace clicked"),
+    FEEDBACK_NUDGE_STAR_CLICKED("Feedback nudge - Star on GitHub clicked"),
+    FEEDBACK_NUDGE_DISMISSED("Feedback nudge - Don't show again clicked"),
 }

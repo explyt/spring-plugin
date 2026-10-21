@@ -23,6 +23,36 @@ class SpringYamlInspectionTest : ExplytInspectionKotlinTestCase() {
     @TestMetadata("yaml")
     fun testYaml() = doTest(SpringYamlInspection())
 
+    fun testLoggingLevelUppercaseValueIsNotAnError() {
+        myFixture.configureByText(
+            "application.yaml",
+            """
+logging:
+  level:
+    root: INFO
+    org.springframework.kafka: DEBUG
+            """.trimIndent()
+        )
+        myFixture.testHighlighting("application.yaml")
+    }
+
+    fun testHintValueGateUsesValuesHint() {
+        myFixture.copyFileToProject(
+            "hintValueGate/META-INF/additional-spring-configuration-metadata.json",
+            "META-INF/additional-spring-configuration-metadata.json"
+        )
+        myFixture.configureByText(
+            "application.yaml",
+            """
+explyt.modes:
+    mode: <error descr="Invalid value 'hyper', must be one of [fast, slow]">hyper</error>
+explyt.maponly:
+    beta: anything
+            """.trimIndent()
+        )
+        myFixture.testHighlighting("application.yaml")
+    }
+
     fun testListElementUnderDigitBoundaryKey() {
         @Language("kotlin") val configurationProperty = """
             import org.springframework.boot.context.properties.ConfigurationProperties
@@ -79,9 +109,9 @@ explyt.digit:
             "application.yaml",
             """
 explyt.camel:
-  camelWritten:
+  <weak_warning descr="Key is not in Spring's canonical form">camelWritten</weak_warning>:
     items:
-            - <warning descr="Should be kebab-case">name</warning>: first
+            - name: first
             """.trimIndent()
         )
         myFixture.testHighlighting("application.yaml")

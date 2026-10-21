@@ -1,0 +1,525 @@
+/*
+ * Copyright (c) 2026 Explyt Ltd
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+package com.explyt.spring.ai.mcp
+
+import com.explyt.spring.test.ExplytJavaLightTestCase
+import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
+import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.ObjectMapper
+
+/**
+ * `explyt_get_spring_endpoint_contract` for a project whose own package is under `org.springframework.` - a sample
+ * application, a fork, or one of Spring's own repositories.
+ *
+ * Framework code is told apart from the project by where it is declared, not by its package: a project class is never
+ * unwrapped as a container and a project bean is never skipped as framework code. A Java class is described by what
+ * Jackson writes, which is its public getters and public fields, not every field it stores.
+ */
+class SpringBootApplicationMcpToolsetFrameworkPackageTest : ExplytJavaLightTestCase() {
+
+    override val libraries: Array<TestLibrary> = arrayOf(
+        TestLibrary.springBootAutoConfigure_3_1_1,
+        TestLibrary.springWebMvc_6_0_7,
+        TestLibrary.jacksonAnnotations_2_15_2,
+        TestLibrary.jacksonDatabind_2_15_2,
+    )
+
+    private val toolset = SpringBootApplicationMcpToolset()
+    private val mapper = ObjectMapper()
+
+    override fun setUp() {
+        super.setUp()
+        SOURCES.forEach { (path, text) -> myFixture.addFileToProject(path, text.trimIndent()) }
+    }
+
+    /** A project DTO under `org.springframework.` was unwrapped as if it were a framework container, giving `null`. */
+    fun testProjectClassUnderTheSpringPackageIsDescribedByItsGetters() = runBlockingReleasingWriteIntent<Unit> {
+        val schema = responseSchema("/vets", "GET")
+
+        assertEquals("$SHOP.vet.Vets", schema["className"].asText())
+        assertEquals(
+            "Jackson writes the getter, not the private field behind it",
+            listOf("vetList"), names(schema)
+        )
+        assertEquals(
+            "A list reaches its element type",
+            "$SHOP.vet.Vet", field(schema, "vetList")["nested"]["className"].asText()
+        )
+    }
+
+    fun testPrivateFieldWithoutAGetterIsNotWritten() = runBlockingReleasingWriteIntent<Unit> {
+        val schema = responseSchema("/orders/one", "GET")
+
+        assertEquals("ResponseEntity still unwraps to its body", "$SHOP.order.OrderDto", schema["className"].asText())
+        assertEquals(listOf("id", "note"), names(schema))
+    }
+
+    fun testJsonPropertyOnAJavaGetterRenamesTheProperty() = runBlockingReleasingWriteIntent<Unit> {
+        val fields = responseSchema("/receipt", "GET")["fields"]
+
+        assertEquals(listOf("order_id"), fields.map { it["name"].asText() })
+        assertEquals("orderId", fields.single()["declaredName"].asText())
+    }
+
+    fun testCallOnAProjectBeanUnderTheSpringPackageIsAServiceCall() = runBlockingReleasingWriteIntent<Unit> {
+        val contract = contractOf("/orders", "POST")
+
+        assertEquals(
+            listOf("$SHOP.order.OrderStore.save"),
+            contract["serviceCalls"].map { it["target"].asText() }
+        )
+    }
+
+    /** The collection rule is unchanged: a JDK list still reaches its element, outside the Spring package too. */
+    fun testListOfAPlainProjectDtoStillReachesTheElement() = runBlockingReleasingWriteIntent<Unit> {
+        val schema = responseSchema("/plain/items", "GET")
+
+        assertEquals("com.example.plain.PlainItem", schema["className"].asText())
+        assertEquals(listOf("id"), names(schema))
+    }
+
+    /**
+     * A Java bean is what Jackson writes: its getters under Jackson's default naming - a leading run of capitals is
+     * lower-cased as a whole, `getURL` is `url` - and not the private fields behind them.
+     */
+    fun testJavaBeanOutsideTheSpringPackageIsDescribedByItsGetters() = runBlockingReleasingWriteIntent<Unit> {
+        val schema = responseSchema("/plain/report", "GET")
+
+        assertEquals(listOf("rowList", "url"), names(schema))
+    }
+
+    /** JDK value types keep no expanded schema: they are not containers and not DTOs. */
+    fun testJdkValueTypesStayUnexpanded() = runBlockingReleasingWriteIntent<Unit> {
+        assertTrue(responseSchemaOrNull("/orders/label", "GET").isNull)
+        assertTrue(responseSchemaOrNull("/orders/since", "GET").isNull)
+        assertEquals(
+            "a project DTO keeps exactly its class name and fields",
+            listOf("className", "fields"), responseSchema("/plain/report", "GET").fieldNames().asSequence().toList()
+        )
+    }
+
+    fun testNonGenericLibraryDtoIsExpandedByItsGetters() = runBlockingReleasingWriteIntent<Unit> {
+        val schema = responseSchema("/library/problem", "GET")
+
+        assertEquals("org.springframework.http.ProblemDetail", schema["className"].asText())
+        assertEquals(setOf("type", "title", "status", "detail", "instance"), names(schema).toSet())
+        assertTrue("the any-getter's entries are written at the top level", schema["additionalProperties"].asBoolean())
+        assertFalse(schema.has("schemaOmitted"))
+    }
+
+    fun testLibraryMapIsMarkedOmitted() = runBlockingReleasingWriteIntent<Unit> {
+        assertOmitted("/library/http-headers", "org.springframework.http.HttpHeaders", "MAP_TYPE")
+    }
+
+    fun testLibraryCollectionIsMarkedOmitted() = runBlockingReleasingWriteIntent<Unit> {
+        assertOmitted("/library/sources", "org.springframework.core.env.MutablePropertySources", "COLLECTION_TYPE")
+    }
+
+    fun testJsonTreeIsMarkedOmitted() = runBlockingReleasingWriteIntent<Unit> {
+        assertOmitted("/library/node", "com.fasterxml.jackson.databind.node.ObjectNode", "JSON_TREE")
+    }
+
+    fun testSelfSerializingLibraryTypeIsMarkedOmitted() = runBlockingReleasingWriteIntent<Unit> {
+        assertOmitted("/library/jsonp", "com.fasterxml.jackson.databind.util.JSONPObject", "CUSTOM_SERIALIZATION")
+    }
+
+    fun testLibraryClassWithoutPropertiesIsMarkedOmitted() = runBlockingReleasingWriteIntent<Unit> {
+        assertOmitted("/library/method", "org.springframework.http.HttpMethod", "NO_VISIBLE_PROPERTIES")
+    }
+
+    fun testProjectEnumKeepsItsValues() = runBlockingReleasingWriteIntent<Unit> {
+        val schema = responseSchema("/plain/kind", "GET")
+
+        assertEquals(listOf("className", "enumValues"), schema.fieldNames().asSequence().toList())
+        assertEquals(listOf("SMALL", "LARGE"), schema["enumValues"].map { it.asText() })
+    }
+
+    fun testJsonArrayIsAJsonTreeBeforeItIsACollection() = runBlockingReleasingWriteIntent<Unit> {
+        assertOmitted("/library/array", "com.fasterxml.jackson.databind.node.ArrayNode", "JSON_TREE")
+    }
+
+    fun testThirdPartyLibraryDtoIsExpandedByItsGetters() = runBlockingReleasingWriteIntent<Unit> {
+        val schema = responseSchema("/library/version", "GET")
+
+        assertEquals("com.fasterxml.jackson.databind.PropertyName", schema["className"].asText())
+        assertEquals(listOf("className", "fields"), schema.fieldNames().asSequence().toList())
+        assertEquals(
+            setOf("simpleName", "namespace", "empty"),
+            names(schema).toSet()
+        )
+    }
+
+    fun testGenericThirdPartyLibraryClassIsDescribedAsItself() = runBlockingReleasingWriteIntent<Unit> {
+        val schema = responseSchema("/library/lru", "GET")
+
+        assertEquals("com.fasterxml.jackson.databind.util.LRUMap", schema["className"].asText())
+        assertEquals("NO_VISIBLE_PROPERTIES", schema["schemaOmitted"].asText())
+    }
+
+    fun testLibraryTypesNestedInAProjectDtoCarryTheirOwnSchema() = runBlockingReleasingWriteIntent<Unit> {
+        val schema = responseSchema("/library/envelope", "GET")
+
+        assertEquals(listOf("headers", "tree", "version"), names(schema))
+        val headers = field(schema, "headers")["nested"]; assertNotNull(schema.toString(), headers?.get("className"))
+        assertEquals("org.springframework.http.HttpHeaders", headers["className"].asText())
+        assertEquals("MAP_TYPE", headers["schemaOmitted"].asText())
+        val tree = field(schema, "tree")["nested"]
+        assertEquals("com.fasterxml.jackson.databind.JsonNode", tree["className"].asText())
+        assertEquals("JSON_TREE", tree["schemaOmitted"].asText())
+        val version = field(schema, "version")["nested"]
+        assertEquals("com.fasterxml.jackson.databind.PropertyName", version["className"].asText())
+        assertFalse(version.has("schemaOmitted"))
+        assertTrue(version["fields"].size() > 0)
+    }
+
+    fun testLibraryDtoBeyondTheDepthBudgetHasNoNestedSchema() = runBlockingReleasingWriteIntent<Unit> {
+        val level1 = responseSchema("/library/deep", "GET")
+        val level2 = field(level1, "inner")["nested"]
+        val level3 = field(level2, "inner")["nested"]
+
+        assertEquals("com.example.plain.Deep3", level3["className"].asText())
+        val version = field(level3, "version")
+        assertEquals(listOf("name", "type", "nullable", "nested"), version.fieldNames().asSequence().toList())
+        assertTrue("the key is written as null, with no marker", version["nested"].isNull)
+    }
+
+    fun testLibraryClassWithAJsonValueMethodIsMarkedCustomSerialized() = runBlockingReleasingWriteIntent<Unit> {
+        assertOmitted("/library/schema", "com.fasterxml.jackson.databind.jsonschema.JsonSchema", "CUSTOM_SERIALIZATION")
+    }
+
+    fun testLibraryEnumIsItsConstantNames() = runBlockingReleasingWriteIntent<Unit> {
+        val schema = responseSchema("/library/status", "GET")
+
+        assertEquals("org.springframework.http.HttpStatus", schema["className"].asText())
+        assertEquals(listOf("className", "enumValues"), schema.fieldNames().asSequence().toList())
+        assertEquals("CONTINUE", schema["enumValues"][0].asText())
+    }
+
+    private suspend fun assertOmitted(url: String, className: String, reason: String) {
+        val schema = responseSchema(url, "GET")
+        assertEquals(className, schema["className"].asText())
+        assertEquals(reason, schema["schemaOmitted"].asText())
+        assertFalse(schema.has("fields"))
+    }
+
+    fun testLibraryInfrastructureIsMarkedOmitted() = runBlockingReleasingWriteIntent<Unit> {
+        val schema = responseSchema("/library/view", "GET")
+
+        assertEquals("org.springframework.web.servlet.ModelAndView", schema["className"].asText())
+        assertEquals("LIBRARY_INFRASTRUCTURE", schema["schemaOmitted"].asText())
+        assertFalse(schema.has("fields"))
+    }
+
+    fun testLibraryInfrastructureInsideAContainerIsMarkedOmitted() = runBlockingReleasingWriteIntent<Unit> {
+        val schema = responseSchema("/library/file", "GET")
+
+        assertEquals("org.springframework.core.io.Resource", schema["className"].asText())
+        assertEquals("LIBRARY_INFRASTRUCTURE", schema["schemaOmitted"].asText())
+    }
+
+    fun testAbstractLibraryTypeIsMarkedOmitted() = runBlockingReleasingWriteIntent<Unit> {
+        val schema = responseSchema("/library/headers", "GET")
+
+        assertEquals("org.springframework.web.context.request.WebRequest", schema["className"].asText())
+        assertEquals("ABSTRACT_TYPE", schema["schemaOmitted"].asText())
+    }
+
+    fun testGenericLibraryWrapperStillUnwrapsToItsPayload() = runBlockingReleasingWriteIntent<Unit> {
+        val schema = responseSchema("/orders/one", "GET")
+
+        assertEquals(listOf("className", "fields"), schema.fieldNames().asSequence().toList())
+        assertEquals("$SHOP.order.OrderDto", schema["className"].asText())
+    }
+
+    fun testRecursiveDtoStopsAtTheDepthBudget() = runBlockingReleasingWriteIntent<Unit> {
+        val levels = generateSequence(responseSchema("/library/tree", "GET")) { node ->
+            node["fields"].firstOrNull { it["name"].asText() == "child" }?.get("nested")?.takeUnless { it.isNull }
+        }.count()
+        assertEquals(3, levels)
+    }
+
+    private suspend fun contractOf(url: String, method: String): JsonNode {
+        val endpoints = mapper.readTree(
+            toolset.getEndpointContract(urlPattern = url, projectPath = project.basePath, httpMethod = method)
+        )["endpoints"]
+        assertEquals("Exactly one contract for $method $url", 1, endpoints.size())
+        return endpoints[0]
+    }
+
+    private suspend fun responseSchemaOrNull(url: String, method: String): JsonNode = contractOf(url, method)["responseSchema"]
+
+    private suspend fun responseSchema(url: String, method: String): JsonNode {
+        val schema = responseSchemaOrNull(url, method)
+        assertFalse("Expected a response schema for $method $url", schema.isNull)
+        return schema
+    }
+
+    private fun names(schema: JsonNode): List<String> = schema["fields"].map { it["name"].asText() }
+
+    private fun field(schema: JsonNode, name: String): JsonNode = schema["fields"].single { it["name"].asText() == name }
+
+    private companion object {
+        const val SHOP = "org.springframework.samples.shop"
+
+
+        val SOURCES = mapOf(
+            "org/springframework/samples/shop/ShopApplication.java" to """
+                package org.springframework.samples.shop;
+
+                import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+                @SpringBootApplication
+                public class ShopApplication {
+                }
+            """,
+            "org/springframework/samples/shop/vet/Vet.java" to """
+                package org.springframework.samples.shop.vet;
+
+                public class Vet {
+                    private String name;
+
+                    public String getName() { return name; }
+                }
+            """,
+            "org/springframework/samples/shop/vet/Vets.java" to """
+                package org.springframework.samples.shop.vet;
+
+                import java.util.ArrayList;
+                import java.util.List;
+
+                public class Vets {
+                    private List<Vet> vets;
+
+                    public List<Vet> getVetList() {
+                        if (vets == null) vets = new ArrayList<>();
+                        return vets;
+                    }
+                }
+            """,
+            "org/springframework/samples/shop/order/OrderDto.java" to """
+                package org.springframework.samples.shop.order;
+
+                public class OrderDto {
+                    private long id;
+                    private String note;
+                    private String secret;
+
+                    public long getId() { return id; }
+                    public String getNote() { return note; }
+                }
+            """,
+            "org/springframework/samples/shop/order/Receipt.java" to """
+                package org.springframework.samples.shop.order;
+
+                import com.fasterxml.jackson.annotation.JsonProperty;
+
+                public class Receipt {
+                    private long orderId;
+
+                    @JsonProperty("order_id")
+                    public long getOrderId() { return orderId; }
+                }
+            """,
+            "org/springframework/samples/shop/order/OrderStore.java" to """
+                package org.springframework.samples.shop.order;
+
+                import org.springframework.stereotype.Repository;
+
+                @Repository
+                public class OrderStore {
+                    public OrderDto save(OrderDto order) { return order; }
+                }
+            """,
+            "org/springframework/samples/shop/web/ShopController.java" to """
+                package org.springframework.samples.shop.web;
+
+                import java.time.Instant;
+                import org.springframework.http.ResponseEntity;
+                import org.springframework.samples.shop.order.OrderDto;
+                import org.springframework.samples.shop.order.OrderStore;
+                import org.springframework.samples.shop.order.Receipt;
+                import org.springframework.samples.shop.vet.Vets;
+                import org.springframework.stereotype.Controller;
+                import org.springframework.web.bind.annotation.GetMapping;
+                import org.springframework.web.bind.annotation.PostMapping;
+                import org.springframework.web.bind.annotation.RequestBody;
+                import org.springframework.web.bind.annotation.ResponseBody;
+
+                @Controller
+                public class ShopController {
+                    private final OrderStore orders;
+
+                    public ShopController(OrderStore orders) { this.orders = orders; }
+
+                    @GetMapping("/vets")
+                    public @ResponseBody Vets vets() { return new Vets(); }
+
+                    @PostMapping("/orders")
+                    public @ResponseBody OrderDto save(@RequestBody OrderDto order) { return orders.save(order); }
+
+                    @GetMapping("/orders/one")
+                    public ResponseEntity<OrderDto> one() { return ResponseEntity.ok(new OrderDto()); }
+
+                    @GetMapping("/orders/label")
+                    public @ResponseBody String label() { return "order"; }
+
+                    @GetMapping("/orders/since")
+                    public @ResponseBody Instant since() { return Instant.now(); }
+
+                    @GetMapping("/receipt")
+                    public @ResponseBody Receipt receipt() { return new Receipt(); }
+                }
+            """,
+            "com/example/plain/PlainItem.java" to """
+                package com.example.plain;
+
+                public class PlainItem {
+                    public long id;
+                }
+            """,
+            "com/example/plain/PlainReport.java" to """
+                package com.example.plain;
+
+                import java.util.List;
+
+                public class PlainReport {
+                    private List<PlainItem> rows;
+                    private String secret;
+
+                    public List<PlainItem> getRowList() { return rows; }
+                    public String getURL() { return ""; }
+                }
+            """,
+            "com/example/plain/PlainController.java" to """
+                package com.example.plain;
+
+                import java.util.List;
+                import org.springframework.web.bind.annotation.GetMapping;
+                import org.springframework.web.bind.annotation.RestController;
+
+                @RestController
+                public class PlainController {
+                    @GetMapping("/plain/items")
+                    public List<PlainItem> items() { return List.of(); }
+
+                    @GetMapping("/plain/report")
+                    public PlainReport report() { return new PlainReport(); }
+                }
+            """,
+            "com/example/plain/Kind.java" to """
+                package com.example.plain;
+
+                public enum Kind { SMALL, LARGE }
+            """,
+            "com/example/plain/TreeNode.java" to """
+                package com.example.plain;
+
+                public class TreeNode {
+                    public TreeNode getChild() { return null; }
+                }
+            """,
+            "com/example/plain/Envelope.java" to """
+                package com.example.plain;
+
+                public class Envelope {
+                    public org.springframework.http.HttpHeaders getHeaders() { return null; }
+                    public com.fasterxml.jackson.databind.JsonNode getTree() { return null; }
+                    public com.fasterxml.jackson.databind.PropertyName getVersion() { return null; }
+                }
+            """,
+            "com/example/plain/Deep1.java" to """
+                package com.example.plain;
+
+                public class Deep1 {
+                    public Deep2 getInner() { return null; }
+                }
+            """,
+            "com/example/plain/Deep2.java" to """
+                package com.example.plain;
+
+                public class Deep2 {
+                    public Deep3 getInner() { return null; }
+                }
+            """,
+            "com/example/plain/Deep3.java" to """
+                package com.example.plain;
+
+                public class Deep3 {
+                    public com.fasterxml.jackson.databind.PropertyName getVersion() { return null; }
+                }
+            """,
+            "com/example/plain/LibraryController.java" to """
+                package com.example.plain;
+
+                import org.springframework.core.io.Resource;
+                import org.springframework.http.ProblemDetail;
+                import org.springframework.http.ResponseEntity;
+                import org.springframework.web.bind.annotation.GetMapping;
+                import org.springframework.web.bind.annotation.RestController;
+                import org.springframework.web.context.request.WebRequest;
+                import org.springframework.web.servlet.ModelAndView;
+
+                @RestController
+                public class LibraryController {
+                    @GetMapping("/library/problem")
+                    public ProblemDetail problem() { return ProblemDetail.forStatus(400); }
+
+                    @GetMapping("/library/view")
+                    public ModelAndView view() { return new ModelAndView(); }
+
+                    @GetMapping("/library/file")
+                    public ResponseEntity<Resource> file() { return null; }
+
+                    @GetMapping("/library/headers")
+                    public WebRequest headers() { return null; }
+
+                    @GetMapping("/library/tree")
+                    public ResponseEntity<TreeNode> tree() { return null; }
+
+                    @GetMapping("/library/http-headers")
+                    public org.springframework.http.HttpHeaders httpHeaders() { return null; }
+
+                    @GetMapping("/library/sources")
+                    public org.springframework.core.env.MutablePropertySources sources() { return null; }
+
+                    @GetMapping("/library/node")
+                    public com.fasterxml.jackson.databind.node.ObjectNode json() { return null; }
+
+                    @GetMapping("/library/jsonp")
+                    public com.fasterxml.jackson.databind.util.JSONPObject jsonp() { return null; }
+
+                    @GetMapping("/library/method")
+                    public org.springframework.http.HttpMethod method() { return null; }
+
+                    @GetMapping("/library/schema")
+                    public com.fasterxml.jackson.databind.jsonschema.JsonSchema schema() { return null; }
+
+                    @GetMapping("/library/status")
+                    public org.springframework.http.HttpStatus status() { return null; }
+
+                    @GetMapping("/library/array")
+                    public com.fasterxml.jackson.databind.node.ArrayNode array() { return null; }
+
+                    @GetMapping("/library/version")
+                    public com.fasterxml.jackson.databind.PropertyName version() { return null; }
+
+                    @GetMapping("/library/lru")
+                    public com.fasterxml.jackson.databind.util.LRUMap<String, String> lru() { return null; }
+
+                    @GetMapping("/library/envelope")
+                    public Envelope envelope() { return null; }
+
+                    @GetMapping("/library/deep")
+                    public Deep1 deep() { return null; }
+
+                    @GetMapping("/plain/kind")
+                    public Kind kind() { return Kind.SMALL; }
+                }
+            """,
+        )
+    }
+}

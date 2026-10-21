@@ -110,6 +110,9 @@ class OpenApiLocalSpecifications : PersistentStateComponent<OpenApiLocalState>, 
             SpringWebBundle.message("explyt.openapi.3.1.schema.type") ->
                 OpenApiSpecificationType.Openapi31SpecificationExtension(metadata.schemaExt)
 
+            SpringWebBundle.message("explyt.openapi.3.2.schema.type") ->
+                OpenApiSpecificationType.Openapi32SpecificationExtension(metadata.schemaExt)
+
             else -> OpenApiSpecificationType.OpenApiUndefined
         }
     }

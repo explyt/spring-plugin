@@ -9,6 +9,7 @@ import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.web.WebEeClasses
 import com.explyt.spring.web.service.SpringWebEndpointsSearcher
+import com.explyt.spring.web.util.HandlerMethods
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.util.ExplytPsiUtil
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
@@ -18,6 +19,9 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtil
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiModifier
+import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.search.searches.ClassInheritorsSearch
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 
@@ -25,7 +29,7 @@ class JaxRsExchangeLoader(private val project: Project) : SpringWebEndpointsLoad
 
     private val cachedValuesManager = CachedValuesManager.getManager(project)
 
-    override fun isApplicable(module: Module) = SpringWebUtil.isRsWebModule(module)
+    override fun isApplicable(module: Module) = WebEeClasses.JAX_RS_PATH.isPresentInDependencies(module)
 
     override fun searchEndpoints(module: Module): List<EndpointElement> {
         return cachedValuesManager.getCachedValue(module) {
@@ -42,25 +46,28 @@ class JaxRsExchangeLoader(private val project: Project) : SpringWebEndpointsLoad
 
     private fun doSearchEndpoints(module: Module): List<EndpointElement> {
         val applicationPath = SpringWebEndpointsSearcher.getInstance(project).getJaxRsApplicationPath(module)
-        val httpMethodTargetClass = WebEeClasses.JAX_RS_HTTP_METHOD.getTargetClass(module)
+        val httpMethodTargetClass = WebEeClasses.JAX_RS_HTTP_METHOD.getTargetClassInDependencies(module)
         val httpMethodAnnotations = MetaAnnotationUtil.getAnnotationTypesWithChildren(
             module, httpMethodTargetClass, false
         ).takeIf { it.isNotEmpty() } ?: return emptyList()
 
-        val pathTargetClass = WebEeClasses.JAX_RS_PATH.getTargetClass(module)
+        val pathTargetClass = WebEeClasses.JAX_RS_PATH.getTargetClassInDependencies(module)
         val pathMah = MetaAnnotationsHolder.of(module, pathTargetClass)
         val httpMethodMah = MetaAnnotationsHolder.of(module, httpMethodTargetClass)
 
         val processedClasses = mutableSetOf<String>()
         val endpoints = mutableListOf<EndpointElement>()
 
-        for (annotation in httpMethodAnnotations) {
-            val classes = searchAnnotatedMethods(annotation, module).mapNotNull { it.containingClass }
+        val annotatedClasses = httpMethodAnnotations.asSequence()
+            .flatMap { searchAnnotatedMethods(it, module) }
+            .mapNotNull { it.containingClass }
+            .distinct()
+            .toList()
 
-            for (psiClass in classes) {
+        for (annotatedClass in annotatedClasses) {
+            for (psiClass in resourceClassesOf(annotatedClass, module)) {
                 val classFqn = psiClass.qualifiedName ?: continue
-                if (processedClasses.contains(classFqn)) continue
-                processedClasses.add(classFqn)
+                if (!processedClasses.add(classFqn)) continue
 
                 endpoints.addAll(getEndpoints(psiClass, pathMah, httpMethodMah, applicationPath))
             }
@@ -69,27 +76,54 @@ class JaxRsExchangeLoader(private val project: Project) : SpringWebEndpointsLoad
         return endpoints
     }
 
+    private fun resourceClassesOf(annotatedClass: PsiClass, module: Module): List<PsiClass> {
+        if (!annotatedClass.isAbstractType()) return listOf(annotatedClass)
+        val pathTargetClass = WebEeClasses.JAX_RS_PATH.getTargetClassInDependencies(module)
+        val moduleScope = GlobalSearchScope.moduleScope(module)
+        val implementations = ClassInheritorsSearch.search(annotatedClass, moduleScope, true)
+            .filter { !it.isAbstractType() }
+            .filter { implementation ->
+                HandlerMethods.mappedType(implementation, HandlerMethods.HierarchyOrder.SUPERCLASS_FIRST) {
+                    it.isMetaAnnotatedBy(pathTargetClass)
+                } != null
+            }
+        if (implementations.isNotEmpty()) return implementations
+
+        val declaredHere = annotatedClass.containingFile?.virtualFile?.let { moduleScope.contains(it) } ?: false
+        val implementedInProject = ClassInheritorsSearch.search(annotatedClass, GlobalSearchScope.projectScope(project), true)
+            .any { !it.isAbstractType() }
+        return if (declaredHere && !implementedInProject) listOf(annotatedClass) else emptyList()
+    }
+
+    private fun PsiClass.isAbstractType() = isInterface || hasModifierProperty(PsiModifier.ABSTRACT)
+
     private fun getEndpoints(
-        annotatedClass: PsiClass,
+        resourceClass: PsiClass,
         pathMah: MetaAnnotationsHolder,
         httpMethodMah: MetaAnnotationsHolder,
         applicationPath: String
     ): List<EndpointElement> {
-        val prefixes = pathMah.getAnnotationMemberValues(annotatedClass, TARGET_VALUE)
+        val module = ModuleUtil.findModuleForPsiElement(resourceClass)
+        val pathTargetClass = WebEeClasses.JAX_RS_PATH.getTargetClassInDependencies(module)
+        val httpMethodTargetClass = WebEeClasses.JAX_RS_HTTP_METHOD.getTargetClassInDependencies(module)
+
+        val prefixes = HandlerMethods.mappedType(resourceClass, HandlerMethods.HierarchyOrder.SUPERCLASS_FIRST) {
+            it.isMetaAnnotatedBy(pathTargetClass)
+        }
+            ?.let { pathMah.getAnnotationMemberValues(it, TARGET_VALUE) }.orEmpty()
             .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
             .ifEmpty { listOf("") }
 
         val result = mutableListOf<EndpointElement>()
-        val module = ModuleUtil.findModuleForPsiElement(annotatedClass)
-        val httpMethodTargetClass = WebEeClasses.JAX_RS_HTTP_METHOD.getTargetClass(module)
-        for (method in annotatedClass.allMethods) {
-            if (!method.isMetaAnnotatedBy(httpMethodTargetClass)) continue
-
-            val pathValues = pathMah.getAnnotationMemberValues(method, TARGET_VALUE)
+        val mappedMethods = HandlerMethods.mappedMethods(resourceClass, HandlerMethods.HierarchyOrder.SUPERCLASS_FIRST) {
+            it.isMetaAnnotatedBy(httpMethodTargetClass)
+        }
+        for ((method, mappingSource) in mappedMethods) {
+            val pathValues = pathMah.getAnnotationMemberValues(mappingSource, TARGET_VALUE)
                 .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
                 .ifEmpty { listOf("") }
 
-            val requestMethods = httpMethodMah.getAnnotationMemberValues(method, TARGET_VALUE)
+            val requestMethods = httpMethodMah.getAnnotationMemberValues(mappingSource, TARGET_VALUE)
                 .map { ExplytPsiUtil.getUnquotedText(it) }
 
             for (value in pathValues) {
@@ -98,7 +132,7 @@ class JaxRsExchangeLoader(private val project: Project) : SpringWebEndpointsLoad
                         SpringWebUtil.simplifyUrl("$applicationPath/$prefix/$value"),
                         requestMethods,
                         method,
-                        annotatedClass,
+                        resourceClass,
                         null,
                         getType()
                     )

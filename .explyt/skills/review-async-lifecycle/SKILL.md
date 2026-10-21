@@ -47,17 +47,22 @@ Use and reference these checklist IDs when applicable:
 - Kotlin Analysis API used from EDT = freeze.
 - Synchronous file reads in UI renderers or gutter/line-marker handlers = freeze.
 - **Prefer `Dispatchers.IO` for all background tasks.** Accidental I/O on `Default` is far worse than accidental compute on `IO`. Use `Default` only for pure CPU-bound work with absolutely zero I/O. Mixing dispatchers is the most common dispatcher mistake.
+- For `ReadAction.nonBlocking(...).onSuccess {}`, do not assume the success callback is a UI callback. Keep file creation/I/O on a pooled or I/O executor, then use `Application.invokeLater(..., ModalityState, project.disposed)` only for UI/write work.
 - `Dispatchers.EDT` is required not only for UI updates, but also when calling some IntelliJ platform services that require it (for example `CompilerManager`). When uncertain, trace usages in `intellij-community` source code.
 - **Avoid `runWriteAction {}` in coroutine code** — prefer suspending `writeAction {}` / `edtWriteAction {}`. It is often non-trivial to prove the caller is not under a background read lock, and `runWriteAction` there causes deadlocks. For write commands with undo support, use `WriteCommandAction.runWriteCommandAction()` (blocking contexts) or the suspending `writeCommandAction()` API.
 - `WriteAction.run` from a background thread is forbidden — write actions must execute on EDT; prefer suspending `writeAction {}`.
 - `SwingUtilities.invokeLater()` forbidden for write actions — no `ModalityState` support. Use `Application.invokeLater()`.
 - `SwingUtilities.invokeLater` with PSI/VFS/model access is unsafe since 2025.1 — there is no implicit write-intent lock. Use `Application.invokeLater()` or explicit `ReadAction` / `WriteAction`.
-- AWT event handlers accessing PSI/VFS are unsafe since 2026.1 — there is no implicit write lock. Wrap such access in `ReadAction.nonBlocking {}` or `WriteIntentReadAction.run {}`.
+- AWT event handlers accessing PSI/VFS are unsafe since 2026.1 — there is no implicit write lock. For potentially slow, index-dependent or unknown-cost work use `ReadAction.nonBlocking {}` / `smartReadAction` on a background executor and return only the UI result. Use `WriteIntentReadAction.run {}` only for a separately proven short synchronous access; it does not move work off the EDT.
+- `AnAction.getActionUpdateThread() = BGT` changes only the `update()` thread. It does not make `actionPerformed()` background-safe; move PSI/index/UAST/project-model work from `actionPerformed()` explicitly.
+- `runReadActionBlocking` supplies a read lock but does not move execution off the EDT and therefore does not make an index/resolve operation fast or freeze-safe.
+- A read lock is not a slow-operation sanitizer: `ReadAction.nonBlocking` fixes missing read access, but a non-cancellable read or index lookup still needs a background/cancellable boundary to avoid EDT blocking.
 - `ReadAction.compute` / `ReadAction.run` are deprecated since 2026.1. Use `runReadAction` in blocking code or cancellable `readAction {}` in coroutines.
 - `ModalityState.any()` + write action = forbidden. Use `defaultModalityState()` or `nonModal()`.
 - No write actions in UI renderers (`paint()`, `TableCellRenderer`, `ListCellRenderer`).
 - Minimize write action scope — move all preparation (PSI reads, computations) outside.
-- `DumbService.smartInvokeLater()` instead of `invokeLater()` when code accesses indexes.
+- Do not use `DumbService.smartInvokeLater()` as a way to make index work background-safe: its callback still runs on the UI thread. Compute index-dependent data in `ReadAction.nonBlocking { }.inSmartMode(project)` / `smartReadAction(project)`, then use `smartInvokeLater()` only for a short UI handoff.
+- Do not pass a result object containing raw PSI across an async boundary merely because the callback is short. Precompute all PSI-dependent values, or carry `SmartPsiElementPointer`s and revalidate them immediately before use.
 - `DumbService.isDumb()` is a point-in-time check (TOCTOU race). Prefer `smartReadAction(project)` which handles it automatically. Raw `isDumb()` only as fail-fast optimization, never as correctness guard.
 - No `suspend` calls inside `readAction {}` lambda — compile error or deadlock.
 - No manual `throw ProcessCanceledException()` — use `ProgressManager.checkCanceled()`.
@@ -135,6 +140,7 @@ A background thread holding a long read lock indirectly freezes EDT (EDT waits f
 - **Dumb mode**: use `DumbAware`, `DumbService.runWhenSmart {}`, or `smartReadAction` where feasible. Line markers, completion and references fire during indexing more often than you think.
 - **Lifecycle ownership**: UI components must create child scopes, not use a parent service scope directly. Disposal cancels the child scope.
 - **API encapsulates execution context**: if an API always needs `Dispatchers.IO`, the API should do it internally — don't force every caller to `launch`.
+- For static taint/SARIF findings, verify reachability through actual guards, loader/type filters and dynamic types before assigning severity. Interface-level `getRunClass()` or `findClass()` sinks can be false positives when earlier branches select metadata-only implementations.
 
 ### 7. Disposal discipline
 

@@ -39,6 +39,9 @@ subprojects {
 
     dependencies {
         add("testImplementation", platform("org.junit:junit-bom:$junitBomVersion"))
+        // Provide a launcher matching the JUnit BOM. Gradle 9 no longer injects one, so a module whose
+        // tests are plain JUnit rather than IntelliJ fixtures fails to start its test worker without it.
+        add("testRuntimeOnly", "org.junit.platform:junit-platform-launcher")
     }
 
     // This syntax is used to avoid duplicated in compileKotlin and compileTestKotlin settings
@@ -54,6 +57,15 @@ subprojects {
                 "-Xjsr305=strict",
                 "-opt-in=org.jetbrains.kotlin.K1Deprecation"
             ))
+        }
+    }
+
+    plugins.withId("org.jetbrains.kotlin.jvm") {
+        val mainClassesDirs = the<SourceSetContainer>()["main"].output.classesDirs
+        tasks.named<KotlinJvmCompile>("compileTestKotlin") {
+            inputs.files(mainClassesDirs)
+                .withPropertyName("mainClassesAbi")
+                .withNormalizer(CompileClasspathNormalizer::class.java)
         }
     }
 

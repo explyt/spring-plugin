@@ -58,4 +58,81 @@ class SpringBoot3ActuatorHttpExchangesInspectionTest : ExplytInspectionJavaTestC
             """.trimIndent()
         )
     }
+
+    fun testLegacyEndpointKeyReported() {
+        myFixture.configureByText(
+            "application.properties",
+            """
+            <warning descr="$KEY_MESSAGE">management.endpoint.httptrace.enabled</warning>=true
+            """.trimIndent()
+        )
+        myFixture.testHighlighting(true, false, false, "application.properties")
+    }
+
+    fun testNewEndpointKeyNotReported() {
+        myFixture.configureByText(
+            "application.properties",
+            """
+            management.endpoint.httpexchanges.enabled=true
+            """.trimIndent()
+        )
+        myFixture.testHighlighting(true, false, false, "application.properties")
+    }
+
+    fun testQuickFixRenamesEndpointKey() {
+        myFixture.configureByText(
+            "application.properties",
+            """
+            management.endpoint.http<caret>trace.enabled=true
+            """.trimIndent()
+        )
+        val fixName = SpringCoreBundle.message("explyt.spring.inspection.boot3.actuator.httptrace.key.fix")
+        val intention = myFixture.findSingleIntention(fixName)
+        myFixture.launchAction(intention)
+        myFixture.checkResult(
+            """
+            management.endpoint.httpexchanges.enabled=true
+            """.trimIndent()
+        )
+    }
+
+    fun testLegacyEndpointKeyReportedInYaml() {
+        myFixture.configureByText(
+            "application.yaml",
+            """
+            management:
+              endpoint:
+                <warning descr="$KEY_MESSAGE">httptrace</warning>:
+                  enabled: true
+            """.trimIndent()
+        )
+        myFixture.testHighlighting(true, false, false, "application.yaml")
+    }
+
+    fun testQuickFixRenamesEndpointKeyInYaml() {
+        myFixture.configureByText(
+            "application.yaml",
+            """
+            management:
+              endpoint:
+                http<caret>trace:
+                  enabled: true
+            """.trimIndent()
+        )
+        val fixName = SpringCoreBundle.message("explyt.spring.inspection.boot3.actuator.httptrace.key.fix")
+        myFixture.launchAction(myFixture.findSingleIntention(fixName))
+        myFixture.checkResult(
+            """
+            management:
+              endpoint:
+                httpexchanges:
+                  enabled: true
+            """.trimIndent()
+        )
+    }
+
+    private companion object {
+        val KEY_MESSAGE: String =
+            SpringCoreBundle.message("explyt.spring.inspection.boot3.actuator.httptrace.key")
+    }
 }

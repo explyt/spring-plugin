@@ -40,13 +40,13 @@ class PropertiesCompletionValueByMetadataTest : AbstractSpringPropertiesCompleti
         myFixture.copyFileToProject("META-INF/additional-spring-configuration-metadata.json")
         myFixture.configureByText("application.properties", "main.code-log-level=<caret>")
         doTest(
-            "DEBUG",
-            "ERROR",
-            "FATAL",
-            "INFO",
-            "OFF",
-            "TRACE",
-            "WARN"
+            "debug",
+            "error",
+            "fatal",
+            "info",
+            "off",
+            "trace",
+            "warn"
         )
     }
 
@@ -54,13 +54,13 @@ class PropertiesCompletionValueByMetadataTest : AbstractSpringPropertiesCompleti
         myFixture.copyFileToProject("META-INF/additional-spring-configuration-metadata.json")
         myFixture.configureByText("application.properties", "main.code-log-level=<caret>")
         doTest(
-            "DEBUG",
-            "ERROR",
-            "FATAL",
-            "INFO",
-            "OFF",
-            "TRACE",
-            "WARN"
+            "debug",
+            "error",
+            "fatal",
+            "info",
+            "off",
+            "trace",
+            "warn"
         )
     }
 
@@ -93,9 +93,9 @@ class PropertiesCompletionValueByMetadataTest : AbstractSpringPropertiesCompleti
             "main.enum-value-additional=SD<caret>"
         )
         doTest(
-            "TUESDAY",
-            "WEDNESDAY",
-            "THURSDAY",
+            "tuesday",
+            "wednesday",
+            "thursday",
         )
     }
 

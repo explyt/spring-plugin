@@ -5,6 +5,7 @@
 
 package com.explyt.spring.data.inspection
 
+import com.explyt.inspection.InspectionAvailability
 import com.explyt.inspection.SpringBaseUastLocalInspectionTool
 import com.explyt.spring.data.SpringDataBundle
 import com.explyt.spring.data.SpringDataClasses
@@ -24,6 +25,7 @@ import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
 class SpringJdbcClientParamInspection : SpringBaseUastLocalInspectionTool() {
 
     override fun isAvailableForFile(file: PsiFile): Boolean {
+        if (!InspectionAvailability.isIndexReady(file)) return false
         val module = ModuleUtilCore.findModuleForPsiElement(file) ?: return false
         val uFile = file.toUElement() as? UFile
         if (uFile != null) {

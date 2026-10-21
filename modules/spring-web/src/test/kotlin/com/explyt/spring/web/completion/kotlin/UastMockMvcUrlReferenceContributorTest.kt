@@ -7,7 +7,11 @@ package com.explyt.spring.web.completion.kotlin
 
 import com.explyt.spring.test.ExplytKotlinLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.web.TestUtil.findTypedReferenceAt
+import com.explyt.spring.web.loader.EndpointElement
 import com.explyt.spring.web.references.ExplytControllerMethodReference
+import com.explyt.spring.web.service.SpringWebEndpointsSearcher
+import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.psi.PsiMember
 import junit.framework.TestCase
 import org.jetbrains.kotlin.psi.KtCallExpression
@@ -22,6 +26,94 @@ class UastMockMvcUrlReferenceContributorTest : ExplytKotlinLightTestCase() {
             TestLibrary.springBootAutoConfigure_3_1_1,
             TestLibrary.springReactiveWeb_3_1_1
         )
+
+    fun testGetCompletionOffersAnAnyMethodMapping() {
+        addAnyMethodController()
+
+        assertEquals(listOf("/any", "/only-get"), variantPaths("get(\"/<caret>\")"))
+    }
+
+    fun testPostResolvesToAnAnyMethodMapping() {
+        addAnyMethodController()
+
+        assertEquals(listOf("any"), resolvedNames("post(\"/<caret>any\")"))
+    }
+
+    fun testOptionsResolvesToAnAnyMethodMapping() {
+        addAnyMethodController()
+
+        assertEquals(listOf("any"), resolvedNames("options(\"/<caret>any\")"))
+    }
+
+    fun testPostDoesNotResolveToAGetMapping() {
+        addAnyMethodController()
+
+        assertEquals(emptyList<String>(), resolvedNames("post(\"/only-<caret>get\")"))
+    }
+
+    fun testGetResolvesToAGetMapping() {
+        addAnyMethodController()
+
+        assertEquals(listOf("onlyGet"), resolvedNames("get(\"/only-<caret>get\")"))
+    }
+
+    private fun addAnyMethodController() {
+        myFixture.addFileToProject(
+            "com/example/AnyController.kt", """
+            package com.example
+
+            import org.springframework.web.bind.annotation.*
+
+            @RestController
+            class AnyController {
+                @RequestMapping("/any")
+                fun any(): String = "any"
+
+                @GetMapping("/only-get")
+                fun onlyGet(): String = "get"
+
+                @PostMapping("/only-post")
+                fun onlyPost(): String = "post"
+            }
+            """.trimIndent()
+        )
+        val byPath = anyControllerEndpoints().associate { it.path to it.requestMethods }
+        assertEquals(
+            mapOf("/any" to emptyList(), "/only-get" to listOf("GET"), "/only-post" to listOf("POST")),
+            byPath
+        )
+    }
+
+    private fun anyControllerEndpoints(): List<EndpointElement> =
+        SpringWebEndpointsSearcher.getInstance(project).getAllEndpoints(module)
+            .filter { it.containingClass?.name == "AnyController" }
+
+    private fun configureRequest(request: String) {
+        myFixture.configureByText(
+            "AnyControllerTest.kt", """
+            import org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+
+            class AnyControllerTest {
+                fun justForTest() {
+                    MockMvcRequestBuilders.$request
+                }
+            }
+            """.trimIndent()
+        )
+    }
+
+    private fun urlReference(request: String): ExplytControllerMethodReference {
+        configureRequest(request)
+        val reference = file.findTypedReferenceAt<ExplytControllerMethodReference>(myFixture.caretOffset)
+        assertNotNull("The URL must carry an endpoint reference", reference)
+        return reference!!
+    }
+
+    private fun resolvedNames(request: String): List<String> =
+        urlReference(request).multiResolve(false).mapNotNull { (it.element as? PsiMember)?.name }.sorted()
+
+    private fun variantPaths(request: String): List<String> =
+        urlReference(request).variants.mapNotNull { (it as? LookupElement)?.lookupString }.sorted()
 
     fun testPut() {
         myFixture.copyFileToProject("ProductController.kt")
@@ -46,6 +138,27 @@ class UastMockMvcUrlReferenceContributorTest : ExplytKotlinLightTestCase() {
         val memberName = resolvedElement?.name
         val classFqn = resolvedElement?.containingClass?.qualifiedName
         TestCase.assertEquals("ProductController#update", "$classFqn#$memberName")
+    }
+
+    /** A URL literal with a host also carries the platform's web reference, so the endpoint one is picked by type. */
+    fun testAbsoluteUrlToThisMachineResolves() {
+        myFixture.copyFileToProject("ProductController.kt")
+        myFixture.configureByText(
+            "ProductControllerTest.kt", """
+            import org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+
+            class ProductControllerTest {
+                fun justForTest() {
+                    MockMvcRequestBuilders.put("http://localhost:8080/product/{pro<caret>duct-id}")
+                }
+            }
+        """.trimIndent()
+        )
+
+        val ref = file.findTypedReferenceAt<ExplytControllerMethodReference>(myFixture.caretOffset)
+        assertNotNull("The absolute URL must carry an endpoint reference", ref)
+        val names = ref!!.multiResolve(true).mapNotNull { (it.element as? PsiMember)?.name }
+        assertEquals(listOf("update"), names)
     }
 
     fun testMultipartFirstArg() {

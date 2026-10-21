@@ -35,19 +35,49 @@ import com.intellij.util.concurrency.AppExecutorUtil
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.toUElementOfType
 import java.util.concurrent.Callable
+import java.util.concurrent.atomic.AtomicBoolean
+
+internal class DetectionRequestGate(
+    private val startDetection: () -> Unit
+) {
+    private val detectionScheduled = AtomicBoolean()
+    private val detectionRequestedAgain = AtomicBoolean()
+
+    fun request() {
+        if (!detectionScheduled.compareAndSet(false, true)) {
+            detectionRequestedAgain.set(true)
+            return
+        }
+
+        startDetection()
+    }
+
+    fun completed() {
+        detectionScheduled.set(false)
+        if (detectionRequestedAgain.getAndSet(false)) {
+            request()
+        }
+    }
+}
 
 @Service(Service.Level.PROJECT)
 class SpringRunConfigurationDetectService(
     private val project: Project
 ) : Disposable {
     private val runManager by lazy { RunManager.getInstance(project) }
+    private val detectionRequests = DetectionRequestGate(::startDetection)
 
     private fun runDetection() {
+        detectionRequests.request()
+    }
+
+    private fun startDetection() {
         ReadAction.nonBlocking(Callable {
             if (!SpringCoreUtil.isSpringBootProject(project)) return@Callable emptyList()
             searchForRunConfigurations()
         })
             .inSmartMode(project)
+            .expireWith(this)
             .finishOnUiThread(ModalityState.nonModal()) { configurations ->
                 if (configurations.isEmpty())
                     return@finishOnUiThread
@@ -55,6 +85,7 @@ class SpringRunConfigurationDetectService(
                 saveRunConfigurations(configurations)
             }
             .submit(AppExecutorUtil.getAppScheduledExecutorService())
+            .onProcessed { detectionRequests.completed() }
     }
 
     private fun searchForRunConfigurations(): List<SpringBootRunConfiguration> {

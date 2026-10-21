@@ -41,8 +41,34 @@ class SpringPropertiesInspectionTest : ExplytInspectionJavaTestCase() {
         myFixture.configureByText(
             "application.properties",
             """
-            <warning descr="Should be kebab-case">test.fooBar</warning>=1
+            test.<weak_warning descr="Key is not in Spring's canonical form">fooBar</weak_warning>=1
             test.foo-bar1=2
+            """.trimIndent()
+        )
+        myFixture.testHighlighting("application.properties")
+    }
+
+    fun testLoggingLevelUppercaseValueIsNotAnError() {
+        myFixture.configureByText(
+            "application.properties",
+            """
+            logging.level.root=INFO
+            logging.level.org.springframework.kafka=DEBUG
+            """.trimIndent()
+        )
+        myFixture.testHighlighting("application.properties")
+    }
+
+    fun testHintValueGateUsesValuesHint() {
+        myFixture.copyFileToProject(
+            "hintValueGate/META-INF/additional-spring-configuration-metadata.json",
+            "META-INF/additional-spring-configuration-metadata.json"
+        )
+        myFixture.configureByText(
+            "application.properties",
+            """
+            explyt.modes.mode=<error descr="Invalid value 'hyper', must be one of [fast, slow]">hyper</error>
+            explyt.maponly.beta=anything
             """.trimIndent()
         )
         myFixture.testHighlighting("application.properties")
@@ -95,7 +121,7 @@ class SpringPropertiesInspectionTest : ExplytInspectionJavaTestCase() {
             "application.properties",
             """
             logging.level.org.hibernate.type.descriptor.sql.BasicBinder=debug
-            <warning descr="Should be kebab-case">spring.jpa.databasePlatform</warning>=org.hibernate.dialect.PostgreSQLDialect
+            spring.jpa.<weak_warning descr="Key is not in Spring's canonical form">databasePlatform</weak_warning>=org.hibernate.dialect.PostgreSQLDialect
             """.trimIndent()
         )
         myFixture.testHighlighting("application.properties")

@@ -10,6 +10,8 @@ import com.explyt.spring.core.SpringIcons
 import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.core.service.beans.discoverer.SpringBeanRegistrarAdditionalBeansDiscoverer.Companion.BEAN_REGISTRAR
 import com.explyt.spring.core.service.beans.discoverer.SpringBeanRegistrarAdditionalBeansDiscoverer.Companion.BEAN_REGISTRAR_DSL
+import com.explyt.spring.core.statistic.StatisticActionId
+import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.util.ExplytPsiUtil.isPublic
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
@@ -49,7 +51,10 @@ class SpringRegistrarBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
     ) {
         val sourcePsi = method.uastAnchor?.sourcePsi ?: return
-        val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBean)
+        val builder = NavigationGutterIconBuilder.create(
+            SpringIcons.SpringBean,
+            SpringCoreBundle.message("explyt.spring.gutter.group.bean")
+        )
             .setAlignment(GutterIconRenderer.Alignment.LEFT)
             .setTargets(NotNullLazyValue.lazy { findFieldsAndMethodsWithAutowired(method) })
             .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.autowired.candidate"))
@@ -62,11 +67,12 @@ class SpringRegistrarBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
     private fun findFieldsAndMethodsWithAutowired(uMethod: UMethod): Set<PsiElement> {
         val psiMethod = uMethod.javaPsi
         val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return emptySet()
+        StatisticService.getInstance().addActionUsage(StatisticActionId.GUTTER_BEAN_USAGE)
         val searchService = SpringSearchServiceFacade.getInstance(psiMethod.project)
         val registrarBeansByUMethod = searchService.getAllActiveBeans(module)
             .filter { it.isMember() && (it.psiMember.toUElement() as? UMethod) == uMethod }
         return registrarBeansByUMethod.mapNotNull { it.psiClass.toUElement() as? UClass }
-            .flatMap { searchService.findFieldsAndMethodsWithAutowired(it, null, module) }
+            .flatMap { searchService.findInjectionPoints(it, null, module) }
             .toSet()
     }
 }

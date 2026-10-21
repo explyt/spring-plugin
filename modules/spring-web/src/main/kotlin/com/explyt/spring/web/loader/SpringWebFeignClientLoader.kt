@@ -10,6 +10,7 @@ import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.core.util.UastUtil.getPropertyValue
 import com.explyt.spring.web.SpringWebClasses
+import com.explyt.spring.web.util.MappingPathPlaceholders
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.util.ExplytAnnotationUtil.getStringValue
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
@@ -26,6 +27,8 @@ import com.intellij.psi.util.CachedValuesManager
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UExpression
 import org.jetbrains.uast.toUElementOfType
+
+private const val FEIGN_DEFAULT_METHOD = "GET"
 
 class SpringWebFeignClientLoader(val project: Project) : SpringWebEndpointsLoader {
     private val cachedValuesManager = CachedValuesManager.getManager(project)
@@ -114,15 +117,20 @@ class SpringWebFeignClientLoader(val project: Project) : SpringWebEndpointsLoade
 
             val requestMethods = requestMapping.getAnnotationMemberValues(method, setOf("method"))
                 .map { it.text.split('.').last() }
+                .ifEmpty { listOf(FEIGN_DEFAULT_METHOD) }
 
             for (value in values) {
                 result += EndpointElement(
-                    simplifyUrl(prefix, value),
+                    simplifyUrl(
+                        MappingPathPlaceholders.resolve(module, prefix),
+                        MappingPathPlaceholders.resolve(module, value)
+                    ),
                     requestMethods,
                     method,
                     psiClass,
                     null,
-                    EndpointType.SPRING_OPEN_FEIGN
+                    EndpointType.SPRING_OPEN_FEIGN,
+                    pathTemplate = simplifyUrl(prefix, value),
                 )
             }
         }

@@ -11,10 +11,13 @@ import com.explyt.spring.web.SpringWebBundle
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.editor.openapi.OpenApiUtils
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
+import com.explyt.spring.web.util.HandlerMethods
+import com.explyt.spring.web.util.HandlerMethods.firstPathOrNull
+import com.explyt.spring.web.util.MappingPathPlaceholders
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytUastUtil.getCommentText
-import com.intellij.codeInsight.AnnotationUtil
+
 import com.intellij.codeInsight.daemon.LineMarkerInfo
 import com.intellij.codeInsight.daemon.LineMarkerProviderDescriptor
 import com.intellij.openapi.editor.markup.GutterIconRenderer
@@ -45,35 +48,21 @@ class ControllerEndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor
 
         val module = ModuleUtilCore.findModuleForPsiElement(psiElement) ?: return null
 
-        if (!psiMethod.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING)) return null
         val psiClass = psiMethod.containingClass ?: return null
         if (!psiClass.isMetaAnnotatedBy(SpringWebClasses.CONTROLLER)) return null
+        val mappingSource = SpringWebUtil.requestMappingSourceOf(psiMethod) ?: return null
         val controllerName = psiClass.name ?: return null
 
         val requestMappingMah = MetaAnnotationsHolder.of(module, SpringWebClasses.REQUEST_MAPPING)
-        val path = requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("path", "value")).asSequence()
-            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
-            .firstOrNull() ?: ""
+        val mapping = HandlerMethods.methodMapping(mappingSource, requestMappingMah)
+        val path = mapping.firstPathOrNull() ?: return null
         if (OpenApiUtils.isAbsolutePath(path)) return null
 
-        val prefix = if (psiClass.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING)) {
-            requestMappingMah.getAnnotationMemberValues(psiClass, setOf("path", "value")).asSequence()
-                .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
-                .firstOrNull() ?: ""
-        } else {
-            ""
-        }
+        val prefix = HandlerMethods.requestMappingPrefixes(psiClass, requestMappingMah).firstOrNull() ?: ""
         if (OpenApiUtils.isAbsolutePath(prefix)) return null
 
-        val fullPath = SpringWebUtil.simplifyUrl("$prefix/$path")
+        val fullPath = SpringWebUtil.simplifyUrl(MappingPathPlaceholders.resolve(module, "$prefix/$path"))
 
-        val requestMethods =
-            requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("method"))
-                .map { it.text.split('.').last() }
-        val produces = requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("produces"))
-            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
-        val consumes = requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("consumes"))
-            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
 
         val description = uMethod.comments.firstOrNull()?.getCommentText() ?: ""
         val returnType = uMethod.returnType
@@ -81,7 +70,7 @@ class ControllerEndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor
 
         val endpointElement = EndpointInfo(
             fullPath,
-            requestMethods,
+            mapping.methods,
             psiElement,
             uMethod.name,
             controllerName.replace("controller", "", true)
@@ -92,8 +81,8 @@ class ControllerEndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor
             SpringWebUtil.collectRequestParameters(psiMethod),
             SpringWebUtil.getRequestBodyInfo(psiMethod),
             SpringWebUtil.collectRequestHeaders(psiMethod),
-            produces,
-            consumes
+            mapping.produces,
+            mapping.consumes
         )
 
         return LineMarkerInfo(

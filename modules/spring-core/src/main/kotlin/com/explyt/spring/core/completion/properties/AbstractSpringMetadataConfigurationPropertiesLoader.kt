@@ -91,10 +91,17 @@ abstract class AbstractSpringMetadataConfigurationPropertiesLoader(project: Proj
             }
             ?.findProperty(VALUES)?.value as? JsonArray ?: return null
 
-        val value = values.valueList.asSequence()
+        // A hint literal is matched the way Spring binds it: `INFO`, `Info` and `info` all name the `info` literal, so
+        // the written spelling must not decide whether navigation works. An exact match still wins over a case-only
+        // one, in case a hint ships two literals that differ by case alone.
+        val matching = values.valueList.asSequence()
             .mapNotNull { it as? JsonObject }
-            .firstOrNull { it.findProperty(VALUE)?.value?.text == "\"$valueName\"" }
-            ?.propertyList?.firstOrNull { it.name == VALUE } ?: return null
+            .mapNotNull { it.findProperty(VALUE) }
+            .filter { (it.value as? JsonStringLiteral)?.value.equals(valueName, ignoreCase = true) }
+            .toList()
+        val value = matching.firstOrNull { (it.value as JsonStringLiteral).value == valueName }
+            ?: matching.firstOrNull()
+            ?: return null
 
         return ElementHint((value.value as JsonStringLiteral).value, value)
     }
