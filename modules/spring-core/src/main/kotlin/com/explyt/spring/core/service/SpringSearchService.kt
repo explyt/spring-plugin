@@ -385,7 +385,8 @@ class SpringSearchService(private val project: Project) {
         modulePackagesHolder.importersByImported.entries.asSequence()
             .filter { (imported, _) -> imported in modulePackagesHolder.enabledPropertiesQualified }
             .mapNotNull { (imported, importers) ->
-                val psiClass = findImportClass(imported, module)?.takeIf { it in scannedClasses && it.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT) }
+                val psiClass = findImportClass(imported, module)
+                    ?.takeIf { it in scannedClasses && it.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT) }
                     ?: return@mapNotNull null
                 val prefix = configurationPropertiesPrefixOf(psiClass, module)
                 val beanName = RegisteredBeanNames.enabledProperties(psiClass, prefix) ?: return@mapNotNull null
