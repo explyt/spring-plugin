@@ -74,11 +74,13 @@ object ActuatorWebExtensions {
         }
 
     private fun webExtensionAnnotations(module: Module): Collection<PsiClass>? {
-        val annotationScope = module.getModuleWithDependenciesAndLibrariesScope(false)
-            .union(module.getModuleRuntimeScope(false))
-        val annotation = JavaPsiFacade.getInstance(module.project)
-            .findClass(SpringCoreClasses.ACTUATOR_ENDPOINT_WEB_EXTENSION, annotationScope) ?: return null
-        return ActuatorEndpointKeys.annotationWithChildren(annotation, annotationScope)
+        val scopes = listOf(module.getModuleWithDependenciesAndLibrariesScope(false), module.getModuleRuntimeScope(false))
+        val facade = JavaPsiFacade.getInstance(module.project)
+        val annotation = scopes.firstNotNullOfOrNull {
+            facade.findClass(SpringCoreClasses.ACTUATOR_ENDPOINT_WEB_EXTENSION, it)
+        } ?: return null
+        return scopes.flatMap { ActuatorEndpointKeys.annotationWithChildren(annotation, it) }
+            .distinctBy { it.qualifiedName }
     }
 
     private fun byEndpoint(module: Module): Map<String, List<ActuatorWebExtension>> =
