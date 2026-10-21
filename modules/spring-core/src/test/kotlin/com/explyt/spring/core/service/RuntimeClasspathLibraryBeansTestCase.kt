@@ -36,6 +36,10 @@ abstract class RuntimeClasspathLibraryBeansTestCase : ExplytMultiModuleTestCase(
     protected abstract val applicationText: String
     protected abstract val consumerFileName: String
     protected abstract val consumerText: String
+    protected abstract val testConsumerFileName: String
+    protected abstract val testConsumerText: String
+    protected abstract val mockMvcTestFileName: String
+    protected abstract val mockMvcTestText: String
 
     override fun setUp() {
         super.setUp()
@@ -85,6 +89,41 @@ abstract class RuntimeClasspathLibraryBeansTestCase : ExplytMultiModuleTestCase(
         assertEquals("The qualified advisor must be reported missing: $problems", 1, problems.size)
     }
 
+    fun testTestScopeStarterIsABeanSourceOfTheTests() {
+        addLibraries(module, listOf(TestLibrary.springTx_6_0_7), DependencyScope.TEST)
+        assertOnlyOnTestClasspath(STARTER_CONFIGURATION)
+        writeApplication()
+
+        val active = activeBeanClasses()
+        assertTrue("The test-scope starter's @Bean must be a bean the tests see: $active", STARTER_ADVISOR in active)
+        val testConsumer = addTestSourceFileToModule(module, testConsumerFileName, testConsumerText)
+        assertEquals(emptyList<String>(), autowiringProblems(testConsumer))
+    }
+
+    fun testTestScopeMockMvcIsInjectableIntoASpringBootTest() {
+        addLibraries(
+            module,
+            listOf(TestLibrary.springBootTestAutoConfigure_3_1_1, TestLibrary.springTest_6_0_7),
+            DependencyScope.TEST
+        )
+        assertOnlyOnTestClasspath(MOCK_MVC_AUTO_CONFIGURATION)
+        writeApplication()
+
+        val mockMvcTest = addTestSourceFileToModule(module, mockMvcTestFileName, mockMvcTestText)
+        assertEquals(emptyList<String>(), autowiringProblems(mockMvcTest))
+    }
+
+    private fun assertOnlyOnTestClasspath(fqn: String) {
+        assertNotNull(
+            "Precondition: a test-scope jar is on the module's test classpath",
+            findClass(fqn, GlobalSearchScope.moduleWithLibrariesScope(module))
+        )
+        assertNull(
+            "Precondition: a test-scope jar is not on the production runtime classpath",
+            findClass(fqn, module.getModuleRuntimeScope(false))
+        )
+    }
+
     private fun assertApplicationHasTheStarterBeans() {
         writeApplication()
 
@@ -131,5 +170,7 @@ abstract class RuntimeClasspathLibraryBeansTestCase : ExplytMultiModuleTestCase(
     protected companion object {
         const val STARTER_CONFIGURATION = "org.springframework.transaction.annotation.ProxyTransactionManagementConfiguration"
         const val STARTER_ADVISOR = "org.springframework.transaction.interceptor.BeanFactoryTransactionAttributeSourceAdvisor"
+        const val MOCK_MVC_AUTO_CONFIGURATION =
+            "org.springframework.boot.test.autoconfigure.web.servlet.MockMvcAutoConfiguration"
     }
 }

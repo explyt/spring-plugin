@@ -40,4 +40,42 @@ class RuntimeClasspathLibraryBeansTest : RuntimeClasspathLibraryBeansTestCase() 
             lateinit var advisor: Advisor
         }
     """.trimIndent()
+
+    override val testConsumerFileName = "com/example/app/AdvisorTestConsumer.kt"
+
+    @Language("kotlin")
+    override val testConsumerText = """
+        package com.example.app
+
+        import org.springframework.aop.Advisor
+        import org.springframework.beans.factory.annotation.Autowired
+        import org.springframework.beans.factory.annotation.Qualifier
+        import org.springframework.stereotype.Component
+
+        @Component
+        class AdvisorTestConsumer {
+            @Autowired
+            @Qualifier("org.springframework.transaction.config.internalTransactionAdvisor")
+            lateinit var advisor: Advisor
+        }
+    """.trimIndent()
+
+    override val mockMvcTestFileName = "com/example/app/GatewayMockMvcTest.kt"
+
+    @Language("kotlin")
+    override val mockMvcTestText = """
+        package com.example.app
+
+        import org.springframework.beans.factory.annotation.Autowired
+        import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+        import org.springframework.boot.test.context.SpringBootTest
+        import org.springframework.test.web.servlet.MockMvc
+
+        @SpringBootTest
+        @AutoConfigureMockMvc
+        class GatewayMockMvcTest {
+            @Autowired
+            lateinit var mockMvc: MockMvc
+        }
+    """.trimIndent()
 }

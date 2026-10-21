@@ -41,4 +41,42 @@ class RuntimeClasspathLibraryBeansTest : RuntimeClasspathLibraryBeansTestCase() 
             Advisor advisor;
         }
     """.trimIndent()
+
+    override val testConsumerFileName = "com/example/app/AdvisorTestConsumer.java"
+
+    @Language("java")
+    override val testConsumerText = """
+        package com.example.app;
+
+        import org.springframework.aop.Advisor;
+        import org.springframework.beans.factory.annotation.Autowired;
+        import org.springframework.beans.factory.annotation.Qualifier;
+        import org.springframework.stereotype.Component;
+
+        @Component
+        public class AdvisorTestConsumer {
+            @Autowired
+            @Qualifier("org.springframework.transaction.config.internalTransactionAdvisor")
+            Advisor advisor;
+        }
+    """.trimIndent()
+
+    override val mockMvcTestFileName = "com/example/app/GatewayMockMvcTest.java"
+
+    @Language("java")
+    override val mockMvcTestText = """
+        package com.example.app;
+
+        import org.springframework.beans.factory.annotation.Autowired;
+        import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+        import org.springframework.boot.test.context.SpringBootTest;
+        import org.springframework.test.web.servlet.MockMvc;
+
+        @SpringBootTest
+        @AutoConfigureMockMvc
+        public class GatewayMockMvcTest {
+            @Autowired
+            MockMvc mockMvc;
+        }
+    """.trimIndent()
 }
