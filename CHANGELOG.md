@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Spring Core
+- fix: A `@ConfigurationProperties` class without `@Component` is a bean only when `@EnableConfigurationProperties` or `@ConfigurationPropertiesScan` registers it, named `<prefix>-<fully qualified class name>` as Spring does; a component scan alone no longer makes it a bean (#741)
 - fix: Beans registered by `@Import` and `@EnableConfigurationProperties` get the names Spring gives them: the fully qualified class name, or `<prefix>-<fully qualified name>` for prefixed configuration properties, instead of the component-scan default name (#781)
 - fix: A scanned component also listed in `@EnableConfigurationProperties` is two beans, as in Spring: the scan bean and `<prefix>-<fully qualified name>` conditioned on the enabling configuration, so injecting it by type is ambiguous unless a qualifier or the injection point name selects one (#782)
 - fix: After you edit a `String` or primitive constant used in a mapping, such as `@GetMapping(PATH)`, the Endpoints tool window and gutters show the new path instead of the old one

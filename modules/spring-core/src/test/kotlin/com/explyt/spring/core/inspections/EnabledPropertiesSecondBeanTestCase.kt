@@ -116,7 +116,7 @@ abstract class EnabledPropertiesSecondBeanTestCase : ExplytInspectionBaseTestCas
         assertEquals(emptyList<String>(), autowiringErrorsOf(consumerSource(qualifier = null, SCANNED_PACKAGE, fieldName = NEUTRAL_FIELD)))
     }
 
-    fun _testPlainPropertiesInScanRootEnabledIsNamedByTheRegistrar() {
+    fun testPlainPropertiesInScanRootEnabledIsNamedByTheRegistrar() {
         addPlainPropertiesInScanRoot()
 
         assertPropertiesBeans(listOf(ENABLED_NAME))
