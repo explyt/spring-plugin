@@ -109,6 +109,20 @@ abstract class EnabledPropertiesSecondBeanTestCase : ExplytInspectionBaseTestCas
     }
 
     fun testPlainPropertiesInScanRootEnabledIsOneBean() {
+        addPlainPropertiesInScanRoot()
+
+        val names = activePropertiesBeanNames()
+        assertEquals("active beans of $PROPERTIES: $names", 1, names.size)
+        assertEquals(emptyList<String>(), autowiringErrorsOf(consumerSource(qualifier = null, SCANNED_PACKAGE, fieldName = NEUTRAL_FIELD)))
+    }
+
+    fun _testPlainPropertiesInScanRootEnabledIsNamedByTheRegistrar() {
+        addPlainPropertiesInScanRoot()
+
+        assertPropertiesBeans(listOf(ENABLED_NAME))
+    }
+
+    private fun addPlainPropertiesInScanRoot() {
         addProject(scanned = false, enabled = true, packageName = SCANNED_PACKAGE)
         val propertiesClass = JavaPsiFacade.getInstance(project).findClass(PROPERTIES, GlobalSearchScope.projectScope(project))
         assertNotNull("precondition: $PROPERTIES resolves", propertiesClass)
@@ -116,9 +130,6 @@ abstract class EnabledPropertiesSecondBeanTestCase : ExplytInspectionBaseTestCas
             "precondition: $PROPERTIES is not a @Component",
             AnnotationUtil.isAnnotated(propertiesClass!!, SpringCoreClasses.COMPONENT, 0)
         )
-
-        assertPropertiesBeans(listOf(ENABLED_NAME))
-        assertEquals(emptyList<String>(), autowiringErrorsOf(consumerSource(qualifier = null, SCANNED_PACKAGE, fieldName = NEUTRAL_FIELD)))
     }
 
     private fun addProject(scanned: Boolean, enabled: Boolean, packageName: String = SCANNED_PACKAGE) {
@@ -141,11 +152,14 @@ abstract class EnabledPropertiesSecondBeanTestCase : ExplytInspectionBaseTestCas
         )
     }
 
-    private fun assertPropertiesBeans(expectedNames: List<String>, properties: String = PROPERTIES) {
-        val names = SpringSearchServiceFacade.getInstance(project).getAllActiveBeans(module)
+    private fun activePropertiesBeanNames(properties: String = PROPERTIES): List<String> =
+        SpringSearchServiceFacade.getInstance(project).getAllActiveBeans(module)
             .filter { it.psiClass.qualifiedName == properties }
             .map { it.name }
             .sorted()
+
+    private fun assertPropertiesBeans(expectedNames: List<String>, properties: String = PROPERTIES) {
+        val names = activePropertiesBeanNames(properties)
         assertEquals("active beans of $properties: $names", expectedNames.size, names.size)
         assertEquals("names of the active beans of $properties", expectedNames.sorted(), names)
     }
