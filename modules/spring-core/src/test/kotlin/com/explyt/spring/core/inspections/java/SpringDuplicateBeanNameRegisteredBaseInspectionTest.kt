@@ -7,13 +7,16 @@ package com.explyt.spring.core.inspections.java
 
 import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.inspections.SpringDuplicateBeanNameInspection
+import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.test.ExplytBaseLightTestCase
 import com.explyt.spring.test.TestLibrary
 import com.intellij.codeInsight.daemon.impl.HighlightInfo
 import com.intellij.lang.annotation.HighlightSeverity
+import com.intellij.psi.PsiModifier
 
 private const val CONFIGURATION = "org.springframework.context.annotation.Configuration"
+private const val PROFILE = "org.springframework.context.annotation.Profile"
 
 class SpringDuplicateBeanNameRegisteredBaseInspectionTest : ExplytBaseLightTestCase() {
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springBootAutoConfigure_3_4_0)
@@ -24,57 +27,139 @@ class SpringDuplicateBeanNameRegisteredBaseInspectionTest : ExplytBaseLightTestC
     }
 
     fun testOverrideWithBeanInRegisteredSubclassOfRegisteredBaseFailsAtStartup() {
-        assertStartupFailure(highlights(baseAnnotation = "@Configuration", overrideAnnotation = "@Bean @Override"))
+        val problems = highlights(baseAnnotations = "@Configuration", overrideAnnotation = "@Bean @Override")
+
+        assertScannedBean("demo.Base")
+        assertStartupFailure(problems)
     }
 
     fun testOverrideWithoutBeanInRegisteredSubclassOfRegisteredBaseFailsAtStartup() {
-        assertStartupFailure(highlights(baseAnnotation = "@Configuration", overrideAnnotation = "@Override"))
+        val problems = highlights(baseAnnotations = "@Configuration", overrideAnnotation = "@Override")
+
+        assertScannedBean("demo.Base")
+        assertStartupFailure(problems)
     }
 
     fun testOverrideInRegisteredSubclassOfPlainBaseIsNotReported() {
-        val problems = highlights(baseAnnotation = "", overrideAnnotation = "@Bean @Override")
+        val problems = highlights(baseAnnotations = "", overrideAnnotation = "@Bean @Override")
 
         assertFalse("Precondition: demo.Base is not registered", myFixture.findClass("demo.Base").hasAnnotation(CONFIGURATION))
         assertEmpty(problems)
     }
 
-    fun testOverrideInRegisteredSubclassOfRegisteredBaseWithAllowedOverridingIsNotAnError() {
-        myFixture.addFileToProject("application.properties", "spring.main.allow-bean-definition-overriding=true")
-        ModificationTrackerManager.getInstance(project).invalidateAll()
+    fun testOverrideOfAbstractConfigurationBaseIsNotReported() {
+        val problems = highlights(baseAnnotations = "@Configuration", overrideAnnotation = "@Bean @Override", baseModifiers = "abstract")
 
-        val problems = highlights(baseAnnotation = "@Configuration", overrideAnnotation = "@Bean @Override")
-
+        val base = myFixture.findClass("demo.Base")
+        assertTrue("Precondition: demo.Base is a @Configuration", base.hasAnnotation(CONFIGURATION))
+        assertTrue("Precondition: demo.Base is abstract, so no scan registers it", base.hasModifierProperty(PsiModifier.ABSTRACT))
         assertEmpty(problems.filter { it.severity >= HighlightSeverity.WARNING })
     }
 
-    private fun highlights(baseAnnotation: String, overrideAnnotation: String): List<HighlightInfo> {
-        myFixture.configureByText(
-            "Child.java",
+    fun testOverrideOfConfigurationBaseOutsideScanRootsIsNotReported() {
+        val problems = highlights(baseAnnotations = "@Configuration", overrideAnnotation = "@Bean @Override", basePackage = "outside")
+
+        assertTrue("Precondition: outside.Base is a @Configuration", myFixture.findClass("outside.Base").hasAnnotation(CONFIGURATION))
+        assertNotScannedBean("outside.Base")
+        assertEmpty(problems.filter { it.severity >= HighlightSeverity.WARNING })
+    }
+
+    fun testOverrideOfConfigurationBaseWithInactiveProfileIsNotReported() {
+        val problems = highlights(baseAnnotations = "@Configuration @Profile(\"off\")", overrideAnnotation = "@Bean @Override")
+
+        val profile = myFixture.findClass("demo.Base").getAnnotation(PROFILE)
+        assertEquals("Precondition: demo.Base is active only in profile 'off'", "\"off\"", profile?.findAttributeValue("value")?.text)
+        assertNull("Precondition: no profile is activated", myFixture.findFileInTempDir("application.properties"))
+        assertEmpty(problems.filter { it.severity >= HighlightSeverity.WARNING })
+    }
+
+    fun testOverrideInRegisteredSubclassOfRegisteredBaseWithAllowedOverridingIsWeak() {
+        myFixture.addFileToProject("application.properties", "spring.main.allow-bean-definition-overriding=true")
+        ModificationTrackerManager.getInstance(project).invalidateAll()
+
+        val problems = highlights(baseAnnotations = "@Configuration", overrideAnnotation = "@Bean @Override")
+
+        assertScannedBean("demo.Base")
+        assertEmpty(problems.filter { it.severity >= HighlightSeverity.WARNING })
+        val weak = problems.filter { it.severity == HighlightSeverity.WEAK_WARNING }
+        assertEquals("one weak warning for bean 'animal': ${problems.map { it.text to it.description }}", 1, weak.size)
+        assertEquals(
+            SpringCoreBundle.message("explyt.spring.inspection.bean.name.duplicate.overriding.allowed", "animal", "Base.animal"),
+            weak.single().description
+        )
+    }
+
+    private fun highlights(
+        baseAnnotations: String,
+        overrideAnnotation: String,
+        basePackage: String = "demo",
+        baseModifiers: String = "",
+    ): List<HighlightInfo> {
+        myFixture.addFileToProject(
+            "demo/App.java",
             """
             package demo;
 
+            import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+            @SpringBootApplication
+            public class App {}
+            """.trimIndent()
+        )
+        myFixture.addFileToProject("model/Animal.java", "package model;\n\npublic class Animal {}")
+        myFixture.addFileToProject("model/Dog.java", "package model;\n\npublic class Dog extends Animal {}")
+        myFixture.addFileToProject(
+            "$basePackage/Base.java",
+            """
+            package $basePackage;
+
+            import model.Animal;
+            import org.springframework.context.annotation.Bean;
+            import org.springframework.context.annotation.Configuration;
+            import org.springframework.context.annotation.Profile;
+
+            $baseAnnotations
+            public $baseModifiers class Base {
+                @Bean public Animal animal() { return new Animal(); }
+            }
+            """.trimIndent()
+        )
+        val child = myFixture.addFileToProject(
+            "demo/Child.java",
+            """
+            package demo;
+
+            import model.Dog;
             import org.springframework.context.annotation.Bean;
             import org.springframework.context.annotation.Configuration;
 
-            class Animal {}
-
-            class Dog extends Animal {}
-
-            $baseAnnotation
-            class Base {
-                @Bean public Animal animal() { return new Animal(); }
-            }
-
             @Configuration
-            public class Child extends Base {
+            public class Child extends $basePackage.Base {
                 $overrideAnnotation public Dog animal() { return new Dog(); }
             }
             """.trimIndent()
         )
+        myFixture.configureFromExistingVirtualFile(child.virtualFile)
+        val base = myFixture.findClass("$basePackage.Base")
         assertTrue("Precondition: demo.Child is a @Configuration", myFixture.findClass("demo.Child").hasAnnotation(CONFIGURATION))
-        assertEquals("Precondition: demo.Child extends demo.Base", myFixture.findClass("demo.Base"), myFixture.findClass("demo.Child").superClass)
+        assertEquals("Precondition: demo.Child extends $basePackage.Base", base, myFixture.findClass("demo.Child").superClass)
         val inspectionId = SpringDuplicateBeanNameInspection().shortName
-        return myFixture.doHighlighting().filter { it.inspectionToolId == inspectionId }
+        val problems = myFixture.doHighlighting().filter { it.inspectionToolId == inspectionId }
+        assertScannedBean("demo.Child")
+        return problems
+    }
+
+    private fun activeBeanClasses(): Set<String?> =
+        SpringSearchServiceFacade.getInstance(project).getAllActiveBeans(module)
+            .filter { it.psiMember == it.psiClass }
+            .mapTo(mutableSetOf()) { it.psiClass.qualifiedName }
+
+    private fun assertScannedBean(qualifiedName: String) {
+        assertTrue("Precondition: $qualifiedName is inside the application's scan roots", qualifiedName in activeBeanClasses())
+    }
+
+    private fun assertNotScannedBean(qualifiedName: String) {
+        assertFalse("Precondition: $qualifiedName is outside the application's scan roots", qualifiedName in activeBeanClasses())
     }
 
     private fun assertStartupFailure(problems: List<HighlightInfo>) {
