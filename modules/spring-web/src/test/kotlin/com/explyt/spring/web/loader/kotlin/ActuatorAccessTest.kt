@@ -36,6 +36,7 @@ class ActuatorAccessTest : ExplytKotlinLightTestCase() {
 
     override fun setUp() {
         super.setUp()
+        myFixture.addFileToProject("DemoApplication.kt", APPLICATION)
         val scope = GlobalSearchScope.allScope(project)
         assertNotNull(
             "precondition: Boot's ShutdownEndpoint is on the classpath",
