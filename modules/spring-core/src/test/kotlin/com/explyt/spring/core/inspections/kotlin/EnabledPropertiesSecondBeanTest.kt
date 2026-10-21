@@ -1,0 +1,59 @@
+/*
+ * Copyright (c) 2026 Explyt Ltd
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+package com.explyt.spring.core.inspections.kotlin
+
+import com.explyt.spring.core.inspections.EnabledPropertiesSecondBeanTestCase
+
+class EnabledPropertiesSecondBeanTest : EnabledPropertiesSecondBeanTestCase() {
+
+    override val extension = "kt"
+
+    override fun applicationSource() = """
+        package app
+
+        import org.springframework.boot.autoconfigure.SpringBootApplication
+
+        @SpringBootApplication
+        open class App
+    """.trimIndent()
+
+    override fun propertiesSource(scanned: Boolean) = """
+        package app
+
+        import org.springframework.boot.context.properties.ConfigurationProperties
+        import org.springframework.stereotype.Component
+
+        ${if (scanned) "@Component" else ""}
+        @ConfigurationProperties(prefix = "$PREFIX")
+        open class Props
+    """.trimIndent()
+
+    override fun enablerSource() = """
+        package app
+
+        import org.springframework.boot.context.properties.EnableConfigurationProperties
+        import org.springframework.context.annotation.Configuration
+
+        @Configuration
+        @EnableConfigurationProperties(Props::class)
+        open class PropsConfig
+    """.trimIndent()
+
+    override fun consumerSource(qualifier: String?) = """
+        package app
+
+        import org.springframework.beans.factory.annotation.Autowired
+        import org.springframework.beans.factory.annotation.Qualifier
+        import org.springframework.stereotype.Component
+
+        @Component
+        class Consumer {
+            @Autowired
+            ${qualifier?.let { "@Qualifier(\"$it\")" } ?: ""}
+            lateinit var props: Props
+        }
+    """.trimIndent()
+}
