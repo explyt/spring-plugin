@@ -10,6 +10,7 @@ import com.explyt.spring.test.TestLibrary
 import com.explyt.spring.web.loader.EndpointElement
 import com.explyt.spring.web.loader.EndpointType
 import com.explyt.spring.web.loader.SpringWebEndpointsLoader
+import com.intellij.openapi.roots.ProjectFileIndex
 
 class ActuatorEndpointLoaderTest : ExplytJavaLightTestCase() {
 
@@ -42,13 +43,18 @@ class ActuatorEndpointLoaderTest : ExplytJavaLightTestCase() {
     }
 
     /**
-     * Reads through the extension point rather than through a directly instantiated loader, so the test also proves
-     * the loader is registered and reachable.
+     * The endpoints the project declares. Reads through the extension point rather than through a directly
+     * instantiated loader, so the test also proves the loader is registered and reachable; the built-in ones the
+     * actuator library brings are covered by `ActuatorBuiltInEndpointsTest`.
      */
     private fun actuatorEndpoints(): List<EndpointElement> =
         SpringWebEndpointsLoader.EP_NAME.getExtensions(module.project).asSequence()
             .filter { it.getType() == EndpointType.ACTUATOR }
             .filter { it.isApplicable(module) }
             .flatMap { it.searchEndpoints(module) }
+            .filter { endpoint ->
+                endpoint.containingClass?.containingFile?.virtualFile
+                    ?.let { ProjectFileIndex.getInstance(project).isInSourceContent(it) } == true
+            }
             .toList()
 }

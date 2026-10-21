@@ -14,6 +14,8 @@ object SpringCoreClasses {
     const val ACTUATOR_WRITE_OPERATION = "org.springframework.boot.actuate.endpoint.annotation.WriteOperation"
     const val ACTUATOR_DELETE_OPERATION = "org.springframework.boot.actuate.endpoint.annotation.DeleteOperation"
     const val ACTUATOR_SELECTOR = "org.springframework.boot.actuate.endpoint.annotation.Selector"
+    const val ACTUATOR_ENDPOINT_AUTO_CONFIGURATION =
+        "org.springframework.boot.actuate.autoconfigure.endpoint.EndpointAutoConfiguration"
     const val SPRING_APPLICATION = "org.springframework.boot.SpringApplication"
     const val BOOT_AUTO_CONFIGURATION = "org.springframework.boot.autoconfigure.AutoConfiguration"
 
