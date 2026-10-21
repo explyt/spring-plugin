@@ -45,6 +45,12 @@ object SpringBootUtil {
     fun getSpringCoreMajorVersion(module: Module): Int? =
         getSpringCoreVersion(module)?.substringBefore('.')?.toIntOrNull()
 
+    @RequiresReadLock
+    fun isBelowSpringBoot3(module: Module): Boolean {
+        val version = getSpringBootVersion(module) ?: return false
+        return version < SpringBootVersion.VERSION_3_0_0
+    }
+
     @Suppress("UnstableApiUsage")
     fun getSpringBootVersion(module: Module): SpringBootVersion? {
         if (module.isDisposed || module.project.isDefault) return null
