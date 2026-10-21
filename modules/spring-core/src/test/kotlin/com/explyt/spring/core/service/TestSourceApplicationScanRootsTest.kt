@@ -96,6 +96,26 @@ class TestSourceApplicationScanRootsTest : ExplytMultiModuleTestCase() {
         assertProductionConsumerFindsNoAudit(consumer)
     }
 
+    fun testJavaTestClassQualifiesAComponentOnlyTheTestApplicationScans() {
+        addFileToModule(module, "app/portal/PortalApplication.java", JAVA_PORTAL_APPLICATION)
+        addFileToModule(module, "app/audit/Audit.java", JAVA_QUALIFIED_AUDITS)
+        val consumer = addFileToModule(module, "app/portal/AuditConsumer.java", JAVA_QUALIFIED_AUDIT_CONSUMER)
+        val localApp = addTestSourceFileToModule(module, "app/LocalApp.java", JAVA_LOCAL_APP)
+        val auditIt = addTestSourceFileToModule(module, "app/AuditIT.java", JAVA_QUALIFIED_AUDIT_IT)
+
+        assertTestClassQualifiesTheAudit(localApp, auditIt, consumer)
+    }
+
+    fun testKotlinTestClassQualifiesAComponentOnlyTheTestApplicationScans() {
+        addFileToModule(module, "app/portal/PortalApplication.kt", KOTLIN_PORTAL_APPLICATION)
+        addFileToModule(module, "app/audit/Audit.kt", KOTLIN_QUALIFIED_AUDITS)
+        val consumer = addFileToModule(module, "app/portal/AuditConsumer.kt", KOTLIN_QUALIFIED_AUDIT_CONSUMER)
+        val localApp = addTestSourceFileToModule(module, "app/LocalApp.kt", KOTLIN_LOCAL_APP)
+        val auditIt = addTestSourceFileToModule(module, "app/AuditIT.kt", KOTLIN_QUALIFIED_AUDIT_IT)
+
+        assertTestClassQualifiesTheAudit(localApp, auditIt, consumer)
+    }
+
     fun testJavaTestSourceApplicationDoesNotWidenTheProductionScanOfItsModule() {
         addFileToModule(module, "app/portal/PortalApplication.java", JAVA_PORTAL_APPLICATION)
         addFileToModule(module, "app/portal/PortalService.java", JAVA_PORTAL_SERVICE)
@@ -231,6 +251,43 @@ class TestSourceApplicationScanRootsTest : ExplytMultiModuleTestCase() {
         )
     }
 
+    private fun assertTestClassQualifiesTheAudit(localApp: PsiFile, auditIt: PsiFile, productionConsumer: PsiFile) {
+        addLibraries(module, listOf(TestLibrary.springBootTest_3_2_3), DependencyScope.TEST)
+        assertTrue(
+            "Precondition: LocalApp must live in a test source root",
+            TestSourcesFilter.isTestSources(localApp.virtualFile, project)
+        )
+        assertTrue(
+            "Precondition: AuditIT must live in a test source root",
+            TestSourcesFilter.isTestSources(auditIt.virtualFile, project)
+        )
+        assertFalse(
+            "Precondition: AuditConsumer must live in production sources",
+            TestSourcesFilter.isTestSources(productionConsumer.virtualFile, project)
+        )
+        assertNotNull("Precondition: @SpringBootTest must resolve", findClass(SPRING_BOOT_TEST))
+        val productionErrors = qualifiedAutowiringErrorsOf(productionConsumer)
+        assertTrue(
+            "Precondition: the production consumer outside the test context is reported, got $productionErrors",
+            productionErrors.isNotEmpty()
+        )
+
+        val errors = qualifiedAutowiringErrorsOf(auditIt)
+        assertEquals(
+            "A @SpringBootTest of the test application qualifies the components its scan reaches",
+            emptyList<String>(),
+            errors
+        )
+    }
+
+    private fun qualifiedAutowiringErrorsOf(file: PsiFile): List<String> {
+        Registry.get("explyt.spring.root.runConfiguration").setValue(false)
+        myFixture.enableInspections(SpringBeanIncorrectAutowiringInspection::class.java)
+        myFixture.configureFromExistingVirtualFile(file.virtualFile)
+        return myFixture.doHighlighting().mapNotNull { it.description }
+            .filter { it.startsWith("Autowire failed") || it.startsWith("Cannot find bean with @Qualifier") }
+    }
+
     private fun autowiringErrorsOf(file: PsiFile): List<String> {
         Registry.get("explyt.spring.root.runConfiguration").setValue(false)
         myFixture.enableInspections(SpringBeanIncorrectAutowiringInspection::class.java)
@@ -284,6 +341,118 @@ class TestSourceApplicationScanRootsTest : ExplytMultiModuleTestCase() {
             @SpringBootTest(classes = [LocalApp::class])
             class AuditIT {
                 @Autowired
+                lateinit var audit: Audit
+            }
+            """.trimIndent()
+
+        @Language("java")
+        val JAVA_QUALIFIED_AUDITS = """
+            package app.audit;
+
+            import org.springframework.beans.factory.annotation.Qualifier;
+            import org.springframework.stereotype.Component;
+
+            public interface Audit {}
+
+            @Component
+            @Qualifier("x")
+            class AuditA implements Audit {}
+
+            @Component
+            @Qualifier("x")
+            class AuditC implements Audit {}
+
+            @Component
+            @Qualifier("y")
+            class AuditB implements Audit {}
+            """.trimIndent()
+
+        @Language("java")
+        val JAVA_QUALIFIED_AUDIT_IT = """
+            package app;
+
+            import app.audit.Audit;
+            import org.springframework.beans.factory.annotation.Autowired;
+            import org.springframework.beans.factory.annotation.Qualifier;
+            import org.springframework.boot.test.context.SpringBootTest;
+
+            @SpringBootTest(classes = LocalApp.class)
+            class AuditIT {
+                @Autowired
+                @Qualifier("x")
+                Audit audit;
+            }
+            """.trimIndent()
+
+        @Language("java")
+        val JAVA_QUALIFIED_AUDIT_CONSUMER = """
+            package app.portal;
+
+            import app.audit.Audit;
+            import org.springframework.beans.factory.annotation.Autowired;
+            import org.springframework.beans.factory.annotation.Qualifier;
+            import org.springframework.stereotype.Component;
+
+            @Component
+            public class AuditConsumer {
+                @Autowired
+                @Qualifier("x")
+                Audit audit;
+            }
+            """.trimIndent()
+
+        @Language("kotlin")
+        val KOTLIN_QUALIFIED_AUDITS = """
+            package app.audit
+
+            import org.springframework.beans.factory.annotation.Qualifier
+            import org.springframework.stereotype.Component
+
+            interface Audit
+
+            @Component
+            @Qualifier("x")
+            class AuditA : Audit
+
+            @Component
+            @Qualifier("x")
+            class AuditC : Audit
+
+            @Component
+            @Qualifier("y")
+            class AuditB : Audit
+            """.trimIndent()
+
+        @Language("kotlin")
+        val KOTLIN_QUALIFIED_AUDIT_IT = """
+            package app
+
+            import app.audit.Audit
+            import org.springframework.beans.factory.annotation.Autowired
+            import org.springframework.beans.factory.annotation.Qualifier
+            import org.springframework.boot.test.context.SpringBootTest
+
+            @SpringBootTest(classes = [LocalApp::class])
+            class AuditIT {
+                @Autowired
+                @Qualifier("x")
+                lateinit var audit: Audit
+            }
+            """.trimIndent()
+
+        @Language("kotlin")
+        val KOTLIN_QUALIFIED_AUDIT_CONSUMER = """
+            package app.portal
+
+            import app.audit.Audit
+            import org.springframework.beans.factory.annotation.Autowired
+            import org.springframework.beans.factory.annotation.Qualifier
+            import org.springframework.stereotype.Component
+
+            @Component
+            class AuditConsumer {
+                @Autowired
+                @Qualifier("x")
                 lateinit var audit: Audit
             }
             """.trimIndent()
