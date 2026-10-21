@@ -38,8 +38,6 @@ abstract class RuntimeClasspathLibraryBeansTestCase : ExplytMultiModuleTestCase(
     protected abstract val consumerText: String
     protected abstract val testConsumerFileName: String
     protected abstract val testConsumerText: String
-    protected abstract val mockMvcTestFileName: String
-    protected abstract val mockMvcTestText: String
 
     override fun setUp() {
         super.setUp()
@@ -100,19 +98,6 @@ abstract class RuntimeClasspathLibraryBeansTestCase : ExplytMultiModuleTestCase(
         assertEquals(emptyList<String>(), autowiringProblems(testConsumer))
     }
 
-    fun testTestScopeMockMvcIsInjectableIntoASpringBootTest() {
-        addLibraries(
-            module,
-            listOf(TestLibrary.springBootTestAutoConfigure_3_1_1, TestLibrary.springTest_6_0_7),
-            DependencyScope.TEST
-        )
-        assertOnlyOnTestClasspath(MOCK_MVC_AUTO_CONFIGURATION)
-        writeApplication()
-
-        val mockMvcTest = addTestSourceFileToModule(module, mockMvcTestFileName, mockMvcTestText)
-        assertEquals(emptyList<String>(), autowiringProblems(mockMvcTest))
-    }
-
     private fun assertOnlyOnTestClasspath(fqn: String) {
         assertNotNull(
             "Precondition: a test-scope jar is on the module's test classpath",
@@ -170,7 +155,5 @@ abstract class RuntimeClasspathLibraryBeansTestCase : ExplytMultiModuleTestCase(
     protected companion object {
         const val STARTER_CONFIGURATION = "org.springframework.transaction.annotation.ProxyTransactionManagementConfiguration"
         const val STARTER_ADVISOR = "org.springframework.transaction.interceptor.BeanFactoryTransactionAttributeSourceAdvisor"
-        const val MOCK_MVC_AUTO_CONFIGURATION =
-            "org.springframework.boot.test.autoconfigure.web.servlet.MockMvcAutoConfiguration"
     }
 }

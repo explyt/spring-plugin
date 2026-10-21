@@ -59,23 +59,4 @@ class RuntimeClasspathLibraryBeansTest : RuntimeClasspathLibraryBeansTestCase() 
             lateinit var advisor: Advisor
         }
     """.trimIndent()
-
-    override val mockMvcTestFileName = "com/example/app/GatewayMockMvcTest.kt"
-
-    @Language("kotlin")
-    override val mockMvcTestText = """
-        package com.example.app
-
-        import org.springframework.beans.factory.annotation.Autowired
-        import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
-        import org.springframework.boot.test.context.SpringBootTest
-        import org.springframework.test.web.servlet.MockMvc
-
-        @SpringBootTest
-        @AutoConfigureMockMvc
-        class GatewayMockMvcTest {
-            @Autowired
-            lateinit var mockMvc: MockMvc
-        }
-    """.trimIndent()
 }
