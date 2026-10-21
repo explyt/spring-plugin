@@ -51,15 +51,15 @@ class SpringSecurityAnnotationWithUserDetailsInspection : AbstractBaseUastLocalI
         if (member.annotations.isEmpty()) {
             return emptyArray()
         }
-        val owner = member as? UClass ?: member.getContainingUClass() ?: return emptyArray()
         val module = ModuleUtilCore.findModuleForPsiElement(member) ?: return emptyArray()
-        if (!SpringBeanOwner.isProcessedBySpring(module, owner.javaPsi)) return emptyArray()
         val metaHolder = SpringSearchService.getInstance(module.project)
             .getMetaAnnotations(module, SpringSecurityClasses.WITH_USER_DETAILS)
         val psiAnnotation = member.uAnnotations.asSequence()
             .mapNotNull { it.javaPsi }
             .firstOrNull { metaHolder.contains(it) }
             ?: return emptyArray()
+        val owner = member as? UClass ?: member.getContainingUClass() ?: return emptyArray()
+        if (!SpringBeanOwner.isProcessedBySpring(module, owner.javaPsi)) return emptyArray()
 
         val details = metaHolder.getAnnotationMemberValues(psiAnnotation, setOf("userDetailsServiceBeanName"))
             .firstOrNull() ?: return emptyArray()

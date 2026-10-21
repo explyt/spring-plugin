@@ -49,13 +49,11 @@ class SpringDependsOnBeanInspection : SpringBaseUastLocalInspectionTool() {
     ): Array<ProblemDescriptor>? {
         val member = uMember.javaPsi ?: return null
         val module = ModuleUtilCore.findModuleForPsiElement(member) ?: return null
-        val owner = member as? PsiClass ?: (member as? PsiMember)?.containingClass ?: return null
-        if (!SpringBeanOwner.isProcessedBySpring(module, owner)) return null
-        val service = SpringSearchServiceFacade.getInstance(module.project)
-        val beanNames = service.getAllBeanByNames(module)
-
         val metaHolder = SpringSearchService.getInstance(module.project).getMetaAnnotations(module, DEPENDS_ON)
         val uAnnotation = uMember.uAnnotations.firstOrNull { metaHolder.contains(it) } ?: return null
+        val owner = member as? PsiClass ?: (member as? PsiMember)?.containingClass ?: return null
+        if (!SpringBeanOwner.isProcessedBySpring(module, owner)) return null
+        val beanNames = SpringSearchServiceFacade.getInstance(module.project).getAllBeanByNames(module)
 
         val annotationMemberValues = metaHolder.getDeclaredAnnotationMemberValues(uAnnotation, setOf("value"))
 

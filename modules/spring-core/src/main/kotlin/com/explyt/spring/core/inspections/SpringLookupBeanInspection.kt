@@ -31,6 +31,7 @@ class SpringLookupBeanInspection : SpringBaseUastLocalInspectionTool() {
     ): Array<ProblemDescriptor>? {
         val method = uMethod.javaPsi
         val module = ModuleUtilCore.findModuleForPsiElement(method) ?: return null
+        val lookupValues = method.getMetaAnnotationMemberValues(LOOKUP) ?: return null
         val owner = method.containingClass ?: return null
         if (!SpringBeanOwner.isProcessedBySpring(module, owner)) return null
         val returnClassQN = method.returnPsiClass?.qualifiedName ?: return null
@@ -39,7 +40,7 @@ class SpringLookupBeanInspection : SpringBaseUastLocalInspectionTool() {
 
         val problems = mutableListOf<ProblemDescriptor>()
 
-        method.getMetaAnnotationMemberValues(LOOKUP)?.forEach {
+        lookupValues.forEach {
             val valueSourcePsi = it.toSourcePsi() ?: return@forEach
             val lookupValue = AnnotationUtil.getStringAttributeValue(it)
             val psiBeans = beanByNames[lookupValue]
