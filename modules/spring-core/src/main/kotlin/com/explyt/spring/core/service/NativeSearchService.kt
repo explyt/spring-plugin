@@ -300,7 +300,7 @@ class NativeSearchService(private val project: Project) {
         moduleFindInSource: Module? = null //when uses bean search by source(not native) - default behavior
     ): List<PsiMember> =
         findActiveBeans(allPsiBeans, byBeanName, language, sourcePsiType, qualifier, moduleFindInSource)
-            .map { it.psiMember }
+            .map { it.psiMember }.distinct()
 
     fun findActiveBeans(
         allPsiBeans: Collection<PsiBean>,

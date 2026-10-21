@@ -148,7 +148,7 @@ class SpringSearchServiceFacade(private val project: Project) {
         qualifier: PsiAnnotation? = null,
         psiElement: PsiElement? = null
     ): List<PsiMember> =
-        findActiveBeans(module, byBeanName, language, byBeanPsiType, qualifier, psiElement).map { it.psiMember }
+        findActiveBeans(module, byBeanName, language, byBeanPsiType, qualifier, psiElement).map { it.psiMember }.distinct()
 
     fun findActiveBeans(
         module: Module,
