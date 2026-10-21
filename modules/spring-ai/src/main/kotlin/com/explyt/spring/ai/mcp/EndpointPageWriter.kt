@@ -11,7 +11,6 @@ import com.explyt.spring.core.service.beans.BeanConditionRecord
 import com.explyt.spring.web.loader.EndpointElement
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
-import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 
 class EndpointPageWriter(private val project: Project) {
@@ -25,13 +24,18 @@ class EndpointPageWriter(private val project: Project) {
         nearestByPrefix: List<Any>? = null,
     ): String {
         val beanFilterEnabled = SpringToolRunConfigurationsSettingsState.getInstance().isBeanFilterEnabled
-        val revision = EntityInventory.revision(project, query + ("beanFilterEnabled" to beanFilterEnabled.toString()))
         val withLimitations = envelope.withConditionLimitation(beanFilterEnabled)
+        val neighbours = nearestByPrefix.orEmpty().map(::toNode)
+        val question = query + ("beanFilterEnabled" to beanFilterEnabled.toString())
+        val answer = WholeAnswerCache.getInstance(project).answerFor(question, endpoints.size) {
+            WholeAnswer.project(withLimitations, endpoints.size, { toNode(toJson(endpoints[it])) }, neighbours)
+        }
+        val revision = EntityInventory.revision(project, question, answer.digest)
         val withNeighbourhood = when {
             nearestByPrefix == null -> withLimitations
             page.offset == 0 -> writer.fitSample(
-                withLimitations, FIELD_ENDPOINTS, FIELD_NEAREST, nearestByPrefix.map(::toNode),
-                FIELD_NEAREST_TRUNCATED, endpoints.size, revision, page
+                withLimitations, FIELD_ENDPOINTS, FIELD_NEAREST, neighbours,
+                FIELD_NEAREST_TRUNCATED, answer.totalCount, revision, page
             )
 
             else -> withLimitations.deepCopy().apply { putArray(FIELD_NEAREST) }
@@ -39,11 +43,8 @@ class EndpointPageWriter(private val project: Project) {
         return writer.write(
             envelope = withNeighbourhood,
             itemsField = FIELD_ENDPOINTS,
-            totalCount = endpoints.size,
-            itemAt = { index ->
-                ProgressManager.checkCanceled()
-                toNode(toJson(endpoints[index]))
-            },
+            totalCount = answer.totalCount,
+            itemAt = answer::itemAt,
             revision = revision,
             page = page,
         )
