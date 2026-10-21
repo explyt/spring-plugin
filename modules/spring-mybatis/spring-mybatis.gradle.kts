@@ -36,14 +36,14 @@ tasks {
     verifyPlugin { enabled = false }
 }
 
+val defaultIdeaType: String by rootProject
 val defaultIdeaVersion: String by rootProject
 
 dependencies {
     implementation(springCoreProject)
     intellijPlatform {
-        intellijIdea(defaultIdeaVersion) {
-            useInstaller = false
-        }
+        create(defaultIdeaType, defaultIdeaVersion, useInstaller = false)
+        jetbrainsRuntime()
         bundledPlugins(springCoreProject.ext["intellijPlugins"] as List<String> + intellijPlugins)
         testFramework(TestFrameworkType.Platform)
         testFramework(TestFrameworkType.Plugin.Java)
@@ -54,5 +54,5 @@ dependencies {
 }
 
 kotlin {
-    jvmToolchain(25)
+    jvmToolchain(21)
 }
