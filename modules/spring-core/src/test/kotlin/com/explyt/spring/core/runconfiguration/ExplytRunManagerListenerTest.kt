@@ -7,6 +7,7 @@ package com.explyt.spring.core.runconfiguration
 
 import com.explyt.spring.core.externalsystem.NativeLinkRepairService
 import com.explyt.spring.core.externalsystem.RunConfigurationExtractor
+import com.explyt.spring.core.externalsystem.RunConfigurationHolder
 import com.explyt.spring.core.externalsystem.setting.NativeExecutionSettings
 import com.explyt.spring.core.externalsystem.setting.NativeProjectSettings
 import com.explyt.spring.core.externalsystem.setting.NativeSettings
@@ -16,7 +17,7 @@ import com.explyt.spring.test.TestLibrary
 import com.intellij.execution.RunManager
 import com.intellij.execution.impl.RunManagerImpl
 import com.intellij.execution.impl.RunnerAndConfigurationSettingsImpl
-import com.intellij.openapi.application.runReadActionBlocking
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 
 /**
@@ -154,7 +155,7 @@ class ExplytRunManagerListenerTest : ExplytKotlinLightTestCase() {
             externalProjectMainFilePath = mainFilePath
             runConfigurationName = "DemoApplicationKt"
         }
-        val holder = runReadActionBlocking {
+        val holder = ReadAction.compute<RunConfigurationHolder?, RuntimeException> {
             RunConfigurationExtractor.findRunConfiguration(mainFilePath, executionSettings)
         }
         val resolved = holder?.runConfiguration ?: holder?.agentRunConfiguration
