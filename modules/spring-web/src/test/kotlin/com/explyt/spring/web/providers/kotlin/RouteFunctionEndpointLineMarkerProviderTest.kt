@@ -254,6 +254,74 @@ class RouteFunctionEndpointLineMarkerProviderTest : ExplytKotlinLightTestCase() 
         assertEquals(listOf(Triple("GET", "/y", listOf("GET"))), endpointMarkers())
     }
 
+    fun testRouteOfAnotherVerbUnderAVerbNestHasNoMarker() {
+        myFixture.configureByFiles("UserHandler.kt")
+        configureVerbNestRouter(
+            """
+            PUT("/a").nest {
+                POST("/b", handler::createUser)
+                PUT("/c", handler::updateUserData)
+            }
+            GET("/y", handler::getUserById)
+            """
+        )
+        assertNestPredicateResolvesToTheDsl()
+
+        myFixture.doHighlighting()
+
+        assertEquals(
+            listOf(
+                Triple("PUT", "/a/c", listOf("PUT")),
+                Triple("GET", "/y", listOf("GET"))
+            ),
+            endpointMarkers()
+        )
+    }
+
+    fun testAnyVerbRouteUnderAVerbNestHasAMarkerForTheNestVerb() {
+        myFixture.configureByFiles("UserHandler.kt")
+        configureVerbNestRouter("""PUT("/a").nest { path("/b", handler::getUserById) }""")
+        assertNestPredicateResolvesToTheDsl()
+
+        myFixture.doHighlighting()
+
+        assertEquals(listOf(Triple("path", "/a/b", listOf("PUT"))), endpointMarkers())
+    }
+
+    private fun configureVerbNestRouter(routes: String) {
+        myFixture.configureByText(
+            "UserRouter.kt", """
+            import org.springframework.context.annotation.Bean
+            import org.springframework.context.annotation.Configuration
+            import org.springframework.web.reactive.function.server.coRouter
+
+            @Configuration
+            class UserRouter(private val handler: UserHandler) {
+
+                @Bean
+                fun usersApi() = coRouter {
+                    ${routes.trimIndent().prependIndent("                    ").trimStart()}
+                }
+            }
+            """.trimIndent()
+        )
+    }
+
+    private fun assertNestPredicateResolvesToTheDsl() {
+        val nestPredicate = PsiTreeUtil.findChildrenOfType(myFixture.file, KtCallExpression::class.java)
+            .single { it.calleeExpression?.text == "PUT" && it.valueArguments.size == 1 }
+            .toUElementOfType<UCallExpression>()!!
+            .resolve()!!
+        assertEquals(
+            "org.springframework.web.reactive.function.server.CoRouterFunctionDsl",
+            nestPredicate.containingClass?.qualifiedName
+        )
+        assertEquals(
+            "org.springframework.web.reactive.function.server.RequestPredicate",
+            nestPredicate.returnType?.canonicalText
+        )
+    }
+
     private fun endpointMarkers(): List<Triple<String?, String, List<String>>> = myFixture.findAllGutters()
         .filter { it.icon == SpringIcons.ReadAccess }
         .filter { it.tooltipText == "Endpoint Actions" }
