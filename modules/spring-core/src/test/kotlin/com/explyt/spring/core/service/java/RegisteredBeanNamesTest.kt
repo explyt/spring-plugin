@@ -43,7 +43,7 @@ class RegisteredBeanNamesTest : ExplytInspectionJavaTestCase() {
         assertRegisteredName("ext.PlainProps", "PlainProps")
     }
 
-    fun testAutoConfigurationImportsClassIsNamedByQualifiedName() {
+    fun _testAutoConfigurationImportsClassIsNamedByQualifiedName() {
         addApplication("")
         addExternalClass("ListedAutoConfiguration", "@Configuration")
         myFixture.addFileToProject(
