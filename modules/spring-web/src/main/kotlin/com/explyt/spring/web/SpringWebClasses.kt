@@ -104,6 +104,7 @@ object SpringWebClasses {
     const val REQUEST_PREDICATES = "org.springframework.web.reactive.function.server.RequestPredicates"
     const val SERVLET_REQUEST_PREDICATES = "org.springframework.web.servlet.function.RequestPredicates"
     val REQUEST_PREDICATES_CLASSES = listOf(REQUEST_PREDICATES, SERVLET_REQUEST_PREDICATES)
+    val REQUEST_PREDICATES_METHOD_FACTORIES = setOf("method", "methods")
     val REQUEST_PREDICATES_PATH_FREE_FACTORIES = setOf(
         "accept", "contentType", "headers", "method", "methods", "all", "param", "queryParam", "version"
     )
