@@ -23,7 +23,6 @@ import com.intellij.psi.impl.light.LightMethodBuilder
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PlatformTestUtil
-import com.intellij.testFramework.builders.JavaModuleFixtureBuilder
 import com.intellij.testFramework.fixtures.JavaCodeInsightFixtureTestCase
 import org.jetbrains.kotlin.asJava.elements.KtLightMethod
 import org.jetbrains.kotlin.psi.KtClass
@@ -53,8 +52,9 @@ class SpringBootApplicationMcpToolsetTraceCallChainTest : JavaCodeInsightFixture
     private val toolset = SpringBootApplicationMcpToolset()
     private val mapper = ObjectMapper()
 
-    override fun tuneFixture(moduleBuilder: JavaModuleFixtureBuilder<*>) {
-        moduleBuilder.addJdkVersion(LanguageLevel.JDK_21)
+    override fun setUp() {
+        super.setUp()
+        myFixture.module.useMockJdk(LanguageLevel.JDK_21, testRootDisposable)
     }
 
     fun testTraceCallChainHappyPath() = runBlockingReleasingWriteIntent<Unit> {

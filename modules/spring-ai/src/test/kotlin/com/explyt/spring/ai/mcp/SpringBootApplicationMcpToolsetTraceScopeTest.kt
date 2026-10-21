@@ -40,7 +40,6 @@ import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.psi.KtStringTemplateExpression
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PlatformTestUtil
-import com.intellij.testFramework.builders.JavaModuleFixtureBuilder
 import com.intellij.testFramework.fixtures.JavaCodeInsightFixtureTestCase
 import java.io.File
 
@@ -58,12 +57,9 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
     private val toolset = SpringBootApplicationMcpToolset()
     private val mapper = ObjectMapper()
 
-    override fun tuneFixture(moduleBuilder: JavaModuleFixtureBuilder<*>) {
-        moduleBuilder.addJdkVersion(LanguageLevel.JDK_21)
-    }
-
     override fun setUp() {
         super.setUp()
+        myFixture.module.useMockJdk(LanguageLevel.JDK_21, testRootDisposable)
         ModuleRootModificationUtil.updateModel(myFixture.module) { model ->
             LIBRARIES.forEach { addFromMaven(model, it.mavenCoordinates, it.includeTransitiveDependencies) }
         }

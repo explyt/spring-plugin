@@ -19,10 +19,8 @@ import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiField
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.search.GlobalSearchScope
-import com.intellij.testFramework.IdeaTestUtil
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PlatformTestUtil
-import com.intellij.testFramework.builders.JavaModuleFixtureBuilder
 import com.intellij.testFramework.fixtures.JavaCodeInsightFixtureTestCase
 import java.io.File
 
@@ -35,13 +33,9 @@ class SpringBootApplicationMcpToolsetTraceLombokTest : JavaCodeInsightFixtureTes
     private val toolset = SpringBootApplicationMcpToolset()
     private val mapper = ObjectMapper()
 
-    override fun tuneFixture(moduleBuilder: JavaModuleFixtureBuilder<*>) {
-        moduleBuilder.addJdkVersion(LanguageLevel.JDK_21)
-    }
-
     override fun setUp() {
         super.setUp()
-        IdeaTestUtil.setModuleLanguageLevel(myFixture.module, LanguageLevel.JDK_21, testRootDisposable)
+        myFixture.module.useMockJdk(LanguageLevel.JDK_21, testRootDisposable)
         ModuleRootModificationUtil.updateModel(myFixture.module) { model ->
             LIBRARIES.forEach { addFromMaven(model, it, false) }
         }
