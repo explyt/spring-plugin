@@ -23,27 +23,41 @@ object SpringBeanOwner {
 
     fun isProcessedBySpring(module: Module, psiClass: PsiClass): Boolean {
         if (!psiClass.isValid) return false
-        return psiClass.isSpringTestClass() || psiClass in activeBeanTypeHierarchy(module)
+        if (psiClass.isSpringTestClass()) return true
+        val owners = activeBeanOwners(module)
+        return psiClass in owners.beanTypeHierarchy || psiClass.isSubtypeOfAny(owners.factoryReturnTypes)
     }
 
     fun PsiClass.isSpringTestClass(): Boolean = isMetaAnnotatedBy(TEST_CONTEXT_ANNOTATIONS)
 
-    private fun activeBeanTypeHierarchy(module: Module): Set<PsiClass> =
+    private fun PsiClass.isSubtypeOfAny(types: Set<PsiClass>): Boolean =
+        types.isNotEmpty() && !InheritanceUtil.processSupers(this, false) { it !in types }
+
+    private class ActiveBeanOwners(
+        val beanTypeHierarchy: Set<PsiClass>,
+        val factoryReturnTypes: Set<PsiClass>,
+    )
+
+    private fun activeBeanOwners(module: Module): ActiveBeanOwners =
         CachedValuesManager.getManager(module.project).getCachedValue(module) {
+            val trackers = ModificationTrackerManager.getInstance(module.project)
             CachedValueProvider.Result(
-                collectActiveBeanTypeHierarchy(module),
-                ModificationTrackerManager.getInstance(module.project).getUastModelAndLibraryTracker()
+                collectActiveBeanOwners(module),
+                trackers.getUastModelAndLibraryTracker(),
+                trackers.getExternalSystemTracker(),
             )
         }
 
-    private fun collectActiveBeanTypeHierarchy(module: Module): Set<PsiClass> {
+    private fun collectActiveBeanOwners(module: Module): ActiveBeanOwners {
         val hierarchy = HashSet<PsiClass>()
+        val factoryReturnTypes = HashSet<PsiClass>()
         SpringSearchServiceFacade.getInstance(module.project).getAllActiveBeans(module).forEach { bean ->
             val beanClass = bean.psiClass
+            if (bean.factoryMethod != null) factoryReturnTypes += beanClass
             if (hierarchy.add(beanClass)) {
                 InheritanceUtil.getSuperClasses(beanClass, hierarchy, true)
             }
         }
-        return hierarchy
+        return ActiveBeanOwners(hierarchy, factoryReturnTypes)
     }
 }
