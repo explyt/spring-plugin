@@ -351,7 +351,7 @@ class SpringSearchService(private val project: Project) {
     private fun getImportedBeans(
         modulePackagesHolder: RootDataHolder, module: Module, scannedClasses: Set<PsiClass>
     ): Set<PsiBean> {
-        val importPsiClasses = modulePackagesHolder.importQualified
+        val importPsiClasses = modulePackagesHolder.registrarsByRegistered.keys
             .mapNotNull { findImportClass(it, module) }
         return getImportedBeans(importPsiClasses, module) { psiClass ->
             when {
@@ -373,7 +373,7 @@ class SpringSearchService(private val project: Project) {
     ): Map<PsiClass, List<PsiClass>> {
         val scannedClasses = (scannedBeans.active + scannedBeans.profileInactive.keys).mapTo(mutableSetOf()) { it.psiClass }
         fun classOf(qualifiedName: String) = findImportClass(qualifiedName, module)
-        return modulePackagesHolder.importersByImported.entries
+        return modulePackagesHolder.registrarsByRegistered.entries
             .mapNotNull { (imported, importers) -> classOf(imported)?.let { it to importers.mapNotNull(::classOf) } }
             .filter { (imported, importers) -> imported !in scannedClasses && importers.isNotEmpty() }
             .toMap()
@@ -689,7 +689,8 @@ class SpringSearchService(private val project: Project) {
 
     private fun searchBeanPsiClassesByComponentAnnotationLibraryScopeCached(module: Module): ProfileSplit {
         return cachedValuesManager.getCachedValue(module) {
-            val annotationPsiClasses = SpringSearchUtils.getComponentClassAnnotations(module)
+            val annotationPsiClasses = SpringSearchUtils.getComponentClassAnnotations(module) +
+                    SpringSearchUtils.getConfigurationPropertiesAnnotations(module)
             CachedValueProvider.Result(
                 searchBeanPsiClassesByAnnotations(
                     module, annotationPsiClasses, ModuleUtil.getOnlyLibrarySearchScope(module)
@@ -1067,10 +1068,20 @@ object SpringSearchUtils {
                         MetaAnnotationUtil.getAnnotationTypesWithChildren(module, SpringCoreClasses.COMPONENT, false)
                             .toMutableSet()
                     annotations += LibraryClassCache.searchForLibraryClasses(module, JavaEeClasses.RESOURCE.allFqns)
-                    annotations += MetaAnnotationUtil
-                        .getAnnotationTypesWithChildren(module, SpringCoreClasses.CONFIGURATION_PROPERTIES, false)
                     return@run annotations
                 }.toSet(),
+                ModificationTrackerManager.getInstance(project).getUastAnnotationAndLibraryTracker()
+            )
+        }
+    }
+
+    fun getConfigurationPropertiesAnnotations(module: Module): Collection<PsiClass> {
+        val project = module.project
+        return CachedValuesManager.getManager(project).getCachedValue(module) {
+            CachedValueProvider.Result(
+                MetaAnnotationUtil
+                    .getAnnotationTypesWithChildren(module, SpringCoreClasses.CONFIGURATION_PROPERTIES, false)
+                    .toSet(),
                 ModificationTrackerManager.getInstance(project).getUastAnnotationAndLibraryTracker()
             )
         }

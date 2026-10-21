@@ -9,6 +9,7 @@ import com.explyt.base.LibraryClassCache
 import com.explyt.spring.core.SpringCoreClasses.COMPONENT
 import com.explyt.spring.core.SpringCoreClasses.COMPONENT_SCAN
 import com.explyt.spring.core.SpringCoreClasses.COMPONENT_SCANS
+import com.explyt.spring.core.SpringCoreClasses.CONFIGURATION_PROPERTIES_SCAN
 import com.explyt.spring.core.SpringCoreClasses.ENABLE_AUTO_CONFIGURATION
 import com.explyt.spring.core.SpringCoreClasses.ENABLE_CONFIGURATION_PROPERTIES
 import com.explyt.spring.core.SpringCoreClasses.IMPORT
@@ -18,6 +19,8 @@ import com.explyt.spring.core.SpringProperties
 import com.explyt.spring.core.runconfiguration.RunConfigurationUtil
 import com.explyt.spring.core.runconfiguration.SpringBootRunConfiguration
 import com.explyt.spring.core.tracker.ModificationTrackerManager
+import com.explyt.spring.core.util.SpringCoreUtil
+import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytPsiUtil.resolvedPsiClass
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.MetaAnnotationUtil
@@ -74,10 +77,9 @@ class PackageScanService(private val project: Project) {
             .groupingBy { it.moduleName }
             .fold(setOf<String>()) { acc, ell -> acc + ell.packages.map { normalizePackage(it) } }
         val rootComponentQualified = moduleRootDataList.mapNotNullTo(mutableSetOf()) { it.rootComponentQualified }
-        val importersByImported = registrations
-            .mapNotNull { (registered, registrar) -> registered.qualifiedName?.let { it to registrar.qualifiedName } }
-            .groupBy({ it.first }, { it.second })
-            .mapValues { (_, registrars) -> registrars.filterNotNullTo(mutableSetOf()) }
+        val (propertiesScanRegistrations, importRegistrations) = registrations.partition { it.propertiesScan }
+        val importersByImported = registrarsByRegistered(importRegistrations)
+        val propertiesScannersByScanned = registrarsByRegistered(propertiesScanRegistrations)
         val enabledPropertiesQualified = registrations.groupBy { it.registered }
             .filterValues { group -> group.all { it.enabledProperties } }
             .keys.mapNotNullTo(mutableSetOf()) { it.qualifiedName }
@@ -87,9 +89,15 @@ class PackageScanService(private val project: Project) {
 
         return RootDataHolder(
             packagesByModuleName, rootComponentQualified, importersByImported, scannedRootsByModuleName,
-            enabledPropertiesQualified
+            enabledPropertiesQualified, propertiesScannersByScanned
         )
     }
+
+    private fun registrarsByRegistered(registrations: Collection<Registration>): Map<String, Set<String>> =
+        registrations
+            .mapNotNull { (registered, registrar) -> registered.qualifiedName?.let { it to registrar.qualifiedName } }
+            .groupBy({ it.first }, { it.second })
+            .mapValues { (_, registrars) -> registrars.filterNotNullTo(mutableSetOf()) }
 
     private fun getComponentScanClasses(
         annotationPsiClasses: ScanAnnotationHolder, rootPackages: MutableSet<String>, programConfigRoots: List<PsiClass>
@@ -203,7 +211,28 @@ class PackageScanService(private val project: Project) {
             .flatMap { getPsiClasses(it) }
 
         return imported.map { Registration(it, psiClass) }.toSet() +
-                enabledProperties.map { Registration(it, psiClass, enabledProperties = true) }
+                enabledProperties.map { Registration(it, psiClass, enabledProperties = true) } +
+                scannedProperties(uClass, module)
+                    .map { Registration(it, psiClass, enabledProperties = true, propertiesScan = true) }
+    }
+
+    private fun scannedProperties(uClass: UClass, module: Module): Sequence<PsiClass> {
+        val holderPropertiesScan = SpringSearchService.getInstance(project)
+            .getMetaAnnotations(module, CONFIGURATION_PROPERTIES_SCAN)
+        val packages = uClass.uAnnotations
+            .filter { holderPropertiesScan.contains(it) }
+            .flatMapTo(mutableSetOf()) { getPackages(it, holderPropertiesScan) }
+            .map(::normalizePackage)
+        if (packages.isEmpty()) return emptySequence()
+        val scope = GlobalSearchScope.moduleWithDependenciesScope(module)
+        val searchService = SpringSearchService.getInstance(project)
+        return SpringSearchUtils.getConfigurationPropertiesAnnotations(module).asSequence()
+            .filter { searchService.isSearchableAnnotationType(it) }
+            .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, scope) }
+            .filter { candidate -> candidate.qualifiedName?.let { name -> packages.any(name::startsWith) } == true }
+            .filter { SpringCoreUtil.isSpringBeanCandidateClass(it) && SpringCoreUtil.isCandidateComponent(it) }
+            .filterNot { it.isMetaAnnotatedBy(COMPONENT) }
+            .distinct()
     }
 
     fun getAllImportClasses(uClass: UClass): Set<PsiClass> {
@@ -366,7 +395,10 @@ class PackageScanService(private val project: Project) {
      * @property declaringClass the configuration that declares the scan, for a root found on a scanned configuration.
      */
     private data class Registration(
-        val registered: PsiClass, val registrar: PsiClass, val enabledProperties: Boolean = false
+        val registered: PsiClass,
+        val registrar: PsiClass,
+        val enabledProperties: Boolean = false,
+        val propertiesScan: Boolean = false,
     )
 
     data class ModuleRootData(
@@ -398,8 +430,14 @@ data class RootDataHolder(
     val importersByImported: Map<String, Set<String>>,
     private val scannedRootsByModuleName: Map<String, List<ScannedRoot>> = emptyMap(),
     val enabledPropertiesQualified: Set<String> = emptySet(),
+    val propertiesScannersByScanned: Map<String, Set<String>> = emptyMap(),
 ) {
     val importQualified: Set<String> get() = importersByImported.keys
+
+    val registrarsByRegistered: Map<String, Set<String>>
+        get() = (importersByImported.keys + propertiesScannersByScanned.keys).associateWith {
+            importersByImported[it].orEmpty() + propertiesScannersByScanned[it].orEmpty()
+        }
 
     fun isEmpty() = packagesByModuleName.isEmpty()
 
