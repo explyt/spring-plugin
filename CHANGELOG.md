@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Spring Core
+- fix: Beans registered by `@Import` and `@EnableConfigurationProperties` get the names Spring gives them: the fully qualified class name, or `<prefix>-<fully qualified name>` for prefixed configuration properties, instead of the component-scan default name (#781)
 - fix: After you edit a `String` or primitive constant used in a mapping, such as `@GetMapping(PATH)`, the Endpoints tool window and gutters show the new path instead of the old one
 - fix: `@Lookup`, `@DependsOn` and cache annotation bean-name inspections stay silent on classes Spring neither registers as beans nor processes as test classes; abstract bases and interfaces of active beans still report (#783)
 - fix: Default bean names follow Spring's generator: names starting with two capitals stay unchanged, nested classes are named `outer.Inner`, lowercasing ignores the default locale (#758)
