@@ -289,8 +289,8 @@ class SpringSearchService(private val project: Project) {
             synchronized(getMutexString(MutexType.SEARCH, module)) {
                 return cachedValuesManager.getCachedValue(module) {
                     val scope = GlobalSearchScope.moduleWithDependenciesScope(module)
-                    val annotationPsiClasses = SpringSearchUtils.getComponentClassAnnotations(module)
                     val modulePackagesHolder = PackageScanService.getInstance(module.project).getAllPackages()
+                    val annotationPsiClasses = projectScanAnnotations(module, modulePackagesHolder)
                     val allModuleWithDependenciesBeans = filterBeansByPackage(
                         searchBeanPsiClassesByAnnotations(module, annotationPsiClasses, scope),
                         modulePackagesHolder, module
@@ -301,8 +301,9 @@ class SpringSearchService(private val project: Project) {
                     val scannedBeans = moduleWithDependenciesBeans + moduleLibraryBeans
                     val scannedClasses = (scannedBeans.active + scannedBeans.profileInactive.keys)
                         .mapTo(mutableSetOf()) { it.psiClass }
-                    val importedPsiBeans = getImportedBeans(modulePackagesHolder, module, scannedClasses)
-                    val registrars = importOnlyRegistrars(modulePackagesHolder, module, scannedBeans)
+                    val registrations = PackageScanService.getInstance(module.project).getBeanRegistrations()
+                    val importedPsiBeans = getImportedBeans(registrations, module, scannedClasses)
+                    val registrars = importOnlyRegistrars(registrations, module, scannedBeans)
                     val enabledScannedBeans = enabledPropertiesBeansOfScanned(modulePackagesHolder, module, scannedClasses)
                     val importedSplit = ProfileSplit(
                         importedPsiBeans + enabledScannedBeans.keys,
@@ -332,8 +333,8 @@ class SpringSearchService(private val project: Project) {
         try {
             return cachedValuesManager.getCachedValue(module) {
                 val scope = GlobalSearchScope.moduleWithDependentsScope(module)
-                val annotationPsiClasses = SpringSearchUtils.getComponentClassAnnotations(module)
                 val modulePackagesHolder = PackageScanService.getInstance(module.project).getAllPackages()
+                val annotationPsiClasses = projectScanAnnotations(module, modulePackagesHolder)
                 val dependentBeans = filterBeansByPackage(
                     searchBeanPsiClassesByAnnotations(module, annotationPsiClasses, scope),
                     modulePackagesHolder, module
@@ -350,14 +351,14 @@ class SpringSearchService(private val project: Project) {
     }
 
     private fun getImportedBeans(
-        modulePackagesHolder: RootDataHolder, module: Module, scannedClasses: Set<PsiClass>
+        registrations: BeanRegistrations, module: Module, scannedClasses: Set<PsiClass>
     ): Set<PsiBean> {
-        val importPsiClasses = modulePackagesHolder.importQualified
+        val importPsiClasses = registrations.registrarsByRegistered.keys
             .mapNotNull { findImportClass(it, module) }
         return getImportedBeans(importPsiClasses, module) { psiClass ->
             when {
                 psiClass in scannedClasses -> psiClass.resolveBeanName(module)
-                psiClass.qualifiedName in modulePackagesHolder.enabledPropertiesQualified ->
+                psiClass.qualifiedName in registrations.enabledPropertiesQualified ->
                     RegisteredBeanNames.enabledProperties(psiClass, configurationPropertiesPrefixOf(psiClass, module))
                 else -> RegisteredBeanNames.imported(psiClass, psiClass.resolveExplicitBeanName(module))
             }
@@ -370,11 +371,11 @@ class SpringSearchService(private val project: Project) {
             .firstNotNullOfOrNull { AnnotationUtil.getStringAttributeValue(it) }
 
     private fun importOnlyRegistrars(
-        modulePackagesHolder: RootDataHolder, module: Module, scannedBeans: ProfileSplit
+        registrations: BeanRegistrations, module: Module, scannedBeans: ProfileSplit
     ): Map<PsiClass, List<PsiClass>> {
         val scannedClasses = (scannedBeans.active + scannedBeans.profileInactive.keys).mapTo(mutableSetOf()) { it.psiClass }
         fun classOf(qualifiedName: String) = findImportClass(qualifiedName, module)
-        return modulePackagesHolder.importersByImported.entries
+        return registrations.registrarsByRegistered.entries
             .mapNotNull { (imported, importers) -> classOf(imported)?.let { it to importers.mapNotNull(::classOf) } }
             .filter { (imported, importers) -> imported !in scannedClasses && importers.isNotEmpty() }
             .toMap()
@@ -384,7 +385,7 @@ class SpringSearchService(private val project: Project) {
         modulePackagesHolder: RootDataHolder, module: Module, scannedClasses: Set<PsiClass>
     ): Map<PsiBean, List<PsiClass>> =
         modulePackagesHolder.importersByImported.entries.asSequence()
-            .filter { (imported, _) -> imported in modulePackagesHolder.enabledPropertiesQualified }
+            .filter { (imported, _) -> imported in modulePackagesHolder.enabledPropertiesImportedQualified }
             .mapNotNull { (imported, importers) ->
                 val psiClass = findImportClass(imported, module)
                     ?.takeIf { it in scannedClasses && it.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT) }
@@ -427,6 +428,12 @@ class SpringSearchService(private val project: Project) {
 
         val importedBeans = getImportedBeans(psiClassesTestContext, module)
         return importedBeans
+    }
+
+    private fun projectScanAnnotations(module: Module, rootDataHolder: RootDataHolder): Collection<PsiClass> {
+        val componentAnnotations = SpringSearchUtils.getComponentClassAnnotations(module)
+        if (!rootDataHolder.isEmpty()) return componentAnnotations
+        return componentAnnotations + SpringSearchUtils.getConfigurationPropertiesAnnotations(module)
     }
 
     private fun filterBeansByPackage(
@@ -690,7 +697,8 @@ class SpringSearchService(private val project: Project) {
 
     private fun searchBeanPsiClassesByComponentAnnotationLibraryScopeCached(module: Module): ProfileSplit {
         return cachedValuesManager.getCachedValue(module) {
-            val annotationPsiClasses = SpringSearchUtils.getComponentClassAnnotations(module)
+            val annotationPsiClasses = SpringSearchUtils.getComponentClassAnnotations(module) +
+                    SpringSearchUtils.getConfigurationPropertiesAnnotations(module)
             CachedValueProvider.Result(
                 searchBeanPsiClassesByAnnotations(
                     module, annotationPsiClasses, ModuleUtil.getOnlyLibrarySearchScope(module)
@@ -957,8 +965,8 @@ class SpringSearchService(private val project: Project) {
 
     fun getProjectBeans(module: Module): Set<PsiBean> {
         val scope = GlobalSearchScope.moduleWithDependenciesScope(module)
-        val annotationPsiClasses = SpringSearchUtils.getComponentClassAnnotations(module)
         val modulePackagesHolder = PackageScanService.getInstance(module.project).getAllPackages()
+        val annotationPsiClasses = projectScanAnnotations(module, modulePackagesHolder)
         val allModuleWithDependenciesBeans = filterBeansByPackage(
             searchBeanPsiClassesByAnnotations(module, annotationPsiClasses, scope),
             modulePackagesHolder, module
@@ -966,7 +974,8 @@ class SpringSearchService(private val project: Project) {
         val extraComponents = getExtraComponents(module, modulePackagesHolder).active
         val moduleWithDependenciesBeans = allModuleWithDependenciesBeans + extraComponents
         val importedPsiBeans = getImportedBeans(
-            modulePackagesHolder, module, moduleWithDependenciesBeans.mapTo(mutableSetOf()) { it.psiClass }
+            PackageScanService.getInstance(module.project).getBeanRegistrations(),
+            module, moduleWithDependenciesBeans.mapTo(mutableSetOf()) { it.psiClass }
         )
 
         val psiBeans = moduleWithDependenciesBeans + importedPsiBeans
@@ -1068,10 +1077,20 @@ object SpringSearchUtils {
                         MetaAnnotationUtil.getAnnotationTypesWithChildren(module, SpringCoreClasses.COMPONENT, false)
                             .toMutableSet()
                     annotations += LibraryClassCache.searchForLibraryClasses(module, JavaEeClasses.RESOURCE.allFqns)
-                    annotations += MetaAnnotationUtil
-                        .getAnnotationTypesWithChildren(module, SpringCoreClasses.CONFIGURATION_PROPERTIES, false)
                     return@run annotations
                 }.toSet(),
+                ModificationTrackerManager.getInstance(project).getUastAnnotationAndLibraryTracker()
+            )
+        }
+    }
+
+    fun getConfigurationPropertiesAnnotations(module: Module): Collection<PsiClass> {
+        val project = module.project
+        return CachedValuesManager.getManager(project).getCachedValue(module) {
+            CachedValueProvider.Result(
+                MetaAnnotationUtil
+                    .getAnnotationTypesWithChildren(module, SpringCoreClasses.CONFIGURATION_PROPERTIES, false)
+                    .toSet(),
                 ModificationTrackerManager.getInstance(project).getUastAnnotationAndLibraryTracker()
             )
         }
