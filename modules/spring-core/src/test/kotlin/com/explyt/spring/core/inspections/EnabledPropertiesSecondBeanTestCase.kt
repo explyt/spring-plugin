@@ -5,12 +5,16 @@
 
 package com.explyt.spring.core.inspections
 
+import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.service.PackageScanService
 import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.test.ExplytInspectionBaseTestCase
 import com.explyt.spring.test.TestLibrary
+import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.openapi.util.registry.Registry
+import com.intellij.psi.JavaPsiFacade
+import com.intellij.psi.search.GlobalSearchScope
 
 abstract class EnabledPropertiesSecondBeanTestCase : ExplytInspectionBaseTestCase() {
 
@@ -102,6 +106,19 @@ abstract class EnabledPropertiesSecondBeanTestCase : ExplytInspectionBaseTestCas
 
         assertPropertiesBeans(listOf(UNSCANNED_ENABLED_NAME), UNSCANNED_PROPERTIES)
         assertEquals(emptyList<String>(), autowiringErrorsOf(consumerSource(qualifier = null, UNSCANNED_PACKAGE)))
+    }
+
+    fun testPlainPropertiesInScanRootEnabledIsOneBean() {
+        addProject(scanned = false, enabled = true, packageName = SCANNED_PACKAGE)
+        val propertiesClass = JavaPsiFacade.getInstance(project).findClass(PROPERTIES, GlobalSearchScope.projectScope(project))
+        assertNotNull("precondition: $PROPERTIES resolves", propertiesClass)
+        assertFalse(
+            "precondition: $PROPERTIES is not a @Component",
+            AnnotationUtil.isAnnotated(propertiesClass!!, SpringCoreClasses.COMPONENT, 0)
+        )
+
+        assertPropertiesBeans(listOf(ENABLED_NAME))
+        assertEquals(emptyList<String>(), autowiringErrorsOf(consumerSource(qualifier = null, SCANNED_PACKAGE, fieldName = NEUTRAL_FIELD)))
     }
 
     private fun addProject(scanned: Boolean, enabled: Boolean, packageName: String = SCANNED_PACKAGE) {
