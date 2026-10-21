@@ -8,6 +8,7 @@ package com.explyt.spring.web.util
 import com.explyt.spring.core.service.PackageScanService
 import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.intellij.openapi.module.Module
+import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.roots.ProjectRootModificationTracker
@@ -19,6 +20,19 @@ object ApplicationModules {
 
     fun declaresApplication(module: Module): Boolean =
         PackageScanService.getInstance(module.project).applicationClasses(module.moduleScope).isNotEmpty()
+
+    fun dependentApplicationModules(module: Module): Sequence<Module> = sequence {
+        val moduleManager = ModuleManager.getInstance(module.project)
+        val visited = mutableSetOf(module)
+        val pending = ArrayDeque(moduleManager.getModuleDependentModules(module))
+        while (pending.isNotEmpty()) {
+            ProgressManager.checkCanceled()
+            val dependent = pending.removeFirst()
+            if (!visited.add(dependent)) continue
+            if (declaresApplication(dependent)) yield(dependent)
+            pending += moduleManager.getModuleDependentModules(dependent)
+        }
+    }
 
     fun servingModulesOf(module: Module): List<Module> =
         CachedValuesManager.getManager(module.project).getCachedValue(module) {
