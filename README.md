@@ -6,8 +6,7 @@
 [![GitHub stars](https://img.shields.io/github/stars/explyt/spring-plugin?label=Stars)](https://github.com/explyt/spring-plugin/stargazers)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE.md)
 ![Build](https://github.com/explyt/spring-plugin/actions/workflows/build.yaml/badge.svg)
-[![Telegram EN](https://img.shields.io/badge/Telegram-EN-26A5E4?logo=telegram)](https://t.me/explytspring_en)
-[![Telegram RU](https://img.shields.io/badge/Telegram-RU-26A5E4?logo=telegram)](https://t.me/explytspring)
+[![Discord](https://img.shields.io/badge/Discord-join-5865F2?logo=discord&logoColor=white)](https://discord.gg/NMThzdNB9)
 
 > ### Runtime-accurate Spring tooling for IntelliJ IDEA Community — free.
 
@@ -166,7 +165,7 @@ Contributions are welcome! New here? Clone, run `./gradlew :spring-bootstrap:run
 
 - 🐛 **Issues / feature requests:** [GitHub Issues](https://github.com/explyt/spring-plugin/issues)
 - 🗨️ **Discussions:** [GitHub Discussions](https://github.com/explyt/spring-plugin/discussions) — Q&A, ideas, show & tell
-- 💬 **Telegram:** [English](https://t.me/explytspring_en) · RU [channel](https://t.me/explytspring) / [chat](https://t.me/explytspringchat)
+- 💬 **Discord:** [Join the Explyt Spring server](https://discord.gg/NMThzdNB9) — questions and discussion in English
 - 📚 **Docs:** [explyt.ai/docs](https://explyt.ai/docs/category/explyt-spring?utm_campaign=explytai&utm_source=github&utm_medium=springexplyt) · [Wiki](https://github.com/explyt/spring-plugin/wiki)
 
 If Explyt saves you time, please ⭐ [**star the repo**](https://github.com/explyt/spring-plugin) and 🗳️ [**leave a Marketplace rating**](https://plugins.jetbrains.com/plugin/28675-spring-explyt/reviews).

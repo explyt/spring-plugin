@@ -113,7 +113,7 @@ The `Type` column names a type from `Issue types`; the `Labels to apply` column 
 | Bug | `1-plugin-bug-report.yml` | `[BUG] ` | `Bug` | optional area/topic labels only | Unexpected behavior, exception, red balloon / IDE internal error, false-positive inspection, broken navigation/completion, freeze, stack trace |
 | Compatibility | `2-compatibility.yml` | `[COMPATIBILITY]` | `Bug` | `compatibility` + optional area/topic labels | Problem specific to an IDE version, OS, JDK, or other-plugin combination |
 | Feature | `3-feature-request.yml` | `[FEATURE]` | `Feature` for a new capability, `Improvement` for enhancing an existing one | area and/or topic labels; the form's declared `feature-request` is absent | New user-facing capability or enhancement of an existing one |
-| Question | `4-ask_question.yml` | `[QUESTION] ` | none | `question` + optional area/topic label when useful | Usage question; prefer redirecting to GitHub Discussions or Telegram (see `config.yml` contact links) before filing |
+| Question | `4-ask_question.yml` | `[QUESTION] ` | none | `question` + optional area/topic label when useful | Usage question; prefer redirecting to GitHub Discussions or the Discord server (see `config.yml` contact links) before filing |
 | Task | no form | none | `Task` | `type:internal` + optional area/topic labels | Refactoring, docs, infrastructure, cleanup, engineering work; create as a plain issue with Description / Additional context sections |
 
 - If the user explicitly set a category, use it unless it is clearly wrong; if you correct it, explain why.
