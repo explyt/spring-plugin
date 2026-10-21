@@ -27,8 +27,21 @@ permissions:
 
 jobs:
   build:
+    name: test (${{ matrix.shard }})
     runs-on: ubuntu-latest
     timeout-minutes: 105
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: core
+            tasks: ':spring-core:test'
+          - shard: web
+            tasks: ':spring-web:test'
+          - shard: ai
+            tasks: ':spring-ai:test'
+          - shard: rest
+            tasks: ':spring-bootstrap:test -x :spring-core:test -x :spring-web:test -x :spring-ai:test'
     steps:
       - name: Checkout sources
         uses: actions/checkout@v6
@@ -49,7 +62,7 @@ jobs:
         timeout-minutes: 90
         env:
           GRADLE_OPTS: -Dfile.encoding=UTF-8
-        run: ./gradlew --stacktrace --info --warning-mode all :spring-bootstrap:test
+        run: ./gradlew --stacktrace --info --warning-mode all ${{ matrix.tasks }}
       - name: Dump JVM threads
         if: failure() || cancelled()
         run: |
@@ -61,7 +74,7 @@ jobs:
         if: failure() || cancelled()
         uses: actions/upload-artifact@v4
         with:
-          name: test-diagnostics
+          name: test-diagnostics-${{ matrix.shard }}
           path: |
             .intellijPlatform/sandbox/**/log-test/**
             jstack-*.txt
@@ -73,8 +86,8 @@ jobs:
         continue-on-error: true
         if: success() || failure() # always run even if the previous step fails
         with:
+          check_name: JUnit Test Report (${{ matrix.shard }})
           verbose_summary: true
           comment: true
           report_paths: 'modules/**/build/test-results/test/TEST-*.xml'
-
 
