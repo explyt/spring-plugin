@@ -7,6 +7,7 @@ package com.explyt.spring.ai.mcp.entities
 
 import com.explyt.spring.ai.mcp.EntityFieldJson
 import com.explyt.spring.ai.mcp.EntityIndexJson
+import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
 
@@ -165,7 +166,7 @@ class EntityInventoryTest : ExplytJavaLightTestCase() {
      * entity and bean tools two incompatible notions of "the same answer".
      */
     fun testRevisionIsTheSharedQueryFingerprint() {
-        val stamp = com.intellij.psi.util.PsiModificationTracker.getInstance(project).modificationCount.toString()
+        val stamp = ModificationTrackerManager.getInstance(project).getModelRevisionTracker().modificationCount.toString()
         val question = query(packageFilter = "com.example.app")
 
         assertEquals(

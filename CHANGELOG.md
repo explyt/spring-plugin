@@ -6,6 +6,7 @@
 
 ### Spring Core
 - fix: Beans registered by `@Import` and `@EnableConfigurationProperties` get the names Spring gives them: the fully qualified class name, or `<prefix>-<fully qualified name>` for prefixed configuration properties, instead of the component-scan default name (#781)
+- fix: After you edit a `String` or primitive constant used in a mapping, such as `@GetMapping(PATH)`, the Endpoints tool window and gutters show the new path instead of the old one
 - fix: `@Lookup`, `@DependsOn` and cache annotation bean-name inspections stay silent on classes Spring neither registers as beans nor processes as test classes; abstract bases and interfaces of active beans still report (#783)
 - fix: Default bean names follow Spring's generator: names starting with two capitals stay unchanged, nested classes are named `outer.Inner`, lowercasing ignores the default locale (#758)
 - fix: Evaluate `@ConditionalOnProperty` and other condition attributes on compiled library classes instead of reporting them undecided because the property name cannot be resolved (#759)
@@ -129,6 +130,7 @@
 - fix: Make `gradlew` and `mvnw` executable in a project generated through Spring Initializr, so the first `./gradlew` in a terminal no longer fails with "permission denied" (#60)
 
 ### Spring Web
+- fix: Open in Swagger UI and `.http` host completion resolve nested `server.port` placeholders such as `${SERVER_PORT:${app.port:9317}}`, and a mapping path placeholder nested in a default resolves to the inner value instead of staying half-resolved (#779)
 - fix: Actuator endpoints apply only `@EndpointWebExtension` classes that are beans, as Spring Boot does: an extension outside the component scan or without a stereotype no longer replaces the endpoint's operations (#655)
 - fix: Endpoint gutters, Run in Swagger and OpenAPI generation no longer offer the class-prefix URL for a handler whose path cannot be evaluated (#709)
 - fix: Read the class-level prefix of a controller annotated with a composed annotation the way Spring merges it: an `@AliasFor` default, such as `String[] path() default "/api"` on an annotation meta-annotated with `@RequestMapping`, also through a second composed level, is now the prefix of the controller's endpoints in the Endpoints tool window, the Spring MCP endpoint tools, the endpoint gutters and "Generate OpenApi Specification", and an attribute named like a `@RequestMapping` path attribute without `@AliasFor` sets the prefix only before Spring 7, as Spring's convention mapping does (#672)
@@ -194,6 +196,7 @@
 
 ### Spring MCP
 
+- fix: Paged MCP answers keep their revision across indexing, cache drops and edits outside the Spring model, so the next page no longer fails with RESULT_CHANGED, while any edit that changes the answer itself, such as a call added to a handler body, a DTO field type or a mapping path constant, now does
 - fix: Name a trace node of a Kotlin companion member in `explyt_trace_spring_call_chain` after its outer class, as the call targets already are (#591)
 - fix: Name `CONDITIONS_NOT_EVALUATED` in the envelope-level `limitations` of every page of `explyt_find_spring_endpoint`, `explyt_get_spring_http_endpoints` and `explyt_get_spring_endpoint_contract` while bean condition evaluation is disabled, as `explyt_get_spring_beans` does, so an endpoint without `beanCondition` is no longer read as one whose bean is active (#635)
 - feat: Bound the answers of `explyt_find_spring_endpoint`, `explyt_get_spring_http_endpoints` and `explyt_get_spring_endpoint_contract` by `maxChars` and continue them with `offset` and `expectedRevision`, as the bean, entity and trace tools do: every current key stays and `status`, `revision`, `offset` and `nextOffset` are added, a continuation of another query or of an edited project answers `RESULT_CHANGED`, one endpoint larger than the budget answers `RESPONSE_TOO_LARGE` naming the budget that fetches it, the neighbourhood of a miss is kept on the first page within the budget with `nearestByPrefixTruncated` when cut, and the listing comes in a stable order so pages never overlap (#635)
