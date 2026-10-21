@@ -6,6 +6,7 @@
 
 ### Spring Core
 - fix: Beans of a starter that is only on the application's runtime classpath — `runtimeOnly`, or a dependency module's own `implementation` — are part of the bean model, so injecting them no longer reports a false "No beans" (#780)
+- fix: The duplicate bean name inspection reports a `@Bean` method overridden in a configuration whose superclass is itself a registered configuration: Spring registers the bean from both classes, so startup fails unless bean definition overriding is allowed (#714)
 - fix: A `@SpringBootApplication` or `@ComponentScan` in test sources no longer widens the component scan of production code: production beans, inspections and gutters follow only the production application's scan (#772)
 - fix: A `@ConfigurationProperties` class without `@Component` is a bean only when `@EnableConfigurationProperties` or `@ConfigurationPropertiesScan` registers it, named `<prefix>-<fully qualified class name>` as Spring does; a component scan alone no longer makes it a bean (#741)
 - fix: Beans registered by `@Import` and `@EnableConfigurationProperties` get the names Spring gives them: the fully qualified class name, or `<prefix>-<fully qualified name>` for prefixed configuration properties, instead of the component-scan default name (#781)
