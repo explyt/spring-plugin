@@ -23,11 +23,11 @@ abstract class EnabledPropertiesSecondBeanTestCase : ExplytInspectionBaseTestCas
 
     protected abstract fun applicationSource(): String
 
-    protected abstract fun propertiesSource(scanned: Boolean): String
+    protected abstract fun propertiesSource(scanned: Boolean, packageName: String): String
 
-    protected abstract fun enablerSource(): String
+    protected abstract fun enablerSource(packageName: String): String
 
-    protected abstract fun consumerSource(qualifier: String?): String
+    protected abstract fun consumerSource(qualifier: String?, packageName: String): String
 
     override fun setUp() {
         super.setUp()
@@ -52,7 +52,7 @@ abstract class EnabledPropertiesSecondBeanTestCase : ExplytInspectionBaseTestCas
     fun testScannedComponentAlsoEnabledMakesUnqualifiedInjectionAmbiguous() {
         addProject(scanned = true, enabled = true)
 
-        val errors = autowiringErrorsOf(consumerSource(qualifier = null))
+        val errors = autowiringErrorsOf(consumerSource(qualifier = null, SCANNED_PACKAGE))
 
         assertEquals(listOf("Autowire failed. There is more than one bean of 'Props'"), errors)
     }
@@ -60,7 +60,7 @@ abstract class EnabledPropertiesSecondBeanTestCase : ExplytInspectionBaseTestCas
     fun testScannedComponentAlsoEnabledResolvesEnabledNameQualifier() {
         addProject(scanned = true, enabled = true)
 
-        val errors = autowiringErrorsOf(consumerSource(qualifier = ENABLED_NAME))
+        val errors = autowiringErrorsOf(consumerSource(qualifier = ENABLED_NAME, SCANNED_PACKAGE))
 
         assertEquals(emptyList<String>(), errors)
     }
@@ -69,37 +69,43 @@ abstract class EnabledPropertiesSecondBeanTestCase : ExplytInspectionBaseTestCas
         addProject(scanned = true, enabled = false)
 
         assertPropertiesBeans(listOf(SCAN_NAME))
-        assertEquals(emptyList<String>(), autowiringErrorsOf(consumerSource(qualifier = null)))
+        assertEquals(emptyList<String>(), autowiringErrorsOf(consumerSource(qualifier = null, SCANNED_PACKAGE)))
     }
 
     fun testEnabledOnlyPropertiesIsOneBeanWithoutAmbiguity() {
-        addProject(scanned = false, enabled = true)
+        addProject(scanned = false, enabled = true, packageName = UNSCANNED_PACKAGE)
 
-        assertPropertiesBeans(listOf(ENABLED_NAME))
-        assertEquals(emptyList<String>(), autowiringErrorsOf(consumerSource(qualifier = null)))
+        assertPropertiesBeans(listOf(UNSCANNED_ENABLED_NAME), UNSCANNED_PROPERTIES)
+        assertEquals(emptyList<String>(), autowiringErrorsOf(consumerSource(qualifier = null, UNSCANNED_PACKAGE)))
     }
 
-    private fun addProject(scanned: Boolean, enabled: Boolean) {
-        myFixture.addFileToProject("app/App.$extension", applicationSource())
-        myFixture.addFileToProject("app/Props.$extension", propertiesSource(scanned))
-        if (enabled) myFixture.addFileToProject("app/PropsConfig.$extension", enablerSource())
+    private fun addProject(scanned: Boolean, enabled: Boolean, packageName: String = SCANNED_PACKAGE) {
+        val properties = "$packageName.Props"
+        myFixture.addFileToProject("$SCANNED_PACKAGE/App.$extension", applicationSource())
+        myFixture.addFileToProject("$packageName/Props.$extension", propertiesSource(scanned, packageName))
+        if (enabled) myFixture.addFileToProject("$SCANNED_PACKAGE/PropsConfig.$extension", enablerSource(packageName))
         ModificationTrackerManager.getInstance(project).invalidateAll()
 
         val packages = PackageScanService.getInstance(project).getAllPackages()
-        assertEquals("precondition: the application scans its own package", setOf("app."), packages.getPackages(module).toSet())
+        val scanPackages = packages.getPackages(module)
+        assertEquals("precondition: the application scans its own package", setOf("$SCANNED_PACKAGE."), scanPackages.toSet())
+        assertEquals(
+            "precondition: $properties is under the scan packages $scanPackages only when it lives in $SCANNED_PACKAGE",
+            packageName == SCANNED_PACKAGE, scanPackages.any { properties.startsWith(it) }
+        )
         assertEquals(
             "precondition: @EnableConfigurationProperties is read only when declared",
-            enabled, PROPERTIES in packages.importQualified
+            enabled, properties in packages.importQualified
         )
     }
 
-    private fun assertPropertiesBeans(expectedNames: List<String>) {
+    private fun assertPropertiesBeans(expectedNames: List<String>, properties: String = PROPERTIES) {
         val names = SpringSearchServiceFacade.getInstance(project).getAllActiveBeans(module)
-            .filter { it.psiClass.qualifiedName == PROPERTIES }
+            .filter { it.psiClass.qualifiedName == properties }
             .map { it.name }
             .sorted()
-        assertEquals("active beans of $PROPERTIES: $names", expectedNames.size, names.size)
-        assertEquals("names of the active beans of $PROPERTIES", expectedNames.sorted(), names)
+        assertEquals("active beans of $properties: $names", expectedNames.size, names.size)
+        assertEquals("names of the active beans of $properties", expectedNames.sorted(), names)
     }
 
     private fun autowiringErrorsOf(consumer: String): List<String> {
@@ -110,8 +116,12 @@ abstract class EnabledPropertiesSecondBeanTestCase : ExplytInspectionBaseTestCas
 
     protected companion object {
         const val PREFIX = "naming"
-        const val PROPERTIES = "app.Props"
+        const val SCANNED_PACKAGE = "app"
+        const val UNSCANNED_PACKAGE = "ext"
+        const val PROPERTIES = "$SCANNED_PACKAGE.Props"
+        const val UNSCANNED_PROPERTIES = "$UNSCANNED_PACKAGE.Props"
         const val SCAN_NAME = "props"
         const val ENABLED_NAME = "$PREFIX-$PROPERTIES"
+        const val UNSCANNED_ENABLED_NAME = "$PREFIX-$UNSCANNED_PROPERTIES"
     }
 }

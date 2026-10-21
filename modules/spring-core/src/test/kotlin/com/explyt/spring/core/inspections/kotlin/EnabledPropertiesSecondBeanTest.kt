@@ -20,8 +20,8 @@ class EnabledPropertiesSecondBeanTest : EnabledPropertiesSecondBeanTestCase() {
         open class App
     """.trimIndent()
 
-    override fun propertiesSource(scanned: Boolean) = """
-        package app
+    override fun propertiesSource(scanned: Boolean, packageName: String) = """
+        package $packageName
 
         import org.springframework.boot.context.properties.ConfigurationProperties
         import org.springframework.stereotype.Component
@@ -31,8 +31,10 @@ class EnabledPropertiesSecondBeanTest : EnabledPropertiesSecondBeanTestCase() {
         open class Props
     """.trimIndent()
 
-    override fun enablerSource() = """
+    override fun enablerSource(packageName: String) = """
         package app
+
+        import $packageName.Props
 
         import org.springframework.boot.context.properties.EnableConfigurationProperties
         import org.springframework.context.annotation.Configuration
@@ -42,8 +44,10 @@ class EnabledPropertiesSecondBeanTest : EnabledPropertiesSecondBeanTestCase() {
         open class PropsConfig
     """.trimIndent()
 
-    override fun consumerSource(qualifier: String?) = """
+    override fun consumerSource(qualifier: String?, packageName: String) = """
         package app
+
+        import $packageName.Props
 
         import org.springframework.beans.factory.annotation.Autowired
         import org.springframework.beans.factory.annotation.Qualifier
