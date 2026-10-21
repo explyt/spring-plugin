@@ -16,7 +16,7 @@ import com.explyt.spring.web.util.MappingPathPlaceholders
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytUastUtil.getCommentText
-import com.intellij.codeInsight.AnnotationUtil
+
 import com.intellij.codeInsight.daemon.LineMarkerInfo
 import com.intellij.codeInsight.daemon.LineMarkerProviderDescriptor
 import com.intellij.openapi.editor.markup.GutterIconRenderer
@@ -53,9 +53,8 @@ class ControllerEndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor
         val controllerName = psiClass.name ?: return null
 
         val requestMappingMah = MetaAnnotationsHolder.of(module, SpringWebClasses.REQUEST_MAPPING)
-        val path = requestMappingMah.getAnnotationMemberValues(mappingSource, setOf("path", "value")).asSequence()
-            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
-            .firstOrNull() ?: ""
+        val mapping = HandlerMethods.methodMapping(mappingSource, requestMappingMah)
+        val path = mapping.paths.firstOrNull()?.path ?: ""
         if (OpenApiUtils.isAbsolutePath(path)) return null
 
         val prefix = HandlerMethods.requestMappingPrefixes(psiClass, requestMappingMah).firstOrNull() ?: ""
@@ -63,13 +62,6 @@ class ControllerEndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor
 
         val fullPath = SpringWebUtil.simplifyUrl(MappingPathPlaceholders.resolve(module, "$prefix/$path"))
 
-        val requestMethods =
-            requestMappingMah.getAnnotationMemberValues(mappingSource, setOf("method"))
-                .map { it.text.split('.').last() }
-        val produces = requestMappingMah.getAnnotationMemberValues(mappingSource, setOf("produces"))
-            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
-        val consumes = requestMappingMah.getAnnotationMemberValues(mappingSource, setOf("consumes"))
-            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
 
         val description = uMethod.comments.firstOrNull()?.getCommentText() ?: ""
         val returnType = uMethod.returnType
@@ -77,7 +69,7 @@ class ControllerEndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor
 
         val endpointElement = EndpointInfo(
             fullPath,
-            requestMethods,
+            mapping.methods,
             psiElement,
             uMethod.name,
             controllerName.replace("controller", "", true)
@@ -88,8 +80,8 @@ class ControllerEndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor
             SpringWebUtil.collectRequestParameters(psiMethod),
             SpringWebUtil.getRequestBodyInfo(psiMethod),
             SpringWebUtil.collectRequestHeaders(psiMethod),
-            produces,
-            consumes
+            mapping.produces,
+            mapping.consumes
         )
 
         return LineMarkerInfo(

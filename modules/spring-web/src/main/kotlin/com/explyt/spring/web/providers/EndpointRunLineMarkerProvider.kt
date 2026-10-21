@@ -22,7 +22,7 @@ import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.spring.web.util.SpringWebUtil.removeParams
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytUastUtil.getCommentText
-import com.intellij.codeInsight.AnnotationUtil
+
 import com.intellij.execution.lineMarker.RunLineMarkerContributor
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.module.ModuleUtilCore
@@ -71,9 +71,7 @@ class EndpointRunLineMarkerProvider : RunLineMarkerContributor() {
         psiMethod: PsiMethod,
         mappingSource: PsiMethod,
     ): String {
-        var path = requestMappingMah.getAnnotationMemberValues(mappingSource, setOf("path", "value")).asSequence()
-            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
-            .firstOrNull() ?: ""
+        var path = HandlerMethods.methodMapping(mappingSource, requestMappingMah).paths.firstOrNull()?.path ?: ""
         if (isAbsolutePath(path)) return path
 
         val containingClass = psiMethod.containingClass ?: return path
@@ -93,24 +91,18 @@ class EndpointRunLineMarkerProvider : RunLineMarkerContributor() {
         val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return null
 
 
-        val requestMappingMah = MetaAnnotationsHolder.of(module, SpringWebClasses.REQUEST_MAPPING)
-        val produces = requestMappingMah.getAnnotationMemberValues(mappingSource, setOf("produces"))
-            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
-        val consumes = requestMappingMah.getAnnotationMemberValues(mappingSource, setOf("consumes"))
-            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
+        val mapping = HandlerMethods.methodMapping(
+            mappingSource, MetaAnnotationsHolder.of(module, SpringWebClasses.REQUEST_MAPPING)
+        )
 
         val fullPath = SpringWebUtil.simplifyUrl(removeParams(apiPath))
-
-        val requestMethods =
-            requestMappingMah.getAnnotationMemberValues(mappingSource, setOf("method"))
-                .map { it.text.split('.').last() }
 
         val description = uMethod.comments.firstOrNull()?.getCommentText() ?: ""
         val returnTypeFqn = SpringWebUtil.getTypeFqn(HandlerSignature.declaredReturnType(psiMethod), psiMethod.language)
 
         return EndpointInfo(
             fullPath,
-            requestMethods,
+            mapping.methods,
             psiMethod,
             uMethod.name,
             "default",
@@ -120,8 +112,8 @@ class EndpointRunLineMarkerProvider : RunLineMarkerContributor() {
             SpringWebUtil.collectRequestParameters(psiMethod),
             SpringWebUtil.getRequestBodyInfo(psiMethod),
             SpringWebUtil.collectRequestHeaders(psiMethod),
-            produces,
-            consumes
+            mapping.produces,
+            mapping.consumes
         )
     }
 
