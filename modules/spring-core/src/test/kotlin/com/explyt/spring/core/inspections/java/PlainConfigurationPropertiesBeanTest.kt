@@ -22,15 +22,15 @@ class PlainConfigurationPropertiesBeanTest : PlainConfigurationPropertiesBeanTes
         public class App {}
     """.trimIndent()
 
-    override fun propertiesSource(component: Boolean, packageName: String) = """
+    override fun propertiesSource(component: Boolean, packageName: String, className: String, prefix: String) = """
         package $packageName;
 
         import org.springframework.boot.context.properties.ConfigurationProperties;
         import org.springframework.stereotype.Component;
 
         ${if (component) "@Component" else ""}
-        @ConfigurationProperties(prefix = "$PREFIX")
-        public class Props {}
+        @ConfigurationProperties(prefix = "$prefix")
+        public class $className {}
     """.trimIndent()
 
     override fun enablerSource(packageName: String) = """
