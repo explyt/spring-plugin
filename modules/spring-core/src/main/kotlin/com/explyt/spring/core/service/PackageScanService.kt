@@ -37,6 +37,7 @@ import com.intellij.psi.PsiAnnotationMemberValue
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiJavaFile
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.search.GlobalSearchScopesCore
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
@@ -131,7 +132,7 @@ class PackageScanService(private val project: Project) {
     ): List<ModuleRootData> {
         val classesForSearchComponentScan = programConfigRoots.ifEmpty {
             annotationPsiClasses.scanAnnotationClass
-                .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, GlobalSearchScope.projectScope(project)) }
+                .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, productionSources()) }
         }
         return classesForSearchComponentScan
             .filter { filterComponentScanClass(rootPackages, it) }
@@ -144,7 +145,7 @@ class PackageScanService(private val project: Project) {
         val packages = moduleRootData.flatMapTo(mutableSetOf()) { it.packages }
         val classesForSearchImport = programConfigRoots.ifEmpty {
             importAnnotationClass
-                .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, GlobalSearchScope.projectScope(project)) }
+                .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, productionSources()) }
         }
         return classesForSearchImport
             .filter { filterComponentScanClass(packages, it) }
@@ -161,8 +162,10 @@ class PackageScanService(private val project: Project) {
         }
 
         return annotationPsiClasses.rootAnnotationClass
-                .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, GlobalSearchScope.projectScope(project)) }
+                .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, productionSources()) }
     }
+
+    private fun productionSources(): GlobalSearchScope = GlobalSearchScopesCore.projectProductionScope(project)
 
     private fun filterComponentScanClass(rootPackages: Set<String>, it: PsiClass?): Boolean {
         val packageName = (it?.containingFile as? PsiJavaFile)?.packageName ?: return false
