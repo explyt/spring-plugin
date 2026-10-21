@@ -66,12 +66,10 @@ class BeanSnapshotService(private val project: Project) {
      * changed when only the UI did.
      */
     private fun modelStampOf(selection: BeanContextSelection): String {
-        val trackers = ModificationTrackerManager.getInstance(project)
         val parts = mutableListOf(
             selection.source.name,
             selection.nativeContext?.id ?: "static",
-            trackers.getUastModelAndLibraryTracker().modificationCount.toString(),
-            trackers.getLibraryTracker().modificationCount.toString()
+            ModificationTrackerManager.getInstance(project).getModelRevisionTracker().modificationCount.toString()
         )
         // Profiles change which beans the static model reports, so they belong in the stamp; a native snapshot is
         // a recorded context and does not move when the IDE's profile inputs do.
