@@ -116,6 +116,7 @@ class ActuatorEndpointOperationsTest : ExplytKotlinLightTestCase() {
     }
 
     fun testBuiltInTextThreadDumpCarriesItsMediaType() {
+        myFixture.addFileToProject("DemoApplication.kt", APPLICATION)
         val threadDump = endpointsOf("ThreadDumpEndpoint")
         val text = threadDump.single { (it.psiElement as? PsiMethod)?.name == "textThreadDump" }
         val json = threadDump.single { (it.psiElement as? PsiMethod)?.name == "threadDump" }

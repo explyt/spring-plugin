@@ -18,8 +18,10 @@ import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.module.Module
+import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.modules
+import com.intellij.psi.PsiElement
 
 @Service(Service.Level.PROJECT)
 class SpringWebEndpointsSearcher(private val project: Project) {
@@ -40,16 +42,16 @@ class SpringWebEndpointsSearcher(private val project: Project) {
             .flatMapTo(mutableListOf()) { it.searchEndpoints(module) }
     }
 
+    /**
+     * Every endpoint of the project, each once. A controller found again from a dependent module is the same endpoint;
+     * an Actuator endpoint listed by two applications is two, because each application decides its own exposure and
+     * access, whether the endpoint is a built-in one or declared in a library both reach. So identity is the route,
+     * the declaration and the module owning it - never a verdict.
+     */
     fun getAllEndpoints(): List<EndpointElement> {
-        val distinctElements = mutableSetOf<EndpointElement>()
-
+        val seen = mutableSetOf<EndpointIdentity>()
         return project.modules.flatMapTo(mutableListOf()) { module ->
-            getAllEndpoints(module)
-                .filter { endpoint: EndpointElement ->
-                    val isUnique = !distinctElements.contains(endpoint)
-                    distinctElements.add(endpoint)
-                    isUnique
-                }
+            getAllEndpoints(module).filter { seen.add(EndpointIdentity.of(it, module)) }
         }
     }
 
@@ -87,4 +89,28 @@ class SpringWebEndpointsSearcher(private val project: Project) {
         }
     }
 
+}
+
+private data class EndpointIdentity(
+    val type: EndpointType,
+    val path: String,
+    val requestMethods: List<String>,
+    val psiElement: PsiElement,
+    val owner: Module,
+) {
+    companion object {
+        /**
+         * An Actuator endpoint belongs to the application listing it, the one deciding its verdict. Any other endpoint
+         * belongs to the module declaring it, so a dependent module listing it again lists the same endpoint; a library
+         * declaration has no module of its own and belongs to the module listing it.
+         */
+        fun of(endpoint: EndpointElement, listedBy: Module): EndpointIdentity {
+            val owner = if (endpoint.type == EndpointType.ACTUATOR) {
+                listedBy
+            } else {
+                ModuleUtilCore.findModuleForPsiElement(endpoint.psiElement) ?: listedBy
+            }
+            return EndpointIdentity(endpoint.type, endpoint.path, endpoint.requestMethods, endpoint.psiElement, owner)
+        }
+    }
 }
