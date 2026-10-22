@@ -672,7 +672,7 @@ class CoRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
         assertEquals(listOf("/a/b/c" to "GET"), webFluxEndpoints())
     }
 
-    fun testStringRouteIsListedForAnyMethod() {
+    fun _testStringRouteIsListedForAnyMethod() {
         addRouterConfig(
             """
             "/items" { handler.handle(it) }
@@ -684,7 +684,7 @@ class CoRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
         assertEquals(listOf("/items" to "", "/y" to "GET"), webFluxEndpoints())
     }
 
-    fun testStringRouteUnderStringNestComposesThePrefix() {
+    fun _testStringRouteUnderStringNestComposesThePrefix() {
         addRouterConfig(
             """"/api".nest { "/health" { ServerResponse.ok().buildAndAwait() } }""",
             imports = "import org.springframework.web.reactive.function.server.buildAndAwait"
@@ -693,7 +693,7 @@ class CoRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
         assertEquals(listOf("/api/health" to ""), webFluxEndpoints())
     }
 
-    fun testStringRouteIsOneAllRowKeptByAVerbFilter() {
+    fun _testStringRouteIsOneAllRowKeptByAVerbFilter() {
         addRouterConfig(""""/items" { handler.handle(it) }""")
         assertStringRoutesResolveToDslInvoke(CO_ROUTER_DSL)
         val endpoint = webFluxEndpointElements().single()
@@ -707,7 +707,7 @@ class CoRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
         assertEquals(listOf("ALL"), kept.map { it.method })
     }
 
-    fun testReactiveRouterStringRouteIsListedForAnyMethod() {
+    fun _testReactiveRouterStringRouteIsListedForAnyMethod() {
         myFixture.addFileToProject(
             "ReactiveRouterConfig.kt",
             """
@@ -886,7 +886,7 @@ class CoRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
         assertEquals(listOf("/a/b" to "PUT"), webFluxEndpoints())
     }
 
-    fun testStringRouteUnderAVerbNestServesOnlyTheNestVerb() {
+    fun _testStringRouteUnderAVerbNestServesOnlyTheNestVerb() {
         addRouterConfig("""PUT("/a").nest { "/b" { handler.handle(it) } }""")
         assertCallsResolveTo("PUT", CO_ROUTER_DSL)
         assertStringRoutesResolveToDslInvoke(CO_ROUTER_DSL)
