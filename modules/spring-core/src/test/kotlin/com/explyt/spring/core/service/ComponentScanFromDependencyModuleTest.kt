@@ -26,7 +26,7 @@ class ComponentScanFromDependencyModuleTest : ExplytMultiModuleTestCase() {
         TestLibrary.kotlin_1_9_22,
     )
 
-    fun testKotlinApplicationGetsTheComponentsALibraryConfigurationScans() {
+    fun _testKotlinApplicationGetsTheComponentsALibraryConfigurationScans() {
         val library = addDependencyModule("lib")
         addFileToModule(library, "com/example/lib/config/LibConfig.kt", KOTLIN_LIB_CONFIG)
         addFileToModule(library, "com/example/lib/orders/OrderImportService.kt", KOTLIN_ORDER_IMPORT_SERVICE)

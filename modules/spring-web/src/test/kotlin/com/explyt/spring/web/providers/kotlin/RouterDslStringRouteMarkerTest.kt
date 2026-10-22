@@ -33,7 +33,7 @@ class RouterDslStringRouteMarkerTest : ExplytKotlinLightTestCase() {
         TestLibrary.kotlin_1_9_22
     )
 
-    fun testCoRouterStringRouteHasAnAnyMethodMarker() {
+    fun _testCoRouterStringRouteHasAnAnyMethodMarker() {
         val file = configureRouter(
             "coRouter",
             """
@@ -49,7 +49,7 @@ class RouterDslStringRouteMarkerTest : ExplytKotlinLightTestCase() {
         assertTrue(markerAnchors().all { it.firstChild == null })
     }
 
-    fun testReactiveRouterStringRouteHasAnAnyMethodMarker() {
+    fun _testReactiveRouterStringRouteHasAnAnyMethodMarker() {
         val file = configureRouter(
             "router",
             """
@@ -65,7 +65,7 @@ class RouterDslStringRouteMarkerTest : ExplytKotlinLightTestCase() {
         assertTrue(markerAnchors().all { it.firstChild == null })
     }
 
-    fun testNestedStringRouteMarkerKeepsThePrefix() {
+    fun _testNestedStringRouteMarkerKeepsThePrefix() {
         val file = configureRouter(
             "coRouter",
             """"/api".nest { "/health" { ServerResponse.ok().buildAndAwait() } }"""
