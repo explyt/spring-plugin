@@ -28,7 +28,7 @@ class AbstractComponentTargetOrderTest : ExplytJavaLightTestCase() {
         )
         val targets = listOf(firstFoo, aConsumer, zConsumer)
         assertEquals(expected, targets.map(::presentation))
-        assertEquals(3, targets.map { it.containingFile.virtualFile.path }.distinct().size)
+        assertEquals(3, targets.map { (it as PsiElement).containingFile.virtualFile.path }.distinct().size)
 
         assertEquals(
             "Reverse input must not decide the order of equal names",
