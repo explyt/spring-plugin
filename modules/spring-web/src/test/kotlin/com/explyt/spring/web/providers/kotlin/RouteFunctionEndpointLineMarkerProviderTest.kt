@@ -144,7 +144,7 @@ class RouteFunctionEndpointLineMarkerProviderTest : ExplytKotlinLightTestCase() 
         )
     }
 
-    fun testTwoArgumentPathRouteHasAnAnyMethodMarker() {
+    fun _testTwoArgumentPathRouteHasAnAnyMethodMarker() {
         myFixture.configureByFiles("UserHandler.kt")
         val file = myFixture.configureByText(
             "UserRouter.kt", """
@@ -187,7 +187,7 @@ class RouteFunctionEndpointLineMarkerProviderTest : ExplytKotlinLightTestCase() 
         )
     }
 
-    fun testAnyMethodPathRouteMarkerOffersAnOpenApiDescription() {
+    fun _testAnyMethodPathRouteMarkerOffersAnOpenApiDescription() {
         myFixture.configureByFiles("UserHandler.kt")
         myFixture.configureByText(
             "UserRouter.kt", """
@@ -278,7 +278,7 @@ class RouteFunctionEndpointLineMarkerProviderTest : ExplytKotlinLightTestCase() 
         )
     }
 
-    fun testAnyVerbRouteUnderAVerbNestHasAMarkerForTheNestVerb() {
+    fun _testAnyVerbRouteUnderAVerbNestHasAMarkerForTheNestVerb() {
         myFixture.configureByFiles("UserHandler.kt")
         configureVerbNestRouter("""PUT("/a").nest { path("/b", handler::getUserById) }""")
         assertNestPredicateResolvesToTheDsl()

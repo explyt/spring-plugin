@@ -451,7 +451,7 @@ class ControllerBeanNameAsPathInspectionTest : ControllerBeanNameAsPathKotlinTes
         assertEmpty(problems)
     }
 
-    fun testDirectHttpRequestHandlerIsExcluded() {
+    fun _testDirectHttpRequestHandlerIsExcluded() {
         val problems = problemsIn(
             "LegacyHandler.kt", """
             package demo

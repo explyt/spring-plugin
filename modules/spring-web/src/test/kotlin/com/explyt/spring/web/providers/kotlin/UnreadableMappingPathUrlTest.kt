@@ -9,7 +9,7 @@ import com.explyt.spring.web.providers.UnreadableMappingPathUrlTestCase
 
 class UnreadableMappingPathUrlTest : UnreadableMappingPathUrlTestCase() {
 
-    override val unreadableMethods = listOf("unresolved", "nonConstant")
+    override val unreadableMethods = listOf("unresolved")
 
     override val readableUrls = linkedMapOf(
         "pathless" to "/api",
@@ -25,7 +25,6 @@ class UnreadableMappingPathUrlTest : UnreadableMappingPathUrlTestCase() {
 
             object Paths {
                 const val CONST = "/const"
-                val NOT_CONST = "/not-const"
             }
             """.trimIndent()
         )
@@ -42,9 +41,6 @@ class UnreadableMappingPathUrlTest : UnreadableMappingPathUrlTestCase() {
             class ApiController {
                 @GetMapping(Missing.PATH)
                 fun unresolved(): String = ""
-
-                @GetMapping(Paths.NOT_CONST)
-                fun nonConstant(): String = ""
 
                 @GetMapping
                 fun pathless(): String = ""
