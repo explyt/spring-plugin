@@ -207,7 +207,7 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
 
         val springSearchService = SpringSearchServiceFacade.getInstance(module.project)
         val beanCandidates = springSearchService.findActiveBeans(
-            module, element.name ?: "", element.language, psiType, element.getQualifierAnnotation(), element
+            module, element.name ?: "", (element as PsiElement).language, psiType, element.getQualifierAnnotation(), element
         )
         val beanDeclarations = beanCandidates.map { it.psiMember }
 
