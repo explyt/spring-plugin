@@ -5,7 +5,8 @@
 
 package com.explyt.spring.core.service.conditional
 
-import com.explyt.spring.core.util.SpringBootUtil
+import com.explyt.spring.core.util.SpringCoreUtil
+import com.intellij.java.library.JavaLibraryUtil
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.service.conditional.kotlin.KotlinConditionFixtures
 import com.explyt.spring.core.tracker.ModificationTrackerManager
@@ -386,7 +387,7 @@ abstract class Boot2JavaxServletWebApplicationTypeTestCase : WebApplicationTypeV
 
     override fun setUp() {
         super.setUp()
-        assertEquals("Precondition: Boot 2.7.18", "2.7.18", SpringBootUtil.getSpringBootVersion(module))
+        assertEquals("Precondition: Boot 2.7.18", "2.7.18", JavaLibraryUtil.getLibraryVersion(module, SpringCoreUtil.SPRING_BOOT_MAVEN))
         assertClasspath(
             present = listOf("javax.servlet.Servlet", CONFIGURABLE_WEB_CONTEXT, GENERIC_WEB_CONTEXT),
             absent = listOf(SERVLET_API, DISPATCHER_SERVLET, DISPATCHER_HANDLER, HANDLER_RESULT, BOOT_4_DEDUCER)
