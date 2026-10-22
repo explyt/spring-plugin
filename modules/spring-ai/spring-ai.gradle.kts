@@ -60,6 +60,7 @@ dependencies {
         plugin("com.explyt.test", "4.1.3-IJ-251")
     }
     testImplementation(project(":test-framework"))
+    testImplementation(project(":spring-data"))
     testImplementation("junit:junit:4.13.2")
     testRuntimeOnly("org.junit.vintage:junit-vintage-engine:5.10.2")
 }

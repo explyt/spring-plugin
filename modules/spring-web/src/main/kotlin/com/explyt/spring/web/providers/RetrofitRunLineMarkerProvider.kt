@@ -8,6 +8,7 @@ package com.explyt.spring.web.providers
 import com.explyt.spring.web.editor.openapi.OpenApiUtils.getServerFromPath
 import com.explyt.spring.web.editor.openapi.OpenApiUtils.isAbsolutePath
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
+import com.explyt.spring.web.util.HandlerSignature
 import com.explyt.spring.web.util.OpenApiFileUtil.Companion.DEFAULT_SERVER
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.spring.web.util.SpringWebUtil.collectRetrofitArgumentInfos
@@ -62,8 +63,7 @@ class RetrofitRunLineMarkerProvider : RunLineMarkerContributor() {
 
         val fullPath = simplifyUrl(removeParams(apiPath))
         val description = uMethod.comments.firstOrNull()?.getCommentText() ?: ""
-        val returnType = uMethod.returnType
-        val returnTypeFqn = getTypeFqn(returnType, psiMethod.language)
+        val returnTypeFqn = getTypeFqn(HandlerSignature.declaredReturnType(psiMethod), psiMethod.language)
 
         val argumentInfos = collectRetrofitArgumentInfos(psiMethod, module)
 

@@ -12,22 +12,42 @@ import com.intellij.openapi.actionSystem.AnActionResult
 import com.intellij.openapi.actionSystem.ex.AnActionListener
 import io.sentry.Breadcrumb
 import io.sentry.SentryLevel
+import java.util.Date
 
 /**
- * Records each performed IDE action as a Sentry breadcrumb.
- * When an error is captured, the last 100 breadcrumbs (Sentry default) are sent
- * automatically, providing a reproduction path instead of a single random "last action".
+ * Records useful, registered IDE actions as Sentry breadcrumbs.
+ * High-frequency editor input is omitted before it reaches Sentry, so the trail keeps navigation and product actions
+ * instead of being consumed by typing noise.
  */
 class ActionBreadcrumbListener : AnActionListener {
 
-    override fun afterActionPerformed(action: AnAction, event: AnActionEvent, result: AnActionResult) {
-        val actionId = ActionManager.getInstance().getId(action) ?: action.javaClass.simpleName
+    private val repeatedActions = RepeatedActionSuppressor()
 
-        SentryReporter.addBreadcrumb(Breadcrumb().apply {
-            category = "action"
-            message = actionId
+    override fun afterActionPerformed(action: AnAction, event: AnActionEvent, result: AnActionResult) {
+        val actionId = ActionManager.getInstance().getId(action)
+        val now = Date()
+        val name = ActionBreadcrumbPolicy.breadcrumbName(actionId, action.javaClass)
+        if (name == null) {
+            repeatedActions.breakRun()?.let(::recordRepeats)
+            return
+        }
+
+        val decision = repeatedActions.onAction(name, event.place, now)
+        decision.endedRun?.let(::recordRepeats)
+        if (decision.record) record(name, event.place, now, count = null)
+    }
+
+    /** Recorded with the time of the last repeat, so the collapsed breadcrumb is timed by its newest occurrence. */
+    private fun recordRepeats(repeats: RepeatedActionSuppressor.SuppressedRepeats) =
+        record(repeats.actionName, repeats.place, repeats.lastSeen, repeats.count)
+
+    private fun record(name: String, place: String?, at: Date, count: Int?) {
+        SentryReporter.addBreadcrumb(Breadcrumb(at).apply {
+            category = ActionBreadcrumbSanitizer.ACTION_CATEGORY
+            message = name
             level = SentryLevel.INFO
-            setData("place", event.place)
+            place?.let { setData(ActionBreadcrumbSanitizer.PLACE_KEY, it) }
+            count?.let { setData(ActionBreadcrumbSanitizer.COUNT_KEY, it) }
         })
     }
 }

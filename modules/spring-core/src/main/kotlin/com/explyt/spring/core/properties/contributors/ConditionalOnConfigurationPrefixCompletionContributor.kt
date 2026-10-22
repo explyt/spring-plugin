@@ -5,9 +5,8 @@
 
 package com.explyt.spring.core.properties.contributors
 
-import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.completion.properties.SpringConfigurationPropertiesSearch
-import com.explyt.spring.core.service.SpringSearchService
+import com.explyt.spring.core.properties.PropertyConditionAnnotations
 import com.explyt.spring.core.statistic.StatisticActionId.COMPLETION_CONDITIONAL_ON_CONFIGURATION_PREFIX
 import com.explyt.spring.core.statistic.StatisticInsertHandler
 import com.intellij.codeInsight.completion.*
@@ -48,15 +47,9 @@ class ConditionalOnConfigurationPrefixCompletionContributor : CompletionContribu
                 val annotationQn = uAnnotation.qualifiedName ?: return
                 val attributeName = uLiteralExpression.name ?: return
 
-                val annotationHolder = SpringSearchService.getInstance(module.project)
-                    .getMetaAnnotations(module, SpringCoreClasses.CONDITIONAL_ON_PROPERTY)
-                if (!annotationHolder.isAttributeRelatedWith(
-                        annotationQn,
-                        attributeName,
-                        SpringCoreClasses.CONDITIONAL_ON_PROPERTY,
-                        setOf("prefix")
-                    )
-                ) return
+                PropertyConditionAnnotations.relatedAnnotationHolder(
+                    module, annotationQn, attributeName, setOf("prefix")
+                ) ?: return
             } catch (_: PsiInvalidElementAccessException) {
                 return
             }

@@ -59,10 +59,11 @@ class ProjectConfigurationPropertiesLoader(project: Project) :
     }
 
     override fun findMetadataValueElement(module: Module, propertyName: String, propertyValue: String): ElementHint? {
-        return findMetadataFiles(module)
+        // mapNotNull, not map: the first metadata file that declares nothing must not hide the one that does.
+        val declarations = findMetadataFiles(module)
             .filterIsInstance<JsonFile>()
-            .map { collectElementMetadataHintsValue(it, propertyName, propertyValue) }
-            .firstOrNull()
+            .mapNotNull { collectElementMetadataHintsValue(it, propertyName, propertyValue) }
+        return MetadataDeclarations.preferred(declarations) { it.jsonProperty.containingFile }
     }
 
     private fun loadPropertiesFromConfiguration(module: Module): HashMap<String, ConfigurationProperty> =

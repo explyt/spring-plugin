@@ -164,6 +164,34 @@ class ExplytModelModificationTrackerTest : LightJavaCodeInsightFixtureTestCase()
         runIsNotModifiedTest()
     }*/
 
+    fun testEditConstValInitializer() {
+        myFixture.configureByText(
+            "KotlinPaths.kt",
+            """
+                class KotlinPaths {
+                    companion object {
+                        const val PATH = "/a<caret>"
+                    }
+                }
+            """.trimIndent()
+        )
+        runModificationTriggeredTest()
+    }
+
+    fun testEditNonConstCompanionValInitializer() {
+        myFixture.configureByText(
+            "KotlinService.kt",
+            """
+                class KotlinService {
+                    companion object {
+                        val LOG = java.util.logging.Logger.getLogger("my<caret>")
+                    }
+                }
+            """.trimIndent()
+        )
+        runIsNotModifiedTest()
+    }
+
     fun testEditClassName() {
         myFixture.configureByText(
             "KotlinClass.kt",
