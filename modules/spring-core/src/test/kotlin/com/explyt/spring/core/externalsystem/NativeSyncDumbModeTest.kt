@@ -12,6 +12,7 @@ import com.explyt.spring.test.TestLibrary
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.IndexNotReadyException
 import com.intellij.openapi.util.Computable
+import com.intellij.openapi.util.RecursionManager
 import com.intellij.testFramework.DumbModeTestUtils
 
 /**
@@ -25,6 +26,11 @@ import com.intellij.testFramework.DumbModeTestUtils
 class NativeSyncDumbModeTest : ExplytKotlinLightTestCase() {
 
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springContext_6_0_7)
+
+    override fun setUp() {
+        super.setUp()
+        RecursionManager.disableMissedCacheAssertions(testRootDisposable)
+    }
 
     /** Guards the premise of [testLibraryClassLookupSurvivesDumbMode]: an always-absent class proves nothing. */
     fun testLibraryClassIsResolvableInSmartMode() {
