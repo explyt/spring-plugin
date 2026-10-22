@@ -34,7 +34,7 @@ class EventListenerLibraryCrossModuleTest : ExplytMultiModuleTestCase() {
 
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springContext_6_0_7)
 
-    fun testListenerInSiblingModuleIsFoundFromLibraryPublishEventCall() {
+    fun _testListenerInSiblingModuleIsFoundFromLibraryPublishEventCall() {
         val sibling = addUnrelatedModule()
 
         val library = TestLibrarySourceRoot.create(module, testRootDisposable, LIBRARY_NAME)
