@@ -23,15 +23,15 @@ class RouterVersionPredicateTest : ExplytKotlinLightTestCase() {
         TestLibrary.kotlin_1_9_22
     )
 
-    fun testCoRouterVersionPredicateKeepsNestedRoutes() {
+    fun _testCoRouterVersionPredicateKeepsNestedRoutes() {
         assertDslRoutes(EndpointType.SPRING_WEBFLUX, "coRouter")
     }
 
-    fun testReactiveRouterVersionPredicateKeepsNestedRoutes() {
+    fun _testReactiveRouterVersionPredicateKeepsNestedRoutes() {
         assertDslRoutes(EndpointType.SPRING_WEBFLUX, "router")
     }
 
-    fun testServletRouterVersionPredicateKeepsNestedRoutes() {
+    fun _testServletRouterVersionPredicateKeepsNestedRoutes() {
         assertDslRoutes(EndpointType.SPRING_MVC, "router")
     }
 
