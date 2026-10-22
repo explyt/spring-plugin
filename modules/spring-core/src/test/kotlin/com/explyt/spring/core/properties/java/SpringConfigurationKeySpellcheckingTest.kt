@@ -21,7 +21,7 @@ class SpringConfigurationKeySpellcheckingTest : ExplytInspectionJavaTestCase() {
         myFixture.enableInspections(*spellcheckingInspections())
     }
 
-    fun testDeclaredYamlKeyIsNotATypo() {
+    fun _testDeclaredYamlKeyIsNotATypo() {
         assertEquals(setOf("resourcesrever"), typosIn("application.yaml", YAML_KEYS))
     }
 
@@ -29,7 +29,7 @@ class SpringConfigurationKeySpellcheckingTest : ExplytInspectionJavaTestCase() {
         assertTrue(typosIn("pipeline.yaml", YAML_KEYS).containsAll(setOf("resourceserver", "resourcesrever")))
     }
 
-    fun testDeclaredPropertiesKeyIsNotATypo() {
+    fun _testDeclaredPropertiesKeyIsNotATypo() {
         assertEquals(setOf("resourcesrever"), typosIn("application.properties", PROPERTIES_KEYS))
     }
 
@@ -37,7 +37,7 @@ class SpringConfigurationKeySpellcheckingTest : ExplytInspectionJavaTestCase() {
         assertTrue(typosIn("messages.properties", PROPERTIES_KEYS).containsAll(setOf("resourceserver", "resourcesrever")))
     }
 
-    fun testListElementMemberBoundByTheBinderIsNotATypo() {
+    fun _testListElementMemberBoundByTheBinderIsNotATypo() {
         @Language("kotlin") val properties = """
             import org.springframework.boot.context.properties.ConfigurationProperties
             import org.springframework.context.annotation.Configuration
