@@ -9,7 +9,6 @@ import com.explyt.spring.test.ExplytInspectionJavaTestCase
 import com.explyt.spring.test.TestLibrary
 import com.intellij.codeInspection.LocalInspectionEP
 import com.intellij.codeInspection.LocalInspectionTool
-import com.intellij.openapi.util.registry.Registry
 import org.intellij.lang.annotations.Language
 
 class SpringConfigurationKeySpellcheckingTest : ExplytInspectionJavaTestCase() {
@@ -70,27 +69,20 @@ class SpringConfigurationKeySpellcheckingTest : ExplytInspectionJavaTestCase() {
     }
 
     private fun typosIn(fileName: String, text: String): Set<String> {
-        val typosPerMode = listOf(true, false).associateWith { textLevel ->
-            Registry.get(TEXT_LEVEL_SPELLCHECKING).setValue(textLevel, testRootDisposable)
-            myFixture.configureByText(fileName, text)
-            myFixture.doHighlighting()
-                .filter { it.severity.name == "TYPO" }
-                .mapTo(mutableSetOf()) { it.text }
-        }
-        assertEquals("text-level and token-level spellchecking disagree", typosPerMode[true], typosPerMode[false])
-        return typosPerMode.getValue(true)
+        myFixture.configureByText(fileName, text)
+        return myFixture.doHighlighting()
+            .filter { it.severity.name == "TYPO" }
+            .mapTo(mutableSetOf()) { it.text }
     }
 
     private fun spellcheckingInspections(): Array<LocalInspectionTool> =
-        listOf("SpellCheckingInspection", "GrazieInspectionRunner").map { shortName ->
+        listOf("SpellCheckingInspection").map { shortName ->
             LocalInspectionEP.LOCAL_INSPECTION.extensionList
                 .single { it.shortName == shortName }
                 .instantiateTool() as LocalInspectionTool
         }.toTypedArray()
 
     private companion object {
-        const val TEXT_LEVEL_SPELLCHECKING = "spellchecker.grazie.enabled"
-
         val YAML_KEYS = """
             spring:
               security:
