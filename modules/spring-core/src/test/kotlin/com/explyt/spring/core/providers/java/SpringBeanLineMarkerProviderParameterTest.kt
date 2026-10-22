@@ -148,7 +148,7 @@ class SpringBeanLineMarkerProviderParameterTest : ExplytJavaLightTestCase() {
                 @org.springframework.stereotype.Component
                 class FooConstructorA {
                     private final A a;
-                    Foo(A fooConstructorParameter) { this.a = fooConstructorParameter; } 
+                    FooConstructorA(A fooConstructorParameter) { this.a = fooConstructorParameter; } 
                 }
             """.trimIndent()
         myFixture.configureByText("FooComponent.java", getParameterClasses() + fooComponent)

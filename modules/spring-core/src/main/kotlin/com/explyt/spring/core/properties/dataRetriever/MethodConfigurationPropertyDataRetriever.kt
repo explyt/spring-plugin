@@ -27,7 +27,7 @@ class MethodConfigurationPropertyDataRetriever private constructor(
 
     override fun getMemberName(): String? {
         return if (isSetter(psiMethod)) {
-            toPascalFormat(psiMethod.name)
+            psiMethod.name.toPascalFormat()
         } else {
             return null
         }

@@ -5,6 +5,10 @@
 
 package com.explyt.spring.core.runconfiguration
 
+import com.explyt.spring.core.externalsystem.NativeLinkRepairService
+import com.explyt.spring.core.externalsystem.RunConfigurationExtractor
+import com.explyt.spring.core.externalsystem.RunConfigurationHolder
+import com.explyt.spring.core.externalsystem.setting.NativeExecutionSettings
 import com.explyt.spring.core.externalsystem.setting.NativeProjectSettings
 import com.explyt.spring.core.externalsystem.setting.NativeSettings
 import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
@@ -13,6 +17,7 @@ import com.explyt.spring.test.TestLibrary
 import com.intellij.execution.RunManager
 import com.intellij.execution.impl.RunManagerImpl
 import com.intellij.execution.impl.RunnerAndConfigurationSettingsImpl
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 
 /**
@@ -77,7 +82,9 @@ class ExplytRunManagerListenerTest : ExplytKotlinLightTestCase() {
         // Fire a configuration-changed event — this is exactly what RunManager does on rename.
         runManager.fireRunConfigurationChanged(rcSettings)
 
-        // The listener should have updated the stored name.
+        assertSyncResolvesBeforeStoredNameIsRepaired(mainFilePath, "Renamed Demo")
+        NativeLinkRepairService.getInstance(project).repairNow()
+
         assertEquals(
             "Renamed Demo",
             nativeSettings.getLinkedProjectSettings(mainFilePath)?.runConfigurationName
@@ -102,6 +109,9 @@ class ExplytRunManagerListenerTest : ExplytKotlinLightTestCase() {
         val rcSettings = addSpringBootConfiguration("Dashboard VPC")
 
         runManager().fireRunConfigurationChanged(rcSettings)
+
+        assertSyncResolvesBeforeStoredNameIsRepaired(mainFilePath, "Dashboard VPC")
+        NativeLinkRepairService.getInstance(project).repairNow()
 
         assertEquals(
             "Dashboard VPC",
@@ -135,6 +145,22 @@ class ExplytRunManagerListenerTest : ExplytKotlinLightTestCase() {
     }
 
     private fun runManager() = RunManager.getInstance(project) as RunManagerImpl
+
+    /**
+     * The rename callback never resolves PSI, so a link matched only by its main-class file keeps its stale name
+     * until the background repair pass runs. A sync started in between must still launch the renamed configuration.
+     */
+    private fun assertSyncResolvesBeforeStoredNameIsRepaired(mainFilePath: String, newName: String) {
+        val executionSettings = NativeExecutionSettings(project).apply {
+            externalProjectMainFilePath = mainFilePath
+            runConfigurationName = "DemoApplicationKt"
+        }
+        val holder = ReadAction.compute<RunConfigurationHolder?, RuntimeException> {
+            RunConfigurationExtractor.findRunConfiguration(mainFilePath, executionSettings)
+        }
+        val resolved = holder?.runConfiguration ?: holder?.agentRunConfiguration
+        assertEquals(newName, resolved?.name)
+    }
 
     private fun configureDemoApplication(): String = myFixture.configureByText(
         "DemoApplication.kt",

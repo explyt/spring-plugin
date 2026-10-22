@@ -88,7 +88,10 @@ class QuarkusBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
     ) {
         val sourcePsi = uClass.uastAnchor?.sourcePsi ?: return
-        val builder = NavigationGutterIconBuilder.create(QuarkusCoreIcons.BeanDependencies)
+        val builder = NavigationGutterIconBuilder.create(
+            QuarkusCoreIcons.BeanDependencies,
+            QuarkusCoreBundle.message("explyt.quarkus.gutter.group.bean")
+        )
             .setAlignment(GutterIconRenderer.Alignment.LEFT)
             .setTargets(NotNullLazyValue.lazy { findBeanDeclarations(uClass, module) })
             .setTooltipText(QuarkusCoreBundle.message("explyt.quarkus.gutter.tooltip.title.choose.bean.candidate"))
@@ -105,7 +108,10 @@ class QuarkusBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         if (uClass.javaPsi.isMetaAnnotatedBy(QuarkusCoreClasses.INTERCEPTOR.allFqns)) return
 
         val sourcePsi = uClass.uastAnchor?.sourcePsi ?: return
-        val builder = NavigationGutterIconBuilder.create(QuarkusCoreIcons.Bean)
+        val builder = NavigationGutterIconBuilder.create(
+            QuarkusCoreIcons.Bean,
+            QuarkusCoreBundle.message("explyt.quarkus.gutter.group.bean")
+        )
             .setAlignment(GutterIconRenderer.Alignment.LEFT)
             .setTargets(NotNullLazyValue.lazy { findFieldsAndMethodsWithInject(null, uClass, module) })
             .setTooltipText(QuarkusCoreBundle.message("explyt.quarkus.gutter.tooltip.title.choose.autowired.candidate"))
@@ -142,7 +148,10 @@ class QuarkusBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         val psiField = uField.javaPsi as? PsiField ?: return
         if (psiField.isAnnotatedBy(QuarkusCoreClasses.PRODUCES.allFqns)) {
             val sourcePsi = uField.uastAnchor?.sourcePsi ?: return
-            val builder = NavigationGutterIconBuilder.create(QuarkusCoreIcons.Bean)
+            val builder = NavigationGutterIconBuilder.create(
+                QuarkusCoreIcons.Bean,
+                QuarkusCoreBundle.message("explyt.quarkus.gutter.group.bean")
+            )
                 .setAlignment(GutterIconRenderer.Alignment.LEFT)
                 .setTargets(NotNullLazyValue.lazy { findFieldsAndMethodsWithInject(uField.type, uField, module) })
                 .setTooltipText(QuarkusCoreBundle.message("explyt.quarkus.gutter.tooltip.title.choose.autowired.candidate"))
@@ -174,7 +183,10 @@ class QuarkusBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
     ) {
         val sourcePsi = uField.uastAnchor?.sourcePsi ?: return
-        val builder = NavigationGutterIconBuilder.create(QuarkusCoreIcons.BeanDependencies)
+        val builder = NavigationGutterIconBuilder.create(
+            QuarkusCoreIcons.BeanDependencies,
+            QuarkusCoreBundle.message("explyt.quarkus.gutter.group.bean")
+        )
             .setAlignment(GutterIconRenderer.Alignment.LEFT)
             .setTargets(NotNullLazyValue.lazy { getBeanDeclarations(uField, module) })
             .setTooltipText(QuarkusCoreBundle.message("explyt.quarkus.gutter.tooltip.title.choose.bean.candidate"))
@@ -201,7 +213,10 @@ class QuarkusBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         }
 
         if (method.javaPsi.isMetaAnnotatedBy(QuarkusCoreClasses.PRODUCES.allFqns)) {
-            val builder = NavigationGutterIconBuilder.create(QuarkusCoreIcons.Bean)
+            val builder = NavigationGutterIconBuilder.create(
+                QuarkusCoreIcons.Bean,
+                QuarkusCoreBundle.message("explyt.quarkus.gutter.group.bean")
+            )
                 .setAlignment(GutterIconRenderer.Alignment.LEFT)
                 .setTargets(NotNullLazyValue.lazy { findFieldsAndMethodsWithInject(method.returnType, method, module) })
                 .setTooltipText(QuarkusCoreBundle.message("explyt.quarkus.gutter.tooltip.title.choose.autowired.candidate"))
@@ -221,7 +236,10 @@ class QuarkusBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
     ) {
         for (uParameter in method.uastParameters) {
             val sourcePsi = uParameter.uastAnchor?.sourcePsi ?: continue
-            val builder = NavigationGutterIconBuilder.create(QuarkusCoreIcons.BeanDependencies)
+            val builder = NavigationGutterIconBuilder.create(
+                QuarkusCoreIcons.BeanDependencies,
+                QuarkusCoreBundle.message("explyt.quarkus.gutter.group.bean")
+            )
                 .setAlignment(GutterIconRenderer.Alignment.LEFT)
                 .setTargets(NotNullLazyValue.lazy { getBeanDeclarations(uParameter, module) })
                 .setTooltipText(QuarkusCoreBundle.message("explyt.quarkus.gutter.tooltip.title.choose.bean.candidate"))

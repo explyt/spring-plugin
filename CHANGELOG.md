@@ -4,6 +4,69 @@
 
 ## [Unreleased]
 
+This release is the last one for IntelliJ IDEA 2024.2 and 2024.3. Later releases support IntelliJ IDEA 2025.1 and newer.
+
+### Bean model that matches the running application
+- Bean conditions follow Spring Boot: `@ConditionalOnProperty` (also repeated, `matchIfMissing`, `${VAR:default}`), `@ConditionalOnBooleanProperty`, composed conditions and conditions on library classes are evaluated as Boot evaluates them (#496, #672, #759)
+- Web conditions follow Boot's web application type: servlet, reactive and client-only applications are told apart, and `spring.main.web-application-type` is honoured (#496)
+- Profiles work as in Spring: `@Profile` values are alternatives, constants are read by value, and `spring.profiles.group` activates its member profiles (#548, #562, #529)
+- Beans that a profile turns off stay visible as inactive beans with their reason, in Search Everywhere and in the MCP bean tools (#634)
+- Library `@Controller` and `@Service` classes are beans only when a component scan covers them (#645)
+- A class registered by `@Import` or `@EnableConfigurationProperties` follows the conditions of the configuration that registers it; a plain `@ConfigurationProperties` class is a bean only when `@EnableConfigurationProperties` or `@ConfigurationPropertiesScan` registers it, and a component also listed in `@EnableConfigurationProperties` is two beans, as in Spring (#496, #741, #782)
+- Bean names follow Spring's generator: `URLService` and `ABTestController` keep their names, nested classes are named `outer.Inner`, and beans registered by `@Import` or `@EnableConfigurationProperties` get the fully qualified names Spring gives them (#758, #781)
+- `@Bean(name = …)`, composed `@Bean` annotations and covariant `@Bean` overrides give the bean name and type Spring gives (#506, #592, #594, #680)
+- A component scan declared in a dependency module, a default-package application and an `@EnableAutoConfiguration` application now give the correct beans, and an application in test sources no longer widens the beans of production code (#495, #710, #532, #772)
+- Starters that are only on the application's runtime classpath, such as `runtimeOnly` dependencies, contribute their beans, so injecting them no longer reports "No beans" (#780)
+- MyBatis mappers (`@MapperScan`, `@Mapper`) and Spring Integration `@MessagingGateway` interfaces are beans (#598)
+
+### New inspections and quick fixes
+- Bean name collisions that fail startup: two `@Bean` methods with the same bean name on Spring Framework 6.2 and later, and a `@Bean` method overridden across two registered configurations (#597, #668, #686, #689, #698, #714)
+- A composed `@Bean` name that conflicts with its meta-annotation and fails startup on Spring Framework 6 (#632)
+- A stereotype annotation on an abstract class that Spring does not register, with a quick fix (#601)
+- A `@Controller` or `@RestController` value that looks like a request path, with a quick fix that moves it to `@RequestMapping` (#534)
+- An Actuator endpoint extended by more than one `@EndpointWebExtension`, which fails startup (#655)
+- Spring Boot 3.4 and 3.5 `@MockBean` and `@SpyBean` deprecation, with a quick fix to `@MockitoBean` and `@MockitoSpyBean`
+- Spring Boot 3 `management.endpoint.httptrace.*` keys, with a quick fix to `httpexchanges`
+- An enum configuration value or a hint value that is not in Spring's recommended spelling, with a quick fix
+- Fewer false errors: bean-name checks in `@Lookup`, `@DependsOn`, cache annotations and `@WithUserDetails` skip classes that Spring does not register (#783)
+
+### Endpoints and HTTP
+- The Endpoints tool window lists the built-in Actuator endpoints (`health`, `info`, `metrics` and others) next to project endpoints, with exposure and access as Boot reads them (#476, #512, #315)
+- Find an endpoint from a URL that you paste from a browser, a log or a curl command (#453)
+- Functional routes: `router { }`, WebMvc.fn, Java `RouterFunctions` builders, nested `path()` and `nest()` prefixes and verb predicates are listed as Spring serves them (#415, #580, #606, #627)
+- Request mappings declared on an implemented interface or a superclass, composed mapping annotations and property placeholders in paths are resolved, and a path taken from a constant updates when you edit the constant (#533, #651, #672, #451)
+- "Run in Swagger" and the HTTP client use the context path, servlet path and server port that the application declares, also through nested placeholders (#451, #779)
+- MockMvc, WebTestClient and RestClient requests in tests are found as endpoint usages, also for URLs built from templates and URI builders (#463, #467, #497)
+- OpenAPI 3.2 support, refreshed OpenAPI 3.0 and 3.1 schemas, Swagger UI 5.32.15 and a working OAuth2 Authorize flow in the preview
+- "Generate OpenApi Doc" adds missing operations and keeps the documented ones (#640, #641, #662)
+
+### Configuration properties
+- Navigation works through list indexes, map keys in bracket notation and constructor-bound properties (#383, #384, #396, #471)
+- Enum values are accepted and completed in any relaxed spelling (`request-headers` for `REQUEST_HEADERS`)
+- Fewer false errors: keys used in any Spring annotation placeholder, in several files or from a test module are resolved (#118, #380, #381, #570)
+- `logging.level.<name>` navigates to the logger package or class and to logging groups
+- The spellchecker no longer flags Spring's declared key segments (#363)
+
+### Events
+- Navigate from a listener to events that Spring and libraries publish, such as `ApplicationReadyEvent` and `AuthenticationSuccessEvent` (#426, #427, #431)
+
+### Native Context Mode
+- Link a Gradle `bootRun` run configuration (#376)
+- Sync failures name the class that is missing, and broken project links heal themselves
+
+### MCP tools for AI agents
+- New `explyt_find_spring_bean` tells an agent which bean Spring injects at a field or a constructor parameter
+- Endpoint contracts describe the JSON that Jackson writes: polymorphic types, Spring Data `Page`, HATEOAS models, naming strategies and enums (#557, #639)
+- `explyt_trace_spring_call_chain` shows the tests that a change breaks and the `@Transactional` and `@Async` advice around each method (#452)
+- All tools page their answers within a character budget, with a page revision that stays stable while you edit unrelated files, and report built-in Actuator endpoints with exposure and access (#635)
+
+### Performance and stability
+- Fewer UI freezes when a project opens, when a run configuration is selected and on the first action after startup (#294, #307)
+- Faster highlighting of `application.yaml` and `.properties` files
+- Gradle `gradlew` and `mvnw` are executable in projects generated through Spring Initializr (#60)
+
+## [262.34.101] - 2026-08-19
+
 ### Spring Core
 - fix: Keep renamed Spring Boot run configurations linked without ambiguous fallback (#229) (#279)
 - fix: Keep Kotlin top-level `main()` projects linked when the stored run configuration name no longer exists (#229)
@@ -21,7 +84,6 @@
 - fix: Validate literal collection elements alongside unresolved placeholders (#247) (#279)
 - feat: Migrate Actuator `httptrace` exposure to `httpexchanges` in Spring Boot 3 (#256)
 - fix: Avoid EDT work while searching Spring beans (#249)
-- fix: Avoid slow toolbar updates, stale auto-import tracking, and dumb-mode failures during Native Context refresh
 - feat: Add Spring Boot 4 configuration property migration inspection (#257)
 - feat: Migrate Actuator endpoint `@Nullable` to JSpecify in Spring Boot 4 (#264)
 - feat: Warn when a Spring bean injected into a Spring Boot 3 `@ConfigurationProperties` constructor lacks `@Autowired` (#255)
@@ -59,8 +121,10 @@
 - docs: Update README and plugin description
 - docs: Update issue/PR templates and contributing guide
 - docs: Add AI Agent documentation
+- chore: Support IntelliJ Platform 2026.2 (262)
+- fix: Replace internal plugin-manager APIs with `PluginDetailsService` to unblock 2026.2 plugin verification
 
-## [261.33.80] - 2026-04-28
+## 261.33.80 - 2026-04-28
 
 ### Spring Core
 - feat: 261 spring boot support (#217)

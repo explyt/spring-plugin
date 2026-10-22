@@ -13,9 +13,12 @@ class OpenApiYamlComponentsSchemasBuilder(indent: String, builder: StringBuilder
     OpenApiComponentsSchemasBuilder(indent, builder),
     YamlKeyValueGenerator {
     private val schemaBuilders = mutableListOf<OpenApiComponentsSchemaBuilder>()
+    private val typeQnSet = mutableSetOf<String>()
 
     override fun addType(typeInfo: ComponentSchemaInfo): OpenApiComponentsSchemasBuilder {
-        schemaBuilders += OpenApiYamlComponentsSchemaBuilder(typeInfo, "$indent  ", builder)
+        if (typeQnSet.add(typeInfo.typeQN)) {
+            schemaBuilders += OpenApiYamlComponentsSchemaBuilder(typeInfo, "$indent  ", builder)
+        }
 
         return this
     }

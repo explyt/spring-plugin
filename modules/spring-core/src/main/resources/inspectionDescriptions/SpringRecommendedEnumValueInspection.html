@@ -1,0 +1,48 @@
+<!--
+  ~ Copyright (c) 2026 Explyt Ltd
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
+<html lang="en">
+<head>
+    <title>Configuration value not in Spring's recommended spelling</title>
+</head>
+<body>
+
+<p>
+    Reports a configuration value that is not written in the spelling Spring itself recommends, and offers a quick-fix
+    that rewrites it.
+</p>
+
+<p>
+    Two sources say what that spelling is. A <b>metadata hint</b> states the accepted literals verbatim, and every
+    literal Spring ships is lower case, so <code>logging.level.root=INFO</code> is written against the metadata that
+    declares <code>info</code>. For an <b>enum-typed</b> value the recommended form is lower case with <code>-</code>
+    between words: Spring's own metadata never uses the declared <code>SCREAMING_SNAKE</code> name as a default value
+    &mdash; on <code>spring-boot-autoconfigure-3.5.13</code> all enum-typed properties with a string
+    <code>defaultValue</code> spell it in lower case (<code>never</code>, <code>graceful</code>) or kebab-case
+    (<code>read-uncommitted</code>, <code>path-pattern-parser</code>).
+</p>
+
+<p>
+    Spring's relaxed binding accepts every spelling, so this is a style report rather than an error.
+</p>
+
+<p><b>Examples:</b></p>
+<pre><code>
+logging.level.root=INFO                           # -> info
+management.endpoint.conditions.access=READ_ONLY   # -> read-only
+management.httpexchanges.recording.include=REQUEST_HEADERS,response_headers
+                                                  # -> request-headers,response-headers
+</code></pre>
+
+<p>The inspection does not report:</p>
+<ul>
+    <li>a value matching neither a hint literal nor an enum constant &mdash; it is either free-form, such as a hint
+        whose provider is <code>any</code>, or a genuine error reported by a separate diagnostic;
+    </li>
+    <li>a value containing a <code>${...}</code> placeholder, which is resolved at runtime.</li>
+</ul>
+
+</body>
+</html>

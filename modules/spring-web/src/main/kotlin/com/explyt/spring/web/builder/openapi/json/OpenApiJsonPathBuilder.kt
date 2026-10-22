@@ -9,6 +9,7 @@ import com.explyt.spring.core.inspections.utils.ExplytJsonUtil.iterateWithComma
 import com.explyt.spring.web.builder.openapi.OpenApiPathBuilder
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
 
+
 class OpenApiJsonPathBuilder(
     private val path: String,
     indent: String = "",
@@ -19,15 +20,7 @@ class OpenApiJsonPathBuilder(
         builder.appendLine()
         builder.append("""$indent"${path}": {""")
 
-        val endpointsWithMethod = mutableListOf<EndpointWithMethod>()
-
-        for (endpoint in endpointInfos) {
-            for (httpType in endpoint.requestMethods) {
-                endpointsWithMethod.add(EndpointWithMethod(endpoint, httpType))
-            }
-        }
-
-        builder.iterateWithComma(endpointsWithMethod) { (endpoint, httpType) ->
+        builder.iterateWithComma(operations()) { (endpoint, httpType) ->
             OpenApiJsonPathHttpTypeBuilder(endpoint, httpType, "$indent  ", builder)
                 .build()
         }
@@ -40,6 +33,5 @@ class OpenApiJsonPathBuilder(
         return this
     }
 
-    private data class EndpointWithMethod(val endpoint: EndpointInfo, val httpType: String)
 
 }
