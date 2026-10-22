@@ -38,10 +38,8 @@ jobs:
             tasks: ':spring-core:test'
           - shard: web
             tasks: ':spring-web:test'
-          - shard: ai
-            tasks: ':spring-ai:test'
           - shard: rest
-            tasks: ':spring-bootstrap:test -x :spring-core:test -x :spring-web:test -x :spring-ai:test'
+            tasks: ':spring-bootstrap:test -x :spring-core:test -x :spring-web:test'
     steps:
       - name: Checkout sources
         uses: actions/checkout@v6
