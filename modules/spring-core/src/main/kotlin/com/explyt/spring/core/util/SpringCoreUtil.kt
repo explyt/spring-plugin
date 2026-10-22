@@ -21,7 +21,6 @@ import com.explyt.spring.core.service.PsiBean
 import com.explyt.spring.core.service.SpringSearchUtils
 import com.explyt.spring.core.settings.SpringPropertyFolderState
 import com.explyt.util.ExplytAnnotationUtil
-import com.explyt.util.ExplytAnnotationUtil.getStringMemberValues
 import com.explyt.util.ExplytAnnotationUtil.getStringValue
 import com.explyt.util.ExplytPsiUtil.allSupers
 import com.explyt.util.ExplytPsiUtil.deepPsiClassType
@@ -44,6 +43,7 @@ import com.explyt.util.ExplytPsiUtil.psiClassType
 import com.explyt.util.ExplytPsiUtil.resolvedPsiClass
 import com.explyt.util.ExplytPsiUtil.returnPsiClass
 import com.explyt.util.ExplytPsiUtil.returnPsiType
+import com.explyt.util.CacheKeyStore
 import com.explyt.util.ModuleUtil
 import com.explyt.util.SpringBaseClasses.CORE_ENVIRONMENT
 import com.explyt.util.runReadNonBlocking
@@ -65,7 +65,10 @@ import com.intellij.psi.*
 import com.intellij.psi.impl.source.resolve.FileContextUtil
 import com.intellij.psi.search.PsiShortNamesCache
 import com.intellij.psi.search.searches.ClassInheritorsSearch
+import com.intellij.psi.util.CachedValueProvider
+import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.InheritanceUtil
+import com.intellij.psi.util.PsiModificationTracker
 import com.intellij.psi.util.PsiUtil
 import com.intellij.xdebugger.XDebuggerManager
 import org.jetbrains.kotlin.idea.KotlinLanguage
@@ -104,6 +107,30 @@ object SpringCoreUtil {
             return true
         }
 
+        return isPropertySourceFile(psiFile)
+    }
+
+    /**
+     * Only the index-backed tail of [isConfigurationPropertyFile] is cached: it is the part that searches every
+     * `@PropertySource` in the module. Line-marker providers ask once per PSI leaf, so without the cache an ordinary
+     * `messages.properties` triggers dozens of project-wide index searches per highlighting pass.
+     *
+     * Dependencies: [PsiModificationTracker.MODIFICATION_COUNT] covers editing or adding a `@PropertySource`,
+     * [ProjectRootManager] covers source-root and dependency changes that move the resolved file or the annotation
+     * class out of scope.
+     */
+    private fun isPropertySourceFile(psiFile: PsiFile): Boolean {
+        return CachedValuesManager.getCachedValue(psiFile) {
+            CachedValueProvider.Result.create(
+                computeIsPropertySourceFile(psiFile),
+                PsiModificationTracker.MODIFICATION_COUNT,
+                ProjectRootManager.getInstance(psiFile.project),
+                CacheKeyStore.cacheReset
+            )
+        }
+    }
+
+    private fun computeIsPropertySourceFile(psiFile: PsiFile): Boolean {
         return runReadNonBlocking {
             val propertySourceFilePaths = SpringPropertySourceSearch.getInstance(psiFile.project)
                 .findPropertySourceFilePaths(psiFile)
@@ -169,6 +196,14 @@ object SpringCoreUtil {
                 && !PsiUtil.isLocalOrAnonymousClass(psiClass)
     }
 
+    fun isCandidateComponent(psiClass: PsiClass): Boolean {
+        if (psiClass.isAnnotationType) return false
+        if (psiClass.containingClass != null && !psiClass.hasModifierProperty(PsiModifier.STATIC)) return false
+        if (psiClass.isInterface) return true
+        if (!psiClass.hasModifierProperty(PsiModifier.ABSTRACT)) return true
+        return psiClass.methods.any { it.isMetaAnnotatedBy(SpringCoreClasses.LOOKUP) }
+    }
+
     fun isComponentCandidate(psiElement: PsiElement?): Boolean {
         psiElement ?: return false
         return if (psiElement is PsiClass) {
@@ -202,17 +237,18 @@ object SpringCoreUtil {
         return isInTestSources && this.onlyAllSupers().any { it.hasComponentAnnotation() }
     }
 
-    fun PsiClass.getBeanName(): String? =
-        name?.replaceFirstChar { it.lowercase(Locale.getDefault()) }
+    fun PsiClass.getBeanName(): String? = DefaultBeanNames.of(this)
 
     fun PsiClass.resolveBeanName(module: Module): String {
         return resolveBeanNameByPsiAnnotations(SpringSearchUtils.getComponentClassAnnotations(module))
     }
 
+    fun PsiClass.resolveExplicitBeanName(module: Module): String? =
+        resolveBeanNameByAnnotations(SpringSearchUtils.getComponentClassAnnotations(module).mapNotNull { it.qualifiedName })
+
     private fun PsiClass.resolveBeanNameByPsiAnnotations(annotationPsiClasses: Collection<PsiClass>): String {
         val annotationNames = annotationPsiClasses.mapNotNull { it.qualifiedName }
-        return this.resolveBeanNameByAnnotations(annotationNames)
-            ?: getBeanName()
+        return RegisteredBeanNames.scanned(this, resolveBeanNameByAnnotations(annotationNames))
             ?: throw IllegalArgumentException("Illegal bean $this")
     }
 
@@ -397,9 +433,7 @@ object SpringCoreUtil {
         return getMetaAnnotation(annotationNames)?.getStringValue()
     }
 
-    fun PsiModifierListOwner.resolveBeanNameByAnnotation(): Set<String>? {
-        return getMetaAnnotation(SpringCoreClasses.BEAN)?.getStringMemberValues()?.ifEmpty { null }?.toSet()
-    }
+    fun PsiModifierListOwner.resolveBeanNameByAnnotation(): Set<String>? = BeanAnnotationNames.of(this)
 
     fun PsiAnnotation.resolveBeanName(): String? {
         if (isMetaAnnotatedByOrSelf(SpringCoreClasses.QUALIFIER)) {
@@ -737,6 +771,7 @@ object SpringCoreUtil {
     }
 
     const val SPRING_BOOT_MAVEN = "org.springframework.boot:spring-boot"
+    const val SPRING_CORE_MAVEN = "org.springframework:spring-core"
     const val SPRING_BOOT_ACTUATOR_MAVEN = "org.springframework.boot:spring-boot-actuator"
     const val BASE_PACKAGES = "basePackages"
     const val SCAN_BASE_PACKAGES = "scanBasePackages"

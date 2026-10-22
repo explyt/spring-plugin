@@ -8,6 +8,7 @@ package com.explyt.spring.core.inspections
 import com.explyt.inspection.SpringBaseUastLocalInspectionTool
 import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.SpringCoreClasses.DEPENDS_ON
+import com.explyt.spring.core.service.SpringBeanOwner
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.util.ExplytPsiUtil.getHighlightRange
@@ -17,6 +18,8 @@ import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiMember
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UDeclaration
 import org.jetbrains.uast.UMethod
@@ -47,14 +50,14 @@ class SpringDependsOnBeanInspection : SpringBaseUastLocalInspectionTool() {
     ): Array<ProblemDescriptor>? {
         val member = uMember.javaPsi ?: return null
         val module = ModuleUtilCore.findModuleForPsiElement(member) ?: return null
-        val service = SpringSearchServiceFacade.getInstance(module.project)
-        val beanNames = service.getAllBeanByNames(module)
-
         val metaHolder = SpringSearchService.getInstance(module.project).getMetaAnnotations(module, DEPENDS_ON)
         val psiAnnotation = uMember.uAnnotations.asSequence()
             .mapNotNull { it.javaPsi }
             .firstOrNull { metaHolder.contains(it) }
             ?: return null
+        val owner = member as? PsiClass ?: (member as? PsiMember)?.containingClass ?: return null
+        if (!SpringBeanOwner.isProcessedBySpring(module, owner)) return null
+        val beanNames = SpringSearchServiceFacade.getInstance(module.project).getAllBeanByNames(module)
 
         val annotationMemberValues = metaHolder.getAnnotationMemberValues(psiAnnotation, setOf("value"))
 

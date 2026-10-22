@@ -17,6 +17,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.externalSystem.importing.AbstractOpenProjectProvider
 import com.intellij.openapi.externalSystem.importing.ImportSpecBuilder
 import com.intellij.openapi.externalSystem.model.ProjectSystemId
+import com.intellij.openapi.externalSystem.service.execution.ExternalSystemRunConfiguration
 import com.intellij.openapi.externalSystem.service.execution.ProgressExecutionMode.MODAL_SYNC
 import com.intellij.openapi.externalSystem.service.project.manage.ExternalProjectsManagerImpl
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
@@ -88,11 +89,13 @@ class SpringBootOpenProjectProvider : AbstractOpenProjectProvider() {
         }
     }
 
-    private fun getConfigurationType(runConfiguration: RunConfiguration?): RunConfigurationType {
+    @VisibleForTesting
+    fun getConfigurationType(runConfiguration: RunConfiguration?): RunConfigurationType {
         return when (runConfiguration) {
             is KotlinRunConfiguration -> RunConfigurationType.KOTLIN
             is SpringBootRunConfiguration -> RunConfigurationType.EXPLYT
             is ApplicationConfiguration -> RunConfigurationType.APPLICATION
+            is ExternalSystemRunConfiguration -> RunConfigurationType.EXTERNAL_SYSTEM
             else -> RunConfigurationType.EXPLYT
         }
     }

@@ -48,7 +48,10 @@ class PointCutMethodsLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 val aspectDataFilteredByParams = springAspectDataByMethod
                     .filter { it.methodQualifiedParams == parametersList }
                     .takeIf { it.isNotEmpty() } ?: continue
-                val builder = NavigationGutterIconBuilder.create(SpringAopIcons.Advice)
+                val builder = NavigationGutterIconBuilder.create(
+                    SpringAopIcons.Advice,
+                    SpringAopBundle.message("explyt.spring.gutter.aop.group.advice")
+                )
                     .setAlignment(GutterIconRenderer.Alignment.LEFT)
                     .setTargets(NotNullLazyValue.lazy { findMethods(aspectDataFilteredByParams, element.project) })
                     .setTooltipText(SpringAopBundle.message("explyt.spring.gutter.aop.tooltip.pointcut.method"))

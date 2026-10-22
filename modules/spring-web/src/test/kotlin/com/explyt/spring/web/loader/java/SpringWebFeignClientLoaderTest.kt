@@ -7,7 +7,9 @@ package com.explyt.spring.web.loader.java
 
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.web.loader.EndpointType
 import com.explyt.spring.web.loader.SpringWebEndpointsLoader
+import com.explyt.spring.web.view.EndpointsTreeData
 import junit.framework.TestCase
 
 private const val TEST_DATA_PATH = "loader/src"
@@ -54,6 +56,35 @@ class SpringWebFeignClientLoaderTest : ExplytJavaLightTestCase() {
         )
     }
 
+    /**
+     * OpenFeign's `SpringMvcContract` resolves a placeholder in a method mapping against the environment before the
+     * client is built, so the modelled path is the configured one.
+     */
+    fun testFeignClientLoader_method_path_placeholder() {
+        myFixture.addFileToProject("application.yaml", "app:\n  orders-path: /v2/orders\n")
+        myFixture.addFileToProject(
+            "com/example/InventoryFeignClient.java", """
+            package com.example;
+
+            import org.springframework.cloud.openfeign.FeignClient;
+            import org.springframework.web.bind.annotation.GetMapping;
+
+            @FeignClient(name = "inventory", url = "https://inventory.com")
+            public interface InventoryFeignClient {
+                @GetMapping("${'$'}{app.orders-path:/v1/orders}")
+                String orders();
+            }
+            """.trimIndent()
+        )
+
+        val endpoint = SpringWebEndpointsLoader.EP_NAME.getExtensions(module.project)
+            .flatMap { it.searchEndpoints(module) }
+            .single { it.type == EndpointType.SPRING_OPEN_FEIGN }
+
+        TestCase.assertEquals("https://inventory.com/v2/orders", endpoint.path)
+        TestCase.assertEquals("https://inventory.com/${'$'}{app.orders-path:/v1/orders}", endpoint.pathTemplate)
+    }
+
     fun testFeignClientLoader_only_property_url() {
         myFixture.configureByFiles("ProductFeignClient.java", "application.yaml")
         myFixture.doHighlighting()
@@ -68,5 +99,30 @@ class SpringWebFeignClientLoaderTest : ExplytJavaLightTestCase() {
             endpoints.map { it.path }
                 .firstOrNull()
         )
+    }
+
+    fun testFeignClientLoader_verbless_request_mapping_is_get() {
+        myFixture.addFileToProject(
+            "com/example/AnyFeignClient.java", """
+            package com.example;
+
+            import org.springframework.cloud.openfeign.FeignClient;
+            import org.springframework.web.bind.annotation.RequestMapping;
+
+            @FeignClient(name = "any", url = "https://any.com")
+            public interface AnyFeignClient {
+                @RequestMapping("/x")
+                String any();
+            }
+            """.trimIndent()
+        )
+
+        val endpoint = SpringWebEndpointsLoader.EP_NAME.getExtensions(module.project)
+            .flatMap { it.searchEndpoints(module) }
+            .single { it.type == EndpointType.SPRING_OPEN_FEIGN }
+        TestCase.assertEquals("https://any.com/x", endpoint.path)
+
+        TestCase.assertEquals(listOf("GET"), endpoint.requestMethods)
+        TestCase.assertEquals(listOf("GET"), EndpointsTreeData.rowVerbsOf(endpoint))
     }
 }

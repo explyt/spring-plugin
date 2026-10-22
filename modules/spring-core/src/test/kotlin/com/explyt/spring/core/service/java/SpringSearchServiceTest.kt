@@ -5,17 +5,28 @@
 
 package com.explyt.spring.core.service.java
 
+import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.core.service.ComposedBeanNameFixture
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.service.SpringSearchServiceFacade
+import com.explyt.spring.core.service.SpringSearchUtils
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.util.ExplytAnnotationUtil.getStringMemberValues
+import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.util.registry.Registry
+import com.intellij.psi.JavaPsiFacade
+import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiDocumentManager
+import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiMethod
+import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.util.PsiTreeUtil
 import junit.framework.TestCase
 import org.jetbrains.kotlin.idea.util.projectStructure.getModule
 
 class SpringSearchServiceTest : ExplytJavaLightTestCase() {
-    override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springBootAutoConfigure_3_1_1)
+    override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springContext_6_0_7, TestLibrary.springBootAutoConfigure_3_1_1)
 
     override fun setUp() {
         super.setUp()
@@ -75,5 +86,119 @@ class SpringSearchServiceTest : ExplytJavaLightTestCase() {
         val psiBean = beanTestClass[0]
         assertTrue(psiBean.psiMember is PsiMethod)
         assertTrue((psiBean.psiMember as PsiMethod).containingClass?.qualifiedName == "com.app.AppConfiguration")
+    }
+
+    fun testAllReferencesToElementReflectSourceChanges() {
+        val file = myFixture.configureByText(
+            "References.java",
+            """
+            class References {
+                void setPrefix(String value) {}
+                void first() { setPrefix(\"first\"); }
+            }
+            """.trimIndent()
+        )
+        val method = PsiTreeUtil.findChildrenOfType(file, PsiMethod::class.java)
+            .single { it.name == "setPrefix" }
+
+        assertEquals(1, SpringSearchUtils.getAllReferencesToElement(method).size)
+
+        val document = file.viewProvider.document!!
+        WriteCommandAction.runWriteCommandAction(project) {
+            val insertionOffset = document.text.lastIndexOf('}')
+            document.insertString(insertionOffset, "    void second() { setPrefix(\\\"second\\\"); }\\n")
+        }
+        PsiDocumentManager.getInstance(project).commitDocument(document)
+        PsiManager.getInstance(project).dropPsiCaches()
+
+        assertEquals(2, SpringSearchUtils.getAllReferencesToElement(method).size)
+    }
+
+    fun testBeanNameAttributeInActiveModel() = assertBeanName("@Bean(name = \"x\")", "name", listOf("x"), "x")
+
+    fun testBeanNamePositionalControl() = assertBeanName("@Bean(\"x\")", "value", listOf("x"), "x")
+
+    fun testBeanNameValueControl() = assertBeanName("@Bean(value = \"x\")", "value", listOf("x"), "x")
+
+    fun testBeanNameUnnamedControl() = assertBeanName("@Bean", "value", emptyList(), "foo")
+
+    fun testBeanNameAttributeAndValueWithSameName() = assertBeanName("@Bean(value = \"x\", name = \"x\")", "value", listOf("x"), "x")
+
+    fun testBlankBeanNameFallsBackToMethodName() = assertBeanName("@Bean(name = \"\")", "name", listOf(""), "foo")
+
+    fun testComposedBeanNameAlias() = assertComposedBeanName(
+        "@AliasFor(annotation = Bean.class, attribute = \"name\") String[] beanName() default {};",
+        "@MyBean(beanName = \"x\")", "beanName", "name", listOf("x"), listOf("x")
+    )
+
+    fun testComposedBeanValueAlias() = assertComposedBeanName(
+        "@AliasFor(annotation = Bean.class, attribute = \"value\") String[] beanName() default {};",
+        "@MyBean(beanName = \"x\")", "beanName", "value", listOf("x"), listOf("x")
+    )
+
+    fun testComposedBeanAliasWithTwoNames() = assertComposedBeanName(
+        "@AliasFor(annotation = Bean.class, attribute = \"name\") String[] beanName() default {};",
+        "@MyBean(beanName = {\"x\", \"y\"})", "beanName", "name", listOf("x", "y"), listOf("x", "y")
+    )
+
+    fun testComposedBeanAliasLeftEmptyFallsBackToMethodName() = assertComposedBeanName(
+        "@AliasFor(annotation = Bean.class, attribute = \"name\") String[] beanName() default {};",
+        "@MyBean", "beanName", "name", emptyList(), listOf("foo")
+    )
+
+    fun testComposedNameAttributeWithoutAliasForOverridesByConventionInSpring6() {
+        ComposedBeanNameFixture.assertSpringCoreMajorVersion(myFixture, module, 6)
+        assertComposedBeanName("String[] name() default {};", "@MyBean(name = \"x\")", "name", null, listOf("x"), listOf("x"))
+    }
+
+    fun testComposedValueAttributeWithoutAliasForIsNotAnOverride() = assertComposedBeanName(
+        "String[] value() default {};",
+        "@MyBean(\"x\")", "value", null, listOf("x"), listOf("foo")
+    )
+
+    private fun assertComposedBeanName(
+        attributeDeclaration: String,
+        usage: String,
+        attribute: String,
+        aliasTarget: String?,
+        declaredValues: List<String>,
+        expectedNames: List<String>,
+    ) {
+        ComposedBeanNameFixture.addJava(myFixture, attributeDeclaration, usage)
+        ComposedBeanNameFixture.assertComposedBeanNames(myFixture, module, attribute, aliasTarget, declaredValues, expectedNames)
+    }
+
+    private fun assertBeanName(annotation: String, attribute: String, values: List<String>, expectedName: String) {
+        configureBeanName(annotation, attribute, values)
+        val beans = SpringSearchServiceFacade.getInstance(project).getAllActiveBeans(module)
+            .filter { it.psiClass.qualifiedName == "beanname.Foo" }
+        assertEquals(setOf(expectedName), beans.map { it.name }.toSet())
+        assertEquals(1, beans.size)
+    }
+
+    private fun configureBeanName(annotation: String, attribute: String, values: List<String>): PsiClass {
+        myFixture.addFileToProject(
+            "beanname/App.java",
+            """
+            package beanname;
+            import org.springframework.boot.autoconfigure.SpringBootApplication;
+            import org.springframework.context.annotation.Bean;
+            @SpringBootApplication
+            public class App {
+                $annotation
+                public Foo foo() { return new Foo(); }
+            }
+            class Foo {}
+            """.trimIndent()
+        )
+        val application = JavaPsiFacade.getInstance(project)
+            .findClass("beanname.App", GlobalSearchScope.projectScope(project))!!
+        val beanAnnotation = application.findMethodsByName("foo", false).single()
+            .getAnnotation(SpringCoreClasses.BEAN)!!
+        assertEquals(SpringCoreClasses.BEAN, beanAnnotation.resolveAnnotationType()?.qualifiedName)
+        assertTrue(values.none { it == "foo" })
+        assertEquals("Declared @Bean attribute values", values, beanAnnotation.getStringMemberValues(attribute))
+        assertEquals("Explicit attribute presence", values.isNotEmpty(), beanAnnotation.findDeclaredAttributeValue(attribute) != null)
+        return application
     }
 }

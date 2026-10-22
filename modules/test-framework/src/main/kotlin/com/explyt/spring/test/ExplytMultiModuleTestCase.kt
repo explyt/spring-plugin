@@ -18,6 +18,7 @@ import com.intellij.psi.PsiManager
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.fixtures.JavaCodeInsightFixtureTestCase
+import org.jetbrains.jps.model.java.JavaSourceRootType
 
 /**
  * Base class for tests that need **several** modules with real dependencies between them.
@@ -59,22 +60,58 @@ abstract class ExplytMultiModuleTestCase : JavaCodeInsightFixtureTestCase() {
     /**
      * Creates a module named [name] with a single source root and makes the main [module] depend on
      * it, mirroring `implementation(project(":name"))`. The new module gets the same [libraries] and
-     * inherits the project SDK, so Spring annotations resolve inside it.
+     * inherits the project SDK, so Spring annotations resolve inside it. The edge is [exported] unless
+     * told otherwise.
      *
      * @return the created module, to be passed to [addFileToModule].
      */
-    protected fun addDependencyModule(name: String): Module {
+    protected fun addDependencyModule(name: String, exported: Boolean = true): Module {
         val sourceRoot = myFixture.tempDirFixture.findOrCreateDir("$name/src")
         val dependency = PsiTestUtil.addModule(project, JavaModuleType.getModuleType(), name, sourceRoot)
 
         ModuleRootModificationUtil.setSdkInherited(dependency)
         attachLibraries(dependency)
-        // `exported = true` so the main module also sees the dependency's libraries, which is what
-        // Gradle's `api`/`implementation` graph gives the application module at compile time.
-        ModuleRootModificationUtil.addDependency(module, dependency, DependencyScope.COMPILE, true)
+        ModuleRootModificationUtil.addDependency(module, dependency, DependencyScope.COMPILE, exported)
 
         IndexingTestUtil.waitUntilIndexesAreReady(project)
         return dependency
+    }
+
+    /**
+     * Creates a module named [name] that depends on the main [module], mirroring a Gradle test
+     * source-set module (`foo.test` depends on `foo.main`). The new module gets the same
+     * [libraries] and inherits the project SDK.
+     *
+     * @return the created module, to be passed to [addFileToModule].
+     */
+    protected fun addDependentModule(name: String): Module {
+        val sourceRoot = myFixture.tempDirFixture.findOrCreateDir("$name/src")
+        val dependent = PsiTestUtil.addModule(project, JavaModuleType.getModuleType(), name, sourceRoot)
+
+        ModuleRootModificationUtil.setSdkInherited(dependent)
+        attachLibraries(dependent)
+        ModuleRootModificationUtil.addDependency(dependent, module, DependencyScope.COMPILE, false)
+
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
+        return dependent
+    }
+
+    /**
+     * Creates a module named [name] with no dependency edge to or from the main [module], mirroring a second
+     * application next to the first one in the same build. The new module gets the same [libraries] and inherits the
+     * project SDK.
+     *
+     * @return the created module, to be passed to [addFileToModule].
+     */
+    protected fun addStandaloneModule(name: String): Module {
+        val sourceRoot = myFixture.tempDirFixture.findOrCreateDir("$name/src")
+        val standalone = PsiTestUtil.addModule(project, JavaModuleType.getModuleType(), name, sourceRoot)
+
+        ModuleRootModificationUtil.setSdkInherited(standalone)
+        attachLibraries(standalone)
+
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
+        return standalone
     }
 
     /**
@@ -88,6 +125,31 @@ abstract class ExplytMultiModuleTestCase : JavaCodeInsightFixtureTestCase() {
         IndexingTestUtil.waitUntilIndexesAreReady(project)
         return PsiManager.getInstance(project).findFile(file)
             ?: error("No PSI for '$relativePath' in module '${module.name}'")
+    }
+
+    /**
+     * Writes [text] to [relativePath] inside a **test** source root of [module], creating that root on first use.
+     * Mirrors `src/test/resources`, which is on the classpath of the tests but not of the running application — the
+     * distinction anything calling [com.intellij.openapi.roots.TestSourcesFilter] depends on, and which a fixture
+     * with a single production source root cannot express.
+     */
+    protected fun addTestSourceFileToModule(module: Module, relativePath: String, text: String): PsiFile {
+        val file = createFile(testSourceRootOf(module), relativePath, text)
+
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
+        return PsiManager.getInstance(project).findFile(file)
+            ?: error("No PSI for test-source '$relativePath' in module '${module.name}'")
+    }
+
+    private fun testSourceRootOf(module: Module): VirtualFile {
+        ModuleRootManager.getInstance(module).getSourceRoots(JavaSourceRootType.TEST_SOURCE)
+            .firstOrNull()
+            ?.let { return it }
+
+        val testRoot = myFixture.tempDirFixture.findOrCreateDir("${module.name}/testSrc")
+        PsiTestUtil.addSourceRoot(module, testRoot, true)
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
+        return testRoot
     }
 
     private fun createFile(sourceRoot: VirtualFile, relativePath: String, text: String): VirtualFile =
@@ -106,6 +168,22 @@ abstract class ExplytMultiModuleTestCase : JavaCodeInsightFixtureTestCase() {
     private fun sourceRootOf(module: Module): VirtualFile =
         ModuleRootManager.getInstance(module).sourceRoots.firstOrNull()
             ?: error("Module '${module.name}' has no source root")
+
+    protected fun addLibraries(
+        target: Module,
+        libraries: List<TestLibrary>,
+        scope: DependencyScope = DependencyScope.COMPILE,
+        exported: Boolean = false,
+    ) {
+        if (libraries.isEmpty()) return
+
+        ModuleRootModificationUtil.updateModel(target) { model ->
+            libraries.forEach {
+                addFromMaven(model, it.mavenCoordinates, it.includeTransitiveDependencies, scope, exported)
+            }
+        }
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
+    }
 
     private fun attachLibraries(module: Module) {
         if (libraries.isEmpty()) return

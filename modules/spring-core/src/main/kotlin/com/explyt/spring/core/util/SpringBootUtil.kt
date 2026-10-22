@@ -6,18 +6,43 @@
 package com.explyt.spring.core.util
 
 import com.explyt.spring.core.util.SpringCoreUtil.SPRING_BOOT_MAVEN
+import com.explyt.spring.core.util.SpringCoreUtil.SPRING_CORE_MAVEN
 import com.intellij.java.library.JavaLibraryUtil
 import com.intellij.openapi.module.Module
+import com.intellij.openapi.util.Key
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.psi.PsiElement
+import com.intellij.psi.util.CachedValue
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.util.ArrayUtil
+import com.intellij.util.concurrency.annotations.RequiresReadLock
 import com.intellij.util.containers.ContainerUtil
 import com.intellij.util.text.VersionComparatorUtil
 import org.jetbrains.kotlin.idea.base.util.module
 
+private val SPRING_CORE_VERSION_KEY = Key.create<CachedValue<String?>>("explyt.spring.core.version")
+
 object SpringBootUtil {
+
+    @RequiresReadLock
+    fun getSpringCoreVersion(module: Module): String? =
+        CachedValuesManager.getManager(module.project).getCachedValue(module, SPRING_CORE_VERSION_KEY, {
+            CachedValueProvider.Result.create(
+                JavaLibraryUtil.getLibraryVersion(module, SPRING_CORE_MAVEN),
+                ProjectRootManager.getInstance(module.project)
+            )
+        }, false)
+
+    @RequiresReadLock
+    fun getSpringCoreMajorVersion(module: Module): Int? =
+        getSpringCoreVersion(module)?.substringBefore('.')?.toIntOrNull()
+
+    @RequiresReadLock
+    fun isBelowSpringBoot3(module: Module): Boolean {
+        val version = getSpringBootVersion(module) ?: return false
+        return version < SpringBootVersion.VERSION_3_0_0
+    }
 
     @Suppress("UnstableApiUsage")
     fun getSpringBootVersion(module: Module): SpringBootVersion? {
@@ -59,6 +84,17 @@ object SpringBootUtil {
     }
 
     /**
+     * Returns `true` when the detected Spring Boot version is 3.4 or later.
+     * Spring Boot 3.4 upgrades to Spring Framework 6.2, which is where the bean-override annotations
+     * (`@MockitoBean`, `@MockitoSpyBean`, `@TestBean`) appear and where their Spring Boot predecessors are
+     * deprecated for removal, so 3.4 opens the window in which such a migration can already be applied.
+     */
+    fun isAtLeastSpringBoot34(psiElement: PsiElement): Boolean {
+        val version = psiElement.module?.let { getSpringBootVersion(it) } ?: return false
+        return version >= SpringBootVersion.VERSION_3_4_0
+    }
+
+    /**
      * Returns `true` when the detected Spring Boot version is 4.0 or later.
      */
     fun isAtLeastSpringBoot4(psiElement: PsiElement): Boolean {
@@ -70,6 +106,7 @@ object SpringBootUtil {
         ANY("1.0.0"),
 
         VERSION_3_0_0("3.0.0"),
+        VERSION_3_4_0("3.4.0"),
         VERSION_4_0_0("4.0.0");
     }
 

@@ -10,9 +10,10 @@
 <body>
 
 <p>
-    Reports the legacy <code>httptrace</code> Actuator endpoint id used in
-    <code>management.endpoints.*.exposure.include/exclude</code> property values, and offers a quick-fix that
-    renames it to <code>httpexchanges</code>.
+    Reports the legacy <code>httptrace</code> Actuator endpoint id, both in
+    <code>management.endpoints.*.exposure.include/exclude</code> property values and in
+    <code>management.endpoint.httptrace.*</code> keys, and offers a quick-fix that renames it to
+    <code>httpexchanges</code>.
 </p>
 
 <p>
@@ -20,9 +21,16 @@
     only runs on Spring configuration property files of a Spring Boot 3+ project.
 </p>
 
+<p>
+    Spring's own configuration metadata declares a replacement only for the <code>management.trace.http.*</code>
+    family, so without this inspection a stale <code>management.endpoint.httptrace.*</code> key is reported merely as
+    an unresolved key, which reads as a typo rather than a rename.
+</p>
+
 <p><b>Example:</b></p>
 <pre><code>
 management.endpoints.web.exposure.include=health,httptrace   # -> health,httpexchanges
+management.endpoint.httptrace.enabled=true                   # -> management.endpoint.httpexchanges.enabled
 </code></pre>
 
 </body>

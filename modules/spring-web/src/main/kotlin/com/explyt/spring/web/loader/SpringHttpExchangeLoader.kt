@@ -8,10 +8,10 @@ package com.explyt.spring.web.loader
 import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.web.SpringWebClasses
+import com.explyt.spring.web.util.HttpExchanges
+import com.explyt.spring.web.util.HttpExchanges.Mapped
 import com.explyt.spring.web.util.SpringWebUtil
-import com.explyt.util.ExplytPsiUtil
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
-import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
@@ -68,32 +68,21 @@ class SpringHttpExchangeLoader(private val project: Project) : SpringWebEndpoint
     private fun getEndpoints(
         annotatedClass: PsiClass, requestMappingMah: MetaAnnotationsHolder
     ): List<EndpointElement> {
-        val prefixes = requestMappingMah.getAnnotationMemberValues(annotatedClass, TARGET_VALUE)
-            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
-            .ifEmpty { listOf("") }
+        val typeExchange = HttpExchanges.exchangeOf(annotatedClass, requestMappingMah) as? Mapped ?: return emptyList()
+        val prefixes = typeExchange.urls.ifEmpty { listOf("") }
 
         val result = mutableListOf<EndpointElement>()
 
         for (method in annotatedClass.allMethods) {
             if (!method.isMetaAnnotatedBy(SpringWebClasses.HTTP_EXCHANGE)) continue
 
-            val annotationMemberValues = requestMappingMah.getAnnotationMemberValues(method, TARGET_VALUE)
-            val values = if (annotationMemberValues.isEmpty()) {
-                listOf("")
-            } else {
-                annotationMemberValues.mapNotNull {
-                    AnnotationUtil.getStringAttributeValue(it)
-                }
-            }
+            val exchange = HttpExchanges.exchangeOf(method, requestMappingMah) as? Mapped ?: continue
 
-            val requestMethods = requestMappingMah.getAnnotationMemberValues(method, TARGET_METHOD)
-                .map { ExplytPsiUtil.getUnquotedText(it) }
-
-            for (value in values) {
+            for (value in exchange.urls) {
                 for (prefix in prefixes) {
                     result += EndpointElement(
                         SpringWebUtil.simplifyUrl("$prefix/$value"),
-                        requestMethods,
+                        exchange.methods,
                         method,
                         annotatedClass,
                         null,
@@ -105,8 +94,4 @@ class SpringHttpExchangeLoader(private val project: Project) : SpringWebEndpoint
         return result
     }
 
-    companion object {
-        private val TARGET_VALUE = setOf("value")
-        private val TARGET_METHOD = setOf("method")
-    }
 }
