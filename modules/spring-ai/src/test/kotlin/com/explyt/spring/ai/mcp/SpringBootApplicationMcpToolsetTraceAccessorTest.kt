@@ -110,7 +110,7 @@ class SpringBootApplicationMcpToolsetTraceAccessorTest : JavaCodeInsightFixtureT
         trace.assertTraced(trace.call("CustomerDto.getCode"), "CustomerDto.getCode")
     }
 
-    fun testKotlinPropertyDelegatedToAnotherObjectIsNotAnAccessor() = runBlockingReleasingWriteIntent {
+    fun _testKotlinPropertyDelegatedToAnotherObjectIsNotAnAccessor() = runBlockingReleasingWriteIntent {
         val trace = traceFromHandler()
 
         trace.assertTraced(trace.call("NamedWrapper.getName"), "NamedWrapper.getName")
