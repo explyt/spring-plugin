@@ -24,10 +24,21 @@ import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
 import org.jetbrains.uast.UAnnotated
 import org.jetbrains.uast.UMethod
+import org.jetbrains.uast.UParameter
+import org.jetbrains.uast.getUastParentOfType
 import org.jetbrains.uast.evaluateString
 import org.jetbrains.uast.getContainingUClass
 
 class SpringOmittedPathVariableParameterInspection : SpringBaseUastLocalInspectionTool() {
+
+    private fun inspectedElementOf(element: PsiElement, handler: UMethod): PsiElement? {
+        val inspectedFile = handler.sourcePsi?.containingFile ?: return null
+        val source = element.toSourcePsi() ?: return null
+        if (source.containingFile == inspectedFile) return source
+        val parameter = source.getUastParentOfType<UParameter>(false) ?: return null
+        val index = (parameter.uastParent as? UMethod)?.uastParameters?.indexOf(parameter)?.takeIf { it >= 0 } ?: return null
+        return handler.uastParameters.getOrNull(index)?.sourcePsi?.takeIf { it.containingFile == inspectedFile }
+    }
 
     override fun checkMethod(
         method: UMethod,
@@ -52,7 +63,7 @@ class SpringOmittedPathVariableParameterInspection : SpringBaseUastLocalInspecti
         for (pathVariableInfo in methodPathVariableInfos) {
             if (pathVariableInfo.isMap || !pathVariableInfo.isRequired) continue
             if (!pathVariableNames.contains(pathVariableInfo.name)) {
-                val pathVariableSourcePsi = pathVariableInfo.psiElement.toSourcePsi() ?: continue
+                val pathVariableSourcePsi = inspectedElementOf(pathVariableInfo.psiElement, method) ?: continue
                 problems += manager.createProblemDescriptor(
                     pathVariableSourcePsi,
                     pathVariableSourcePsi.getHighlightRange(),
@@ -88,7 +99,7 @@ class SpringOmittedPathVariableParameterInspection : SpringBaseUastLocalInspecti
         uAnnotated ?: return emptyList()
         val mahRequestMapping = SpringSearchService.getInstance(module.project)
             .getMetaAnnotations(module, REQUEST_MAPPING)
-        val urlPaths = mahRequestMapping.getAnnotationValues(uAnnotated, setOf("value", "path"))
+        val urlPaths = mahRequestMapping.getDeclaredAnnotationValues(uAnnotated, setOf("value", "path"))
 
         val urlPathParams = mutableListOf<RefInfo>()
         for (memberValue in urlPaths) {

@@ -7,6 +7,7 @@ package com.explyt.spring.core.externalsystem.action
 
 import com.explyt.spring.core.SpringCoreBundle.message
 import com.explyt.spring.core.SpringIcons
+import com.explyt.spring.core.externalsystem.NativeLinkRepairService
 import com.explyt.spring.core.externalsystem.process.SpringBootOpenProjectProvider
 import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
 import com.explyt.spring.core.externalsystem.utils.NativeBootUtils
@@ -17,6 +18,8 @@ import com.intellij.execution.configurations.RunConfiguration
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.externalSystem.importing.ImportSpecBuilder
 import com.intellij.openapi.externalSystem.model.ExternalSystemDataKeys
 import com.intellij.openapi.externalSystem.service.notification.ExternalSystemNotificationManager
@@ -29,6 +32,10 @@ import com.intellij.openapi.externalSystem.util.ExternalSystemUtil
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Computable
+import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.wm.ToolWindowManager
+import com.intellij.util.concurrency.AppExecutorUtil
+import java.util.concurrent.Callable
 
 class AttachSpringBootProjectAction : DumbAwareAction() {
     init {
@@ -53,6 +60,13 @@ class AttachSpringBootProjectAction : DumbAwareAction() {
     }
 
     companion object {
+
+        /**
+         * Must equal the `id` of the `toolWindow` registered in `spring-core-plugin.xml`: the platform looks a tool
+         * window up by that exact string and returns `null` for anything else, so a rename on either side would
+         * disable the activation silently. `AttachSpringBootProjectActionToolWindowIdTest` pins the two together.
+         */
+        internal const val TOOL_WINDOW_ID = "Explyt Spring"
         fun attachProject(project: Project) {
             val selectedRunConfiguration = ApplicationManager.getApplication().runReadAction(
                 Computable { RunManager.getInstance(project).selectedConfiguration?.configuration }
@@ -66,31 +80,71 @@ class AttachSpringBootProjectAction : DumbAwareAction() {
             attachProject(project, selectedRunConfiguration)
         }
 
+        /**
+         * Resolving the main class goes through indexes - for a Gradle task a short-names search plus an annotated
+         * search - so it runs as a cancellable background read in smart mode, never on the EDT the click arrives on.
+         */
         fun attachProject(project: Project, selectedRunConfiguration: RunConfiguration) {
             StatisticService.getInstance().addActionUsage(StatisticActionId.SPRING_BOOT_PANEL_ADD)
 
-            val mainClass = ApplicationManager.getApplication().runReadAction(
-                Computable { NativeBootUtils.getMainClass(selectedRunConfiguration) }
-            )
-            val mainFile = mainClass?.containingFile?.virtualFile
-            val canonicalPath = mainFile?.canonicalPath
-            if (mainClass == null || mainFile == null || canonicalPath == null) {
-                // The toolbar uses only a cheap stored-name check, so report click-time resolution failures instead of
-                // silently doing nothing.
-                ApplicationManager.getApplication().invokeLater {
-                    externalSystemNotification(message("explyt.external.project.run.config.required.message"), project)
+            ReadAction.nonBlocking(Callable { resolveMainClass(selectedRunConfiguration) })
+                .inSmartMode(project)
+                // A project-level service is disposed with the project, which is what must cancel a pending attach.
+                .expireWith(NativeLinkRepairService.getInstance(project))
+                .finishOnUiThread(ModalityState.defaultModalityState()) {
+                    attachResolvedProject(project, selectedRunConfiguration, it)
                 }
+                .submit(AppExecutorUtil.getAppExecutorService())
+        }
+
+        private class ResolvedMainClass(val qualifiedName: String?, val mainFile: VirtualFile, val canonicalPath: String)
+
+        private fun resolveMainClass(configuration: RunConfiguration): ResolvedMainClass? {
+            val mainClass = NativeBootUtils.getMainClass(configuration) ?: return null
+            val mainFile = mainClass.containingFile?.virtualFile ?: return null
+            val canonicalPath = mainFile.canonicalPath ?: return null
+            return ResolvedMainClass(mainClass.qualifiedName, mainFile, canonicalPath)
+        }
+
+        private fun attachResolvedProject(
+            project: Project,
+            selectedRunConfiguration: RunConfiguration,
+            resolved: ResolvedMainClass?
+        ) {
+            if (resolved == null) {
+                // The toolbar action is enabled from a cheap stored-name check, so an unresolvable main class must be
+                // reported here instead of failing silently.
+                externalSystemNotification(message("explyt.external.project.run.config.required.message"), project)
                 return
             }
+            val canonicalPath = resolved.canonicalPath
             if (ExternalSystemApiUtil.getSettings(project, SYSTEM_ID).getLinkedProjectSettings(canonicalPath) != null) {
                 ExternalProjectsManagerImpl.getInstance(project).runWhenInitialized {
                     ExternalSystemUtil.refreshProject(canonicalPath, ImportSpecBuilder(project, SYSTEM_ID))
                 }
+                // The action reports success only through the tool window, so an already-linked project has to open it
+                // too — otherwise clicking the button looks like nothing happened at all (issue #197).
+                activateToolWindow(project)
                 return
             }
 
             SpringBootOpenProjectProvider().linkToExistingProject(
-                mainFile, selectedRunConfiguration, mainClass.qualifiedName, project
+                resolved.mainFile, selectedRunConfiguration, resolved.qualifiedName, project
+            )
+            activateToolWindow(project)
+        }
+
+        /**
+         * Brings the Explyt Spring tool window to the front. Not called from the early-return paths above: those
+         * already explain themselves with a balloon, and opening an empty tool window on top of it would only add
+         * noise.
+         */
+        private fun activateToolWindow(project: Project) {
+            ApplicationManager.getApplication().invokeLater(
+                {
+                    ToolWindowManager.getInstance(project).getToolWindow(TOOL_WINDOW_ID)?.activate(null)
+                },
+                project.disposed
             )
         }
 

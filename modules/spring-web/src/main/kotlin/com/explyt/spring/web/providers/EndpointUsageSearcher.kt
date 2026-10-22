@@ -12,12 +12,17 @@ import com.explyt.spring.core.util.UastUtil.getArgumentValueAsEnumName
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.editor.openapi.OpenApiUtils
 import com.explyt.spring.web.loader.*
+import com.explyt.spring.web.service.SpringWebEndpointsSearcher
 import com.explyt.spring.web.tracker.OpenApiLanguagesModificationTracker
+import com.explyt.spring.web.util.ApplicationBasePath
+import com.explyt.spring.web.util.EndpointUrlMatcher
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.spring.web.util.SpringWebUtil.PATHS
 import com.explyt.spring.web.util.SpringWebUtil.REQUEST_METHODS
 import com.explyt.spring.web.util.SpringWebUtil.REQUEST_METHODS_WITH_TYPE
 import com.explyt.spring.web.util.SpringWebUtil.getUrlTemplateIndex
+import com.explyt.spring.web.util.TestRequestReceivers
+import com.explyt.spring.web.util.UrlArgumentText
 import com.explyt.util.CacheUtils.getCachedValue
 import com.explyt.util.ExplytKotlinUtil.filterToSet
 import com.explyt.util.ExplytKotlinUtil.mapToList
@@ -30,6 +35,7 @@ import com.intellij.openapi.util.ModificationTracker
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.findPsiFile
 import com.intellij.psi.PsiElement
+import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.search.FilenameIndex
 import com.intellij.psi.search.GlobalSearchScope
@@ -43,22 +49,55 @@ import org.jetbrains.yaml.psi.YAMLMapping
 
 private const val MAX_FILE_SIZE_BYTES = 1024 * 1024 //1mb
 
+private val SERVED_ENDPOINT_TYPES = listOf(EndpointType.SPRING_MVC, EndpointType.SPRING_WEBFLUX)
+
 object EndpointUsageSearcher {
 
     fun findOpenApiJsonEndpoints(
         path: String,
         requestMethods: List<String>,
         module: Module
-    ): List<PsiElement> {
-        return findOpenApiJsonData(module.project).asSequence()
-            .filter { it.psiFile is JsonFile }
+    ): List<PsiElement> =
+        openApiReferrers(findOpenApiJsonData(module.project), path, requestMethods, module).mapToList { it.psiElement }
+
+    fun findOpenApiOperations(path: String, requestMethods: List<String>, module: Module): OpenApiOperations {
+        val referrers = (openApiReferrers(findOpenApiJsonData(module.project), path, requestMethods, module) +
+                openApiReferrers(findOpenApiYamlData(module.project), path, requestMethods, module)).toList()
+        val documented = referrers.mapNotNullTo(mutableSetOf()) { it.method }
+        return OpenApiOperations(
+            documented = referrers.map { it.psiElement },
+            undocumentedMethods = openApiMethodsOf(path, requestMethods, module).filter { it.uppercase() !in documented }
+        )
+    }
+
+    fun openApiMethodsOf(path: String, requestMethods: List<String>, module: Module): List<String> {
+        if (requestMethods.isNotEmpty()) return requestMethods
+        val siblingVerbs = SpringWebEndpointsSearcher.getInstance(module.project)
+            .getAllEndpoints(module, SERVED_ENDPOINT_TYPES)
+            .filter { SpringWebUtil.isSamePathTemplate(it.path, path) }
+            .flatMap { it.requestMethods }
+        return EndpointVerbs.openApiMethodsOf(requestMethods, siblingVerbs)
+    }
+
+    fun findUndocumentedOpenApiMethods(path: String, requestMethods: List<String>, module: Module): List<String> =
+        findOpenApiOperations(path, requestMethods, module).undocumentedMethods
+
+    data class OpenApiOperations(val documented: List<PsiElement>, val undocumentedMethods: List<String>)
+
+    private fun openApiReferrers(
+        data: List<EndpointFileData>,
+        path: String,
+        requestMethods: List<String>,
+        module: Module
+    ): Sequence<Referrer> {
+        val methods = EndpointVerbs.openApiMethodsOf(requestMethods)
+        return data.asSequence()
             .filter { ModuleUtilCore.findModuleForFile(it.psiFile) == module }
             .flatMap { it.endpoints }
             .filterIsInstance<EndpointData.ReferrerData>()
             .map { it.referrer }
-            .filter { it.path == path }
-            .filter { it.method == null || requestMethods.contains(it.method) }
-            .mapToList { it.psiElement }
+            .filter { SpringWebUtil.isSamePathTemplate(it.path, path) }
+            .filter { referrer -> referrer.method == null || methods.any { it.equals(referrer.method, ignoreCase = true) } }
     }
 
     fun findOpenApiJsonData(project: Project): List<EndpointFileData> {
@@ -113,17 +152,8 @@ object EndpointUsageSearcher {
         path: String,
         requestMethods: List<String>,
         module: Module
-    ): List<PsiElement> {
-        return findOpenApiYamlData(module.project).asSequence()
-            .filter { it.psiFile is YAMLFile }
-            .filter { ModuleUtilCore.findModuleForFile(it.psiFile) == module }
-            .flatMap { it.endpoints }
-            .filterIsInstance<EndpointData.ReferrerData>()
-            .map { it.referrer }
-            .filter { it.path == path }
-            .filter { it.method == null || requestMethods.contains(it.method) }
-            .mapToList { it.psiElement }
-    }
+    ): List<PsiElement> =
+        openApiReferrers(findOpenApiYamlData(module.project), path, requestMethods, module).mapToList { it.psiElement }
 
     fun findOpenApiYamlData(project: Project): List<EndpointFileData> {
         return CachedValuesManager.getManager(project).getCachedValue(project) {
@@ -200,6 +230,7 @@ object EndpointUsageSearcher {
         module: Module
     ): List<PsiElement> {
         val endpoint = SpringWebUtil.simplifyUrl(fullPath)
+        val basePath = ApplicationBasePath.cachedOf(module)
         val methods = mutableSetOf<PsiElement>()
 
         for (psiMethod in getMockMvcMethods(module)) {
@@ -212,17 +243,17 @@ object EndpointUsageSearcher {
                 .filterToSet { uCallExpression ->
                     val httpMethodIndex = SpringWebUtil.getHttpMethodIndex(psiMethod)
                     if (httpMethodIndex >= 0) {
-                        if (uCallExpression
-                                .getArgumentValueAsEnumName(httpMethodIndex) !in requestMethods
-                        ) return@filterToSet false
+                        val sent = uCallExpression.getArgumentValueAsEnumName(httpMethodIndex)
+                        if (!EndpointVerbs.answers(requestMethods, sent)) return@filterToSet false
                     }
 
-                    val urlTemplateIndex = getUrlTemplateIndex(psiMethod)
-                    val urlArg =
-                        uCallExpression.getArgumentForParameter(urlTemplateIndex)?.evaluateString()
-                            ?: return@filterToSet false
+                    val urlArg = uCallExpression.getArgumentForParameter(urlArgumentIndex(psiMethod))
+                        ?.let(UrlArgumentText::of)
+                        ?: return@filterToSet false
 
-                    return@filterToSet SpringWebUtil.isEndpointMatches(endpoint, urlArg)
+                    return@filterToSet EndpointUrlMatcher.addresses(
+                        endpoint, urlArg, basePath, EndpointUrlMatcher.Policy.IN_PROCESS
+                    )
                 }
                 .mapNotNull { it.sourcePsi }
         }
@@ -230,17 +261,76 @@ object EndpointUsageSearcher {
         return methods.toList()
     }
 
+    /**
+     * Every request a test sends to the endpoint at [fullPath]: through MockMvc, through `WebTestClient` and through
+     * a real HTTP client to this machine.
+     */
+    fun findTestRequestUsage(fullPath: String, requestMethods: List<String>, module: Module): List<PsiElement> =
+        (findMockMvcEndpointUsage(fullPath, requestMethods, module) +
+                findWebTestClientEndpointUsage(fullPath, requestMethods, module) +
+                findHttpClientEndpointUsage(fullPath, requestMethods, module)).distinct()
+
+    /**
+     * The requests a test sends to the endpoint at [fullPath] through a real HTTP client - `java.net.http`,
+     * `RestTemplate`, `TestRestTemplate`, `RestClient` - to this machine; a request to another host is a call to
+     * another service.
+     */
+    fun findHttpClientEndpointUsage(
+        fullPath: String,
+        requestMethods: List<String>,
+        module: Module
+    ): List<PsiElement> {
+        val endpoint = SpringWebUtil.simplifyUrl(fullPath)
+        val basePath = ApplicationBasePath.cachedOf(module)
+        val testScope = GlobalSearchScopesCore.projectTestScope(module.project)
+
+        return TestRequestReceivers.NETWORK.asSequence()
+            .flatMap { receiver -> receiverMethods(receiver, module).map { receiver to it } }
+            .filter { (_, method) -> TestRequestReceivers.urlParameterIndex(method) != -1 }
+            .flatMap { (receiver, method) ->
+                SpringSearchUtils.searchReferenceByMethod(module, method, testScope).asSequence()
+                    .mapNotNull { it.element.context.toUElementOfType<UCallExpression>() }
+                    .filter { call ->
+                        val sent = TestRequestReceivers.httpMethodOf(call, method, receiver.verb)
+                        if (sent != null && !EndpointVerbs.answers(requestMethods, sent)) return@filter false
+                        val url = call.getArgumentForParameter(TestRequestReceivers.urlParameterIndex(method))
+                            ?.let(UrlArgumentText::of)
+                            ?: return@filter false
+                        EndpointUrlMatcher.addresses(endpoint, url, basePath)
+                    }
+            }
+            .mapNotNull { it.sourcePsi }
+            .distinct()
+            .toList()
+    }
+
+    private fun receiverMethods(receiver: TestRequestReceivers.Receiver, module: Module): List<PsiMethod> {
+        val libraryTracker = ModificationTrackerManager.getInstance(module.project).getLibraryTracker()
+        val methodsByOwner = getCachedValue(module, libraryTracker) { networkReceiverMethods(module) }
+        return methodsByOwner[receiver.owner].orEmpty().filter { it.name == receiver.method }
+    }
+
+    private fun networkReceiverMethods(module: Module): Map<String, List<PsiMethod>> =
+        TestRequestReceivers.NETWORK.map { it.owner }.distinct().associateWith { owner ->
+            SpringCoreUtil.getClassMethodsFromLibraries(owner, module)?.toList()
+                ?: JavaPsiFacade.getInstance(module.project)
+                    .findClass(owner, module.getModuleWithDependenciesAndLibrariesScope(true))
+                    ?.methods?.toList()
+                ?: emptyList()
+        }
+
     private fun isInRequestMethods(psiMethod: PsiMethod, requestMethods: List<String>): Boolean {
         val name = psiMethod.name
         if (name !in REQUEST_METHODS) return false
 
         val uppercaseName = name.uppercase()
-        if (uppercaseName !in REQUEST_METHODS_WITH_TYPE) {
-            if (uppercaseName !in requestMethods) return false
-        }
-
-        return getUrlTemplateIndex(psiMethod) != -1
+        val verbMatches = uppercaseName in REQUEST_METHODS_WITH_TYPE || EndpointVerbs.answers(requestMethods, uppercaseName)
+        return verbMatches && urlArgumentIndex(psiMethod) != -1
     }
+
+    /** The URL argument of a request builder: a URL template, or the `java.net.URI` of the overloads that take one. */
+    private fun urlArgumentIndex(psiMethod: PsiMethod): Int =
+        getUrlTemplateIndex(psiMethod).takeIf { it != -1 } ?: UrlArgumentText.uriParameterIndex(psiMethod)
 
     private fun getMockMvcMethods(module: Module): Array<PsiMethod> {
         val libraryModificationTracker = ModificationTrackerManager.getInstance(module.project).getLibraryTracker()
@@ -256,14 +346,10 @@ object EndpointUsageSearcher {
     }
 
     fun findWebTestClientEndpointUsage(path: String, requestedMethods: List<String>, module: Module): List<PsiElement> {
-        return requestedMethods
-            .flatMap { findWebTestClientEndpointUsage(path, it, module) }
-    }
-
-    fun findWebTestClientEndpointUsage(path: String, methodName: String, module: Module): List<PsiElement> {
         val endpoint = SpringWebUtil.simplifyUrl(path)
+        val basePath = ApplicationBasePath.cachedOf(module)
         return getGetWebTestMethods(module).asSequence()
-            .filter { it.name.uppercase() == methodName || it.name == "method" }
+            .filter { it.name == "method" || EndpointVerbs.answers(requestedMethods, it.name) }
             .flatMap {
                 SpringSearchUtils.searchReferenceByMethod(
                     module,
@@ -273,9 +359,7 @@ object EndpointUsageSearcher {
             }
             .mapNotNull { it.element.parent?.toUElementOfType<UCallExpression>() }
             .filter {
-                if (it.methodName != "method") return@filter true
-
-                it.getArgumentValueAsEnumName(0) == methodName
+                it.methodName != "method" || EndpointVerbs.answers(requestedMethods, it.getArgumentValueAsEnumName(0))
             }
             .mapNotNull {
                 it.uastParent?.uastParent as? UQualifiedReferenceExpression
@@ -283,9 +367,9 @@ object EndpointUsageSearcher {
             .mapNotNull { it.selector as? UCallExpression }
             .filter { it.methodName == "uri" }
             .filter {
-                val argument = it.valueArguments.firstOrNull()?.evaluate() as? String
+                val argument = it.valueArguments.firstOrNull()?.let(UrlArgumentText::of)
                     ?: return@filter false
-                SpringWebUtil.isEndpointMatches(endpoint, argument)
+                EndpointUrlMatcher.addresses(endpoint, argument, basePath)
             }
             .mapNotNull { it.sourcePsi }
             .toList()

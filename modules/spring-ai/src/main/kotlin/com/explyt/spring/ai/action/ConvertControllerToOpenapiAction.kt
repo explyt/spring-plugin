@@ -16,6 +16,7 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VirtualFile
 import org.jetbrains.kotlin.idea.core.util.toPsiFile
 import org.jetbrains.uast.UFile
 import org.jetbrains.uast.toUElement
@@ -42,16 +43,21 @@ class ConvertControllerToOpenapiAction : AnAction(message("explyt.spring.ai.acti
         val project: Project = e.project ?: return
 
         val virtualFiles = e.getData(CommonDataKeys.VIRTUAL_FILE_ARRAY) ?: return
+
+        submitAiPromptInSmartMode(project) { composeRequest(project, virtualFiles) }
+    }
+
+    private fun composeRequest(project: Project, virtualFiles: Array<VirtualFile>): AiPromptRequest? {
         val controllerPsiClasses = virtualFiles
             .mapNotNull { it.toPsiFile(project)?.toUElement() as? UFile }
             .flatMap { it.classes }
             .filter { it.javaPsi.isMetaAnnotatedBy(SpringCoreClasses.CONTROLLER) }
-            .takeIf { it.isNotEmpty() } ?: return
+            .takeIf { it.isNotEmpty() } ?: return null
 
         val controllerNames = controllerPsiClasses.map { it.javaPsi.name }
 
         val prompt = message("action.prompt.convert.controller", controllerNames)
-        AiPluginService.getInstance(project).performPrompt(prompt, virtualFiles.toList())
+        return AiPromptRequest(prompt, virtualFiles.toList())
     }
 }
 

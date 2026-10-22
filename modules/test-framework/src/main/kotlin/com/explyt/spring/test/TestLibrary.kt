@@ -19,16 +19,62 @@ data class TestLibrary(val mavenCoordinates: String, val includeTransitiveDepend
         val springTx_6_0_7 = TestLibrary("org.springframework:spring-tx:6.0.7")
         val springTest_6_0_7 = TestLibrary("org.springframework:spring-test:6.0.7")
         val springWeb_6_0_7 = TestLibrary("org.springframework:spring-web:6.0.7", true)
+        val jakartaServlet_6_0_0 = TestLibrary("jakarta.servlet:jakarta.servlet-api:6.0.0")
+        val jakartaServlet_6_1_0 = TestLibrary("jakarta.servlet:jakarta.servlet-api:6.1.0")
+        val javaxServlet_4_0_1 = TestLibrary("javax.servlet:javax.servlet-api:4.0.1")
+
+        /** Spring MVC without Reactor, so a fixture can model a servlet-stack project that has no WebFlux. */
+        val springWebMvc_6_0_7 = TestLibrary("org.springframework:spring-webmvc:6.0.7", true)
         val springReactiveWeb_3_1_1 = TestLibrary("org.springframework.boot:spring-boot-starter-webflux:3.1.1", true)
         val springCloud_4_1_3 = TestLibrary("org.springframework.cloud:spring-cloud-starter-openfeign:4.1.3", true)
 
         val springBoot_3_1_1: TestLibrary = TestLibrary("org.springframework.boot:spring-boot:3.1.1")
+        val springBoot_3_3_0: TestLibrary = TestLibrary("org.springframework.boot:spring-boot:3.3.0")
+        val springBoot_3_4_0: TestLibrary = TestLibrary("org.springframework.boot:spring-boot:3.4.0")
+        val springBoot_3_5_0: TestLibrary = TestLibrary("org.springframework.boot:spring-boot:3.5.0")
         val springBoot_4_0_0: TestLibrary = TestLibrary("org.springframework.boot:spring-boot:4.0.0")
+        val springBootAutoConfigure_2_7_18: TestLibrary = TestLibrary("org.springframework.boot:spring-boot-autoconfigure:2.7.18")
         val springBootAutoConfigure_3_1_1: TestLibrary = TestLibrary("org.springframework.boot:spring-boot-autoconfigure:3.1.1")
+        val springBootAutoConfigure_3_4_0: TestLibrary = TestLibrary("org.springframework.boot:spring-boot-autoconfigure:3.4.0")
+        val springBootAutoConfigure_3_5_0: TestLibrary = TestLibrary("org.springframework.boot:spring-boot-autoconfigure:3.5.0")
+        val springBootAutoConfigure_4_1_0: TestLibrary = TestLibrary("org.springframework.boot:spring-boot-autoconfigure:4.1.0")
+        val springBootActuatorAutoConfigure_4_1_0: TestLibrary =
+            TestLibrary("org.springframework.boot:spring-boot-actuator-autoconfigure:4.1.0")
+        val springBootHealth_4_1_0: TestLibrary = TestLibrary("org.springframework.boot:spring-boot-health:4.1.0")
+        val springBootWebFlux_4_1_1: TestLibrary = TestLibrary("org.springframework.boot:spring-boot-webflux:4.1.1")
+
+        /** Boot 4 moved `IntegrationAutoConfiguration` out of `spring-boot-autoconfigure` into this jar. */
+        val springBootIntegration_4_1_0: TestLibrary = TestLibrary("org.springframework.boot:spring-boot-integration:4.1.0")
+        val springIntegrationCore_6_5_0: TestLibrary =
+            TestLibrary("org.springframework.integration:spring-integration-core:6.5.0")
+        val springIntegrationCore_7_1_0: TestLibrary =
+            TestLibrary("org.springframework.integration:spring-integration-core:7.1.0")
+        val mybatis_3_5_19: TestLibrary = TestLibrary("org.mybatis:mybatis:3.5.19")
+        val mybatisSpring_3_0_5: TestLibrary = TestLibrary("org.mybatis:mybatis-spring:3.0.5")
+        val mybatisSpring_4_1_0: TestLibrary = TestLibrary("org.mybatis:mybatis-spring:4.1.0")
+        val mybatisSpringBootAutoConfigure_3_0_5: TestLibrary =
+            TestLibrary("org.mybatis.spring.boot:mybatis-spring-boot-autoconfigure:3.0.5")
+        val mybatisSpringBootAutoConfigure_4_1_0: TestLibrary =
+            TestLibrary("org.mybatis.spring.boot:mybatis-spring-boot-autoconfigure:4.1.0")
         val springBootTestAutoConfigure_3_1_1: TestLibrary =
             TestLibrary("org.springframework.boot:spring-boot-test-autoconfigure:3.1.1")
         val springDataJpa_3_1_0 = TestLibrary("org.springframework.data:spring-data-jpa:3.1.0", true)
         val springDataJpa_3_4_0 = TestLibrary("org.springframework.data:spring-data-jpa:3.4.0", true)
+
+        /** The Spring HATEOAS line Boot 3.5 manages: `EntityModel`, `CollectionModel`, its own `PagedModel`, `@Relation`. */
+        val springHateoas_2_5_3 = TestLibrary("org.springframework.hateoas:spring-hateoas:2.5.3", false)
+
+        /** On the classpath, Spring HATEOAS pluralises the default collection relation with it (`orderDtoes`). */
+        val evoInflector_1_3 = TestLibrary("org.atteo:evo-inflector:1.3", false)
+
+        /** The Spring HATEOAS line Boot 4.1 manages; it renders HAL with Jackson 3. */
+        val springHateoas_3_1_1 = TestLibrary("org.springframework.hateoas:spring-hateoas:3.1.1", false)
+
+        /** Spring MVC of the Boot 4.1 line, with the Spring Framework 7 jars it depends on. */
+        val springWebMvc_7_0_8 = TestLibrary("org.springframework:spring-webmvc:7.0.8", true)
+
+        /** Spring Data Commons of the Boot 4.1 line: `Page`, `Slice` and the web `PagedModel`, without its dependencies. */
+        val springDataCommons_4_1_0 = TestLibrary("org.springframework.data:spring-data-commons:4.1.0", false)
         val springGraphQl_1_0_4 = TestLibrary("org.springframework.graphql:spring-graphql:1.0.4", true)
         val jakarta_annotation_2_1_1 = TestLibrary("jakarta.annotation:jakarta.annotation-api:2.1.1", true)
         val jakarta_inject_2_0_1 = TestLibrary("jakarta.inject:jakarta.inject-api:2.0.1", true)
@@ -39,7 +85,12 @@ data class TestLibrary(val mavenCoordinates: String, val includeTransitiveDepend
 
         val springSecurityTest_6_0_7 = TestLibrary("org.springframework.security:spring-security-test:6.0.7", true)
 
+        /** Ships the authentication events Spring Security publishes itself, e.g. `AuthenticationSuccessEvent`. */
+        val springSecurityCore_6_0_7 = TestLibrary("org.springframework.security:spring-security-core:6.0.7", true)
+
         val kotlin_1_9_22 = TestLibrary("org.jetbrains.kotlin:kotlin-stdlib:1.9.22", true)
+        val jacksonAnnotations_2_15_2 = TestLibrary("com.fasterxml.jackson.core:jackson-annotations:2.15.2", false)
+        val jacksonDatabind_2_15_2 = TestLibrary("com.fasterxml.jackson.core:jackson-databind:2.15.2", false)
         val kotlin_coroutines_1_7_1 = TestLibrary("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1", true)
 
         val springAop_6_0_7 = TestLibrary("org.springframework:spring-aop:6.0.7", true)
@@ -50,6 +101,8 @@ data class TestLibrary(val mavenCoordinates: String, val includeTransitiveDepend
         val resilience4j_2_2_0 = TestLibrary("io.github.resilience4j:resilience4j-spring-boot3:2.2.0", true)
         val hibernate_5_6_15 = TestLibrary("org.hibernate:hibernate-entitymanager:5.6.15.Final", true)
         val springJdbc_6_2_5 = TestLibrary("org.springframework:spring-jdbc:6.2.5", true)
+        val springWeb_6_1_4 = TestLibrary("org.springframework:spring-web:6.1.4", true)
+        val springBootTest_3_2_3 = TestLibrary("org.springframework.boot:spring-boot-test:3.2.3", true)
     }
 }
 
@@ -58,6 +111,7 @@ fun addFromMaven(
     mavenCoordinates: String,
     includeTransitiveDependencies: Boolean = true,
     dependencyScope: DependencyScope = DependencyScope.COMPILE,
+    exported: Boolean = false,
 ) {
     val remoteRepositoryDescriptions = listOf(RemoteRepositoryDescription.MAVEN_CENTRAL)
     val libraryProperties = RepositoryLibraryProperties(mavenCoordinates, includeTransitiveDependencies)
@@ -80,6 +134,7 @@ fun addFromMaven(
     val libraryOrderEntry = model.findLibraryOrderEntry(library)
         ?: throw IllegalStateException("Unable to find registered library $mavenCoordinates")
     libraryOrderEntry.scope = dependencyScope
+    libraryOrderEntry.isExported = exported
     libraryModel.commit()
     tableModel.commit()
 }

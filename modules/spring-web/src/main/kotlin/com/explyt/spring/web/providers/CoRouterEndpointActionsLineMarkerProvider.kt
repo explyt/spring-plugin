@@ -8,8 +8,8 @@ package com.explyt.spring.web.providers
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.SpringIcons
 import com.explyt.spring.web.SpringWebBundle
-import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
+import com.explyt.spring.web.route.RouterDslRoutes
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytUastUtil.getCommentText
@@ -20,6 +20,9 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiElement
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.lombok.utils.decapitalize
+import org.jetbrains.kotlin.psi.KtCallExpression
+import org.jetbrains.kotlin.psi.KtNameReferenceExpression
+import org.jetbrains.kotlin.psi.KtStringTemplateExpression
 import org.jetbrains.uast.*
 
 class CoRouterEndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor() {
@@ -39,19 +42,19 @@ class CoRouterEndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor()
 
         if (psiElement.language != KotlinLanguage.INSTANCE) return null
 
-        val uCallExpression = getUParentForIdentifier(psiElement) as? UCallExpression ?: return null
-        val methodName = uCallExpression.methodName ?: return null
-        if (methodName !in SpringWebClasses.URI_TYPE) return null
+        val uCallExpression = routeCallAnchoredAt(psiElement) ?: return null
 
         val method = findContainingMethod(uCallExpression) ?: return null
         if (!method.javaPsi.isMetaAnnotatedBy(SpringCoreClasses.BEAN)) return null
         val psiClass = method.javaPsi.containingClass ?: return null
         if (!psiClass.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT)) return null
 
-        val fullPath = SpringWebUtil.getPathFromCallExpression(uCallExpression)
-        if (fullPath.isEmpty()) return null
+        val requestMethods = RouterDslRoutes.requestMethodsOf(uCallExpression)
+            ?.let { SpringWebUtil.getServedRequestMethods(uCallExpression, it) }
+            ?: return null
 
-        val requestMethods = listOf(methodName)
+        val fullPath = SpringWebUtil.getPathsFromCallExpression(uCallExpression).firstOrNull() ?: return null
+        if (fullPath.isEmpty()) return null
 
         val description = uCallExpression.comments.firstOrNull()?.getCommentText() ?: ""
         val returnTypeFqn = "java.lang.String"
@@ -77,6 +80,20 @@ class CoRouterEndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor()
             GutterIconRenderer.Alignment.RIGHT,
             { SpringWebBundle.message("explyt.spring.web.gutter.endpoint.actions.icon.accessible") }
         )
+    }
+
+    private fun routeCallAnchoredAt(psiElement: PsiElement): UCallExpression? =
+        (getUParentForIdentifier(psiElement) as? UCallExpression)
+            ?.takeIf { RouterDslRoutes.isRouteName(it.methodName) }
+            ?: receiverRouteCallAnchoredAt(psiElement)
+
+    private fun receiverRouteCallAnchoredAt(psiElement: PsiElement): UCallExpression? {
+        val callee = psiElement.parent
+        if (callee !is KtStringTemplateExpression && callee !is KtNameReferenceExpression) return null
+        if (callee.firstChild != psiElement) return null
+        val call = callee.parent as? KtCallExpression ?: return null
+        if (call.calleeExpression != callee) return null
+        return call.toUElementOfType<UCallExpression>()
     }
 
     private fun getEndpointMethodName(uCallExpression: UCallExpression): String {
