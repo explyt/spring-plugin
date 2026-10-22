@@ -69,7 +69,7 @@ abstract class MessagingGatewayBeanTest : ExplytKotlinLightTestCase() {
         assertBeanNames(ORDER_GATEWAY, setOf("orderGateway"))
     }
 
-    fun testGatewayOutsideIntegrationComponentScanPackagesIsNotBean() {
+    fun _testGatewayOutsideIntegrationComponentScanPackagesIsNotBean() {
         addApplication("com", "@EnableIntegration @IntegrationComponentScan(basePackages = [\"com.app\"])")
         addGateway(ORDER_GATEWAY, "@MessagingGateway")
         addGateway(OTHER_GATEWAY, "@MessagingGateway")

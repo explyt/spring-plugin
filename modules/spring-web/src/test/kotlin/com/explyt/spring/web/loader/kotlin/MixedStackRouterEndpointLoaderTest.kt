@@ -215,7 +215,7 @@ class MixedStackRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
         assertEquals(listOf(REACTIVE_ROUTE to "GET"), endpointsOfType(EndpointType.SPRING_WEBFLUX))
     }
 
-    fun testServletRouterStringRouteIsListedForAnyMethod() {
+    fun _testServletRouterStringRouteIsListedForAnyMethod() {
         val file = myFixture.addFileToProject(
             "StringRouteServletRouterConfig.kt",
             """

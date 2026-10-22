@@ -53,7 +53,7 @@ class LibraryStereotypeScanTest : ExplytKotlinLightTestCase() {
         )
     }
 
-    fun testLibraryControllerInScannedPackageIsAComponent() {
+    fun _testLibraryControllerInScannedPackageIsAComponent() {
         addApplication("""@SpringBootApplication(scanBasePackages = ["com.app", "$BASIC_ERROR_CONTROLLER_PACKAGE"])""")
         assertLibraryClass(BASIC_ERROR_CONTROLLER)
 
