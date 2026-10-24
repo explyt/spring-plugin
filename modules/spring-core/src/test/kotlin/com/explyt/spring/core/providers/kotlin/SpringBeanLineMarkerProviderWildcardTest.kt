@@ -10,6 +10,7 @@ import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
 import com.explyt.spring.test.util.SpringGutterTestUtil.getAllBeanGuttersByIcon
 import com.explyt.spring.test.util.SpringGutterTestUtil.getGutterTargetString
+import org.intellij.lang.annotations.Language
 
 class SpringBeanLineMarkerProviderWildcardTest : ExplytJavaLightTestCase() {
     override val libraries: Array<TestLibrary> = arrayOf(
@@ -516,8 +517,8 @@ class SpringBeanLineMarkerProviderWildcardTest : ExplytJavaLightTestCase() {
 
     private fun getWildcardClasses(): String {
         return """
-            import org.springframework.stereotype.Component;
-            import org.springframework.context.annotation.Configuration;
+            import org.springframework.stereotype.Component
+            import org.springframework.context.annotation.Configuration
             import org.springframework.context.annotation.Bean
 
             interface I

@@ -119,15 +119,13 @@ class ScopedBeanMatcherTest : ExplytJavaLightTestCase() {
     }
 
     /**
-     * A query carrying type arguments is held to them, and says so when it cannot be.
+     * A query carrying type arguments is held to them, including those inherited through a supertype.
      *
      * Comparing the raw classes would answer a `Repository<Foo>` query with a `Repository<Bar>` bean, which
-     * Spring would never inject there. The project's bean-type rule compares arguments at one level only, so a
-     * bean typed `FooRepository` - whose argument lives in the `Repository<Foo>` supertype - can be neither
-     * confirmed nor denied. Claiming "not compatible" would state something never established, so such a record
-     * is counted as unresolved and the inventory reports itself PARTIAL.
+     * Spring would never inject there. A bean typed `FooRepository` - whose argument lives in the
+     * `Repository<Foo>` supertype - is assignable to a `Repository<Foo>` query, so it is a confirmed match.
      */
-    fun testTypeArgumentsNarrowTheInventoryAndUnprovableOnesAreNotDenied() {
+    fun testTypeArgumentsNarrowTheInventoryIncludingThoseInheritedThroughSupertype() {
         myFixture.addClass("package com.explyt.demo; public interface Repository<T> {}")
         myFixture.addClass("package com.explyt.demo; public class Foo {}")
         myFixture.addClass("package com.explyt.demo; public class Bar {}")
@@ -151,18 +149,15 @@ class ScopedBeanMatcherTest : ExplytJavaLightTestCase() {
             record("bean-foo", "foo", setOf("foo"), declaredType = typeOf("com.explyt.demo.FooRepository"))
         )
 
-        val unprovable = ScopedBeanMatcher(project)
+        val inherited = ScopedBeanMatcher(project)
             .matchType(viaSupertype.records, typeOf("com.explyt.demo.Repository", "com.explyt.demo.Foo"))
 
-        assertTrue("An unprovable argument is not a confirmed match", unprovable.records.isEmpty())
         assertEquals(
-            "...and not a denial either - the inventory admits it is incomplete",
-            MatchCompleteness.PARTIAL, unprovable.completeness
+            "An argument inherited through a supertype is a confirmed match",
+            listOf("bean-foo"), inherited.records.map { it.id }
         )
-        assertEquals(1, unprovable.unresolvedCount)
-        assertTrue(
-            ScopedBeanMatcher.TYPE_ARGUMENTS_NOT_COMPARABLE in unprovable.limitations
-        )
+        assertEquals(MatchCompleteness.COMPLETE, inherited.completeness)
+        assertEquals(0, inherited.unresolvedCount)
 
         val raw = ScopedBeanMatcher(project).matchType(viaSupertype.records, typeOf("com.explyt.demo.Repository"))
 
