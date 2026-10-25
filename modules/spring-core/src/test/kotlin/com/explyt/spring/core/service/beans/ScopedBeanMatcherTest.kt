@@ -168,6 +168,44 @@ class ScopedBeanMatcherTest : ExplytJavaLightTestCase() {
             setOf("bean-foo", "bean-bar"), raw.records.map { it.id }.toSet()
         )
         assertEquals(MatchCompleteness.COMPLETE, raw.completeness)
+        assertEquals(0, raw.unresolvedCount)
+    }
+
+    /**
+     * A raw declared type carries no type argument, so it neither confirms nor denies a query that has one.
+     *
+     * A recorded context exports a `@Bean` type with its arguments erased, and a generic component is typed by its
+     * class, so a `@Bean Repository<Bar>` reaches the matcher as `Repository`. Java accepts a raw type through an
+     * unchecked conversion; reporting it as a confirmed `Repository<Foo>` bean would hand the caller someone
+     * else's bean with full confidence.
+     */
+    fun testRawDeclaredTypeIsUndecidedForAQueryWithTypeArguments() {
+        myFixture.addClass("package com.explyt.demo; public interface Repository<T> {}")
+        myFixture.addClass("package com.explyt.demo; public class Foo {}")
+        myFixture.addClass("package com.explyt.demo; public class Bar {}")
+        myFixture.addClass("package com.explyt.demo; public class FooRepository implements Repository<Foo> {}")
+        myFixture.addClass("package com.explyt.demo; public class BarRepository implements Repository<Bar> {}")
+        myFixture.addClass("package com.explyt.demo; public class Clock {}")
+        val snapshot = snapshotOf(
+            record("bean-foo", "foo", setOf("foo"), declaredType = typeOf("com.explyt.demo.FooRepository")),
+            record("bean-bar", "bar", setOf("bar"), declaredType = typeOf("com.explyt.demo.BarRepository")),
+            record("bean-raw", "raw", setOf("raw"), declaredType = typeOf("com.explyt.demo.Repository")),
+            record("bean-clock", "clock", setOf("clock"), declaredType = typeOf("com.explyt.demo.Clock"))
+        )
+
+        val forFoo = ScopedBeanMatcher(project)
+            .matchType(snapshot.records, typeOf("com.explyt.demo.Repository", "com.explyt.demo.Foo"))
+
+        assertEquals(listOf("bean-foo"), forFoo.records.map { it.id })
+        assertEquals(MatchCompleteness.PARTIAL, forFoo.completeness)
+        assertEquals(1, forFoo.unresolvedCount)
+        assertEquals(setOf(ScopedBeanMatcher.TYPE_ARGUMENTS_NOT_RECORDED), forFoo.limitations)
+
+        val raw = ScopedBeanMatcher(project).matchType(snapshot.records, typeOf("com.explyt.demo.Repository"))
+
+        assertEquals(setOf("bean-foo", "bean-bar", "bean-raw"), raw.records.map { it.id }.toSet())
+        assertEquals(MatchCompleteness.COMPLETE, raw.completeness)
+        assertEquals(0, raw.unresolvedCount)
     }
 
     /** A type nobody declares is a different answer than a type that exists and matches no bean. */

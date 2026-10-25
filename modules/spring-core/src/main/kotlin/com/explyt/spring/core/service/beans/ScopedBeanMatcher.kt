@@ -103,10 +103,20 @@ class ScopedBeanMatcher(private val project: Project) {
             when (isAssignable(declaredType, target)) {
                 true -> matched += record
                 false -> Unit
-                null -> if (couldBeCandidate(record, target)) {
-                    unresolved++
-                    limitations += TYPE_NOT_RESOLVABLE_IN_SCOPE
-                    limitations += record.limitations
+                null -> when {
+                    declaredType != null && !declaredType.isUnreadable() -> {
+                        unresolved++
+                        limitations += TYPE_ARGUMENTS_NOT_RECORDED
+                        limitations += record.limitations
+                    }
+
+                    couldBeCandidate(record, target) -> {
+                        unresolved++
+                        limitations += TYPE_NOT_RESOLVABLE_IN_SCOPE
+                        limitations += record.limitations
+                    }
+
+                    else -> Unit
                 }
             }
         }
@@ -156,17 +166,31 @@ class ScopedBeanMatcher(private val project: Project) {
     }
 
     /**
-     * `null` when the bean's declared type cannot be read, which is neither a match nor a mismatch.
+     * `null` when compatibility cannot be decided, which is neither a match nor a mismatch.
      *
      * Compatibility is decided by the project's existing bean-type rule, so a query carrying type arguments is
      * held to them, including arguments the bean inherits through a supertype: a `FooRepository implements
      * Repository<Foo>` answers a `Repository<Foo>` query, a `BarRepository implements Repository<Bar>` does not,
      * and a raw query still matches every repository.
+     *
+     * Two declared types decide nothing. One that cannot be read is undecided. A raw type of a generic class is
+     * undecided for a query with type arguments when the classes are compatible: a recorded context exports a
+     * `@Bean` type with its arguments erased, and a generic component is typed by its class, so `Repository`
+     * carries no argument to compare with `Repository<Foo>`. Java would accept it through an unchecked
+     * conversion, which proves nothing about the bean.
      */
     private fun isAssignable(declaredType: PsiType?, target: PsiType): Boolean? {
         if (declaredType == null || declaredType.isUnreadable()) return null
+        if (declaredType.isRawAgainstArgumentsOf(target)) {
+            return if (TypeConversionUtil.erasure(target).isAssignableFrom(TypeConversionUtil.erasure(declaredType))) {
+                null
+            } else false
+        }
         return declaredType.isEqualOrInheritorBeanType(target)
     }
+
+    private fun PsiType.isRawAgainstArgumentsOf(target: PsiType): Boolean =
+        this is PsiClassType && isRaw && target is PsiClassType && target.parameterCount > 0
 
     private fun PsiType.isUnreadable(): Boolean = this is PsiClassType && resolve() == null
 
@@ -213,6 +237,7 @@ class ScopedBeanMatcher(private val project: Project) {
         const val TYPE_NOT_FOUND = "TYPE_NOT_FOUND"
         const val TYPE_AMBIGUOUS_IN_SCOPE = "TYPE_AMBIGUOUS_IN_SCOPE"
         const val TYPE_NOT_RESOLVABLE_IN_SCOPE = "TYPE_NOT_RESOLVABLE_IN_SCOPE"
+        const val TYPE_ARGUMENTS_NOT_RECORDED = "TYPE_ARGUMENTS_NOT_RECORDED"
         const val APPLICATION_MODULE_NOT_FOUND = "APPLICATION_MODULE_NOT_FOUND"
     }
 }
