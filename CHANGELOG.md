@@ -18,6 +18,7 @@ This release is the last one for IntelliJ IDEA 2024.2 and 2024.3. Later releases
 - A component scan declared in a dependency module, a default-package application and an `@EnableAutoConfiguration` application now give the correct beans, and an application in test sources no longer widens the beans of production code (#495, #710, #532, #772)
 - Starters that are only on the application's runtime classpath, such as `runtimeOnly` dependencies, contribute their beans, so injecting them no longer reports "No beans" (#780)
 - MyBatis mappers (`@MapperScan`, `@Mapper`) and Spring Integration `@MessagingGateway` interfaces are beans (#598)
+- Injection points with type arguments find beans whose arguments come from a supertype, such as a `@Bean TestGenericV1` for `TestGeneric<String>`, also inside `List`, `Optional`, `ObjectProvider` and `Map`, in bean gutters, the autowiring inspection and `explyt_find_spring_bean` (#799)
 
 ### New inspections and quick fixes
 - Bean name collisions that fail startup: two `@Bean` methods with the same bean name on Spring Framework 6.2 and later, and a `@Bean` method overridden across two registered configurations (#597, #668, #686, #689, #698, #714)

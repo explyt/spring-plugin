@@ -244,7 +244,9 @@ object SpringCoreUtil {
     }
 
     fun PsiClass.resolveExplicitBeanName(module: Module): String? =
-        resolveBeanNameByAnnotations(SpringSearchUtils.getComponentClassAnnotations(module).mapNotNull { it.qualifiedName })
+        resolveBeanNameByAnnotations(
+            SpringSearchUtils.getComponentClassAnnotations(module).mapNotNull { it.qualifiedName }
+        )
 
     private fun PsiClass.resolveBeanNameByPsiAnnotations(annotationPsiClasses: Collection<PsiClass>): String {
         val annotationNames = annotationPsiClasses.mapNotNull { it.qualifiedName }
@@ -483,6 +485,7 @@ object SpringCoreUtil {
             return this.isEqualOrInheritor(beanPsiType)
                     && (beanPsiType.parameters.isEmpty() || this.equalParamsWithBound(beanPsiType)
                     || this.isAllParametersAssignable(beanPsiType))
+                    || beanPsiType.isAssignableFrom(this)
         }
         if (beanPsiType is PsiWildcardType) {
             return this.matchesWildcardType(beanPsiType)
@@ -539,45 +542,6 @@ object SpringCoreUtil {
             }
         }
         return false
-    }
-
-    fun Collection<PsiMethod>.filterByInheritedTypes(
-        sourcePsiType: PsiType,
-        beanPsiType: PsiType?
-    ): Sequence<PsiMethod> {
-        var sequence = this.asSequence()
-        if (this.isEmpty()) {
-            return sequence
-        }
-        val beanPsiClass = beanPsiType?.resolvedPsiClass
-        if (beanPsiClass != null && beanPsiType != sourcePsiType) {
-            val possibleCustomInheritors = SpringSearchUtils.searchClassInheritors(beanPsiClass)
-            if (possibleCustomInheritors.isNotEmpty()) {
-                sequence = sequence.filter {
-                    it.returnPsiClass?.let {
-                        it in possibleCustomInheritors || possibleCustomInheritors.any { inheritorClass ->
-                            inheritorClass.isEqualOrInheritor(
-                                it
-                            )
-                        }
-                    } == true
-                }
-            }
-        }
-
-        return sequence.filter { psiMethod ->//
-            val psiMethodReturnType = psiMethod.returnType
-            psiMethod.findChildrenOfType<PsiReturnStatement>().any {
-                it.returnValue?.type?.let {
-                    it != psiMethodReturnType && (
-                            it.isEqualOrInheritorBeanType(sourcePsiType)
-                                    || beanPsiType != null && beanPsiType != sourcePsiType && it.isEqualOrInheritorBeanType(
-                                beanPsiType
-                            )
-                            )
-                } == true
-            }
-        }
     }
 
     @Suppress("UnstableApiUsage")
@@ -663,8 +627,9 @@ object SpringCoreUtil {
 
         val resolvedSourcePsiClass = sourcePsiType.resolvedPsiClass
         return this.asSequence().filter {
-            it.returnType?.isEqualOrInheritorBeanType(sourcePsiType) ?: false ||
-                    it.returnType == sourcePsiType
+            val returnType = it.returnType
+            returnType?.isEqualOrInheritorBeanType(sourcePsiType) ?: false ||
+                    returnType == sourcePsiType
                     || it.returnPsiType?.isEqualOrInheritorBeanType(sourcePsiType) == true
                     || (!isSourcePsiTypeHasParameters || isSourcePsiTypeHasSingleUnboundedWildcardType)
                     && resolvedSourcePsiClass != null && it.returnPsiClass == resolvedSourcePsiClass
@@ -701,13 +666,9 @@ object SpringCoreUtil {
     }
 
     fun Collection<PsiMethod>.filterByBeanPsiType(beanPsiType: PsiType): Sequence<PsiMethod> {
-        val inheritedPsiMethods = this.asSequence().filter {
+        return this.asSequence().filter {
             it.returnPsiType?.isEqualOrInheritorBeanType(beanPsiType) == true
         }
-        // This function added a candidate to the beans, where returned other type.
-        // Example: @Bean E dBean() { return new D(); }
-        // val filterByInheritedTypes = this.filterByInheritedTypes(sourcePsiType, beanPsiType)
-        return inheritedPsiMethods // + filterByInheritedTypes
     }
 
     fun Collection<PsiBean>.filterByBeanPsiTypeRegistrar(beanPsiType: PsiType): Sequence<PsiMethod> {
@@ -763,8 +724,7 @@ object SpringCoreUtil {
         if (debugSession != null) {
             val debugProjectSettings = ExternalSystemApiUtil.getSettings(project, SYSTEM_ID)
                 .getLinkedProjectSettings(Constants.DEBUG_SESSION_NAME) as? NativeProjectSettings
-            return debugProjectSettings != null
-                    && debugProjectSettings.runConfigurationId != null
+            return debugProjectSettings?.runConfigurationId != null
                     && debugProjectSettings.runConfigurationId == debugSession.sessionName
         }
         return false
