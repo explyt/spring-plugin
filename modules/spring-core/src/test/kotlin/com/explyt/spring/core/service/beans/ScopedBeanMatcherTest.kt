@@ -119,15 +119,14 @@ class ScopedBeanMatcherTest : ExplytJavaLightTestCase() {
     }
 
     /**
-     * A query carrying type arguments is held to them, and says so when it cannot be.
+     * A query carrying type arguments is held to them, including those inherited through a supertype.
      *
      * Comparing the raw classes would answer a `Repository<Foo>` query with a `Repository<Bar>` bean, which
-     * Spring would never inject there. The project's bean-type rule compares arguments at one level only, so a
-     * bean typed `FooRepository` - whose argument lives in the `Repository<Foo>` supertype - can be neither
-     * confirmed nor denied. Claiming "not compatible" would state something never established, so such a record
-     * is counted as unresolved and the inventory reports itself PARTIAL.
+     * Spring would never inject there. A bean typed `FooRepository` - whose argument lives in the
+     * `Repository<Foo>` supertype - is assignable to a `Repository<Foo>` query, so it is a confirmed match, and a
+     * `BarRepository` is a confirmed mismatch rather than an undecided record.
      */
-    fun testTypeArgumentsNarrowTheInventoryAndUnprovableOnesAreNotDenied() {
+    fun testTypeArgumentsNarrowTheInventoryIncludingThoseInheritedThroughSupertype() {
         myFixture.addClass("package com.explyt.demo; public interface Repository<T> {}")
         myFixture.addClass("package com.explyt.demo; public class Foo {}")
         myFixture.addClass("package com.explyt.demo; public class Bar {}")
@@ -148,29 +147,65 @@ class ScopedBeanMatcherTest : ExplytJavaLightTestCase() {
         assertEquals(MatchCompleteness.COMPLETE, forFoo.completeness)
 
         val viaSupertype = snapshotOf(
-            record("bean-foo", "foo", setOf("foo"), declaredType = typeOf("com.explyt.demo.FooRepository"))
+            record("bean-foo", "foo", setOf("foo"), declaredType = typeOf("com.explyt.demo.FooRepository")),
+            record("bean-bar", "bar", setOf("bar"), declaredType = typeOf("com.explyt.demo.BarRepository"))
         )
 
-        val unprovable = ScopedBeanMatcher(project)
+        val inherited = ScopedBeanMatcher(project)
             .matchType(viaSupertype.records, typeOf("com.explyt.demo.Repository", "com.explyt.demo.Foo"))
 
-        assertTrue("An unprovable argument is not a confirmed match", unprovable.records.isEmpty())
         assertEquals(
-            "...and not a denial either - the inventory admits it is incomplete",
-            MatchCompleteness.PARTIAL, unprovable.completeness
+            "An argument inherited through a supertype is a confirmed match",
+            listOf("bean-foo"), inherited.records.map { it.id }
         )
-        assertEquals(1, unprovable.unresolvedCount)
-        assertTrue(
-            ScopedBeanMatcher.TYPE_ARGUMENTS_NOT_COMPARABLE in unprovable.limitations
-        )
+        assertEquals(MatchCompleteness.COMPLETE, inherited.completeness)
+        assertEquals(0, inherited.unresolvedCount)
 
         val raw = ScopedBeanMatcher(project).matchType(viaSupertype.records, typeOf("com.explyt.demo.Repository"))
 
         assertEquals(
             "A raw query still asks for every repository",
-            listOf("bean-foo"), raw.records.map { it.id }
+            setOf("bean-foo", "bean-bar"), raw.records.map { it.id }.toSet()
         )
         assertEquals(MatchCompleteness.COMPLETE, raw.completeness)
+        assertEquals(0, raw.unresolvedCount)
+    }
+
+    /**
+     * A raw declared type carries no type argument, so it neither confirms nor denies a query that has one.
+     *
+     * A recorded context exports a `@Bean` type with its arguments erased, and a generic component is typed by its
+     * class, so a `@Bean Repository<Bar>` reaches the matcher as `Repository`. Java accepts a raw type through an
+     * unchecked conversion; reporting it as a confirmed `Repository<Foo>` bean would hand the caller someone
+     * else's bean with full confidence.
+     */
+    fun testRawDeclaredTypeIsUndecidedForAQueryWithTypeArguments() {
+        myFixture.addClass("package com.explyt.demo; public interface Repository<T> {}")
+        myFixture.addClass("package com.explyt.demo; public class Foo {}")
+        myFixture.addClass("package com.explyt.demo; public class Bar {}")
+        myFixture.addClass("package com.explyt.demo; public class FooRepository implements Repository<Foo> {}")
+        myFixture.addClass("package com.explyt.demo; public class BarRepository implements Repository<Bar> {}")
+        myFixture.addClass("package com.explyt.demo; public class Clock {}")
+        val snapshot = snapshotOf(
+            record("bean-foo", "foo", setOf("foo"), declaredType = typeOf("com.explyt.demo.FooRepository")),
+            record("bean-bar", "bar", setOf("bar"), declaredType = typeOf("com.explyt.demo.BarRepository")),
+            record("bean-raw", "raw", setOf("raw"), declaredType = typeOf("com.explyt.demo.Repository")),
+            record("bean-clock", "clock", setOf("clock"), declaredType = typeOf("com.explyt.demo.Clock"))
+        )
+
+        val forFoo = ScopedBeanMatcher(project)
+            .matchType(snapshot.records, typeOf("com.explyt.demo.Repository", "com.explyt.demo.Foo"))
+
+        assertEquals(listOf("bean-foo"), forFoo.records.map { it.id })
+        assertEquals(MatchCompleteness.PARTIAL, forFoo.completeness)
+        assertEquals(1, forFoo.unresolvedCount)
+        assertEquals(setOf(ScopedBeanMatcher.TYPE_ARGUMENTS_NOT_RECORDED), forFoo.limitations)
+
+        val raw = ScopedBeanMatcher(project).matchType(snapshot.records, typeOf("com.explyt.demo.Repository"))
+
+        assertEquals(setOf("bean-foo", "bean-bar", "bean-raw"), raw.records.map { it.id }.toSet())
+        assertEquals(MatchCompleteness.COMPLETE, raw.completeness)
+        assertEquals(0, raw.unresolvedCount)
     }
 
     /** A type nobody declares is a different answer than a type that exists and matches no bean. */

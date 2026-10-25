@@ -364,6 +364,49 @@ class SpringBeanLineMarkerProviderArrayTest : ExplytJavaLightTestCase() {
         }.size, 0)
     }
 
+    fun testCovariantArrayBeanAnswersAnArrayOfItsElementSupertype() {
+        myFixture.addClass("package com.example.demo; public interface Shape {}")
+        myFixture.addClass("package com.example.demo; public class Circle implements Shape {}")
+        myFixture.addClass("package com.example.demo; public class Point {}")
+        myFixture.addClass(
+            """
+                package com.example.demo;
+
+                import org.springframework.context.annotation.Bean;
+                import org.springframework.context.annotation.Configuration;
+
+                @Configuration
+                public class ShapeConfiguration {
+                    @Bean
+                    public Circle[] circles() { return new Circle[0]; }
+
+                    @Bean
+                    public Point[] points() { return new Point[0]; }
+                }
+            """.trimIndent()
+        )
+        myFixture.configureByText(
+            "ShapeClient.java",
+            """
+                package com.example.demo;
+
+                import org.springframework.beans.factory.annotation.Autowired;
+                import org.springframework.stereotype.Component;
+
+                @Component
+                public class ShapeClient {
+                    @Autowired
+                    Shape[] shapes;
+                }
+            """.trimIndent()
+        )
+
+        val allBeanGutters = getAllBeanGuttersByIcon(myFixture, SpringIcons.SpringBeanDependencies)
+        val gutterTargetString = getGutterTargetString(allBeanGutters)
+
+        assertEquals(listOf(listOf("circles()")), gutterTargetString)
+    }
+
     private fun getArrayClasses(): String {
         return """
             import org.springframework.stereotype.Component;
