@@ -832,12 +832,17 @@ class SpringBootApplicationMcpToolsetPageSchemaModulesTest : ExplytMultiModuleTe
                     "precondition: $TEST_CONFIGURATION resolves from the test sources",
                     JavaPsiFacade.getInstance(project).findClass(TEST_CONFIGURATION, module.getModuleWithDependenciesAndLibrariesScope(true))
                 )
-                assertEquals(
-                    "precondition: the bean model records the test configuration as the only importer",
-                    setOf(VENDOR_TEST_IMPORTS), importersOf(VENDOR_WEB_CONFIG)
-                )
                 val vendorConfig = JavaPsiFacade.getInstance(project)
                     .findClass(VENDOR_WEB_CONFIG, GlobalSearchScope.allScope(project))!!
+                assertTrue("$VENDOR_TEST_IMPORTS must carry @Import", importer.hasAnnotation(IMPORT))
+                assertNotNull(
+                    "precondition: $VENDOR_TEST_IMPORTS imports $VENDOR_WEB_CONFIG",
+                    ReferencesSearch.search(vendorConfig, GlobalSearchScope.fileScope(importerFile)).findFirst()
+                )
+                assertEquals(
+                    "precondition: the production bean model records no importer of $VENDOR_WEB_CONFIG",
+                    emptySet<String>(), importersOf(VENDOR_WEB_CONFIG)
+                )
                 assertNull(
                     "precondition: no production class references $VENDOR_WEB_CONFIG",
                     ReferencesSearch.search(vendorConfig, module.getModuleScope(false)).findFirst()
@@ -1024,6 +1029,7 @@ class SpringBootApplicationMcpToolsetPageSchemaModulesTest : ExplytMultiModuleTe
         const val VENDOR_WEB_CONFIG_PATH = "com/vendor/web/VendorWebConfig.java"
         const val VENDOR_TEST_IMPORTS = "com.example.shop.VendorTestImports"
         const val TEST_CONFIGURATION = "org.springframework.boot.test.context.TestConfiguration"
+        const val IMPORT = "org.springframework.context.annotation.Import"
         val SPRING_BOOT_TEST = TestLibrary("org.springframework.boot:spring-boot-test:3.1.1", false)
 
         val VENDOR_WEB_CONFIG_SOURCE = """

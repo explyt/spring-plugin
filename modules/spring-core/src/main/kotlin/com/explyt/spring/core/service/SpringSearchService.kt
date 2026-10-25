@@ -8,6 +8,7 @@ package com.explyt.spring.core.service
 import com.explyt.base.LibraryClassCache
 import com.explyt.spring.core.JavaEeClasses
 import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.core.properties.references.ActuatorEndpointKeys
 import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
 import com.explyt.spring.core.service.SpringSearchService.Companion.getInstance
 import com.explyt.spring.core.service.beans.discoverer.AdditionalBeansDiscoverer
@@ -287,37 +288,86 @@ class SpringSearchService(private val project: Project) {
         try {
             synchronized(getMutexString(MutexType.SEARCH, module)) {
                 return cachedValuesManager.getCachedValue(module) {
-                    val scope = GlobalSearchScope.moduleWithDependenciesScope(module)
                     val modulePackagesHolder = PackageScanService.getInstance(module.project).getAllPackages()
-                    val annotationPsiClasses = projectScanAnnotations(module, modulePackagesHolder)
-                    val allModuleWithDependenciesBeans = filterBeansByPackage(
-                        searchBeanPsiClassesByAnnotations(module, annotationPsiClasses, scope),
-                        modulePackagesHolder, module
-                    )
-                    val extraComponents = getExtraComponents(module, modulePackagesHolder)
-                    val moduleWithDependenciesBeans = allModuleWithDependenciesBeans + extraComponents
-                    val moduleLibraryBeans = scannedLibraryBeans(module, modulePackagesHolder)
-                    val scannedBeans = moduleWithDependenciesBeans + moduleLibraryBeans
-                    val scannedClasses = (scannedBeans.active + scannedBeans.profileInactive.keys)
-                        .mapTo(mutableSetOf()) { it.psiClass }
                     val registrations = PackageScanService.getInstance(module.project).getBeanRegistrations()
-                    val importedPsiBeans = getImportedBeans(registrations, module, scannedClasses)
-                    val registrars = importOnlyRegistrars(registrations, module, scannedBeans)
-                    val enabledScannedBeans = enabledPropertiesBeansOfScanned(modulePackagesHolder, module, scannedClasses)
-                    val importedSplit = ProfileSplit(
-                        importedPsiBeans + enabledScannedBeans.keys,
-                        registrars = registrars,
-                        beanRegistrars = enabledScannedBeans
-                    )
-
                     CachedValueProvider.Result(
-                        scannedBeans + importedSplit,
+                        componentBeanSplit(module, modulePackagesHolder, registrations),
                         ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
                     )
                 }
             }
         } catch (e: AlreadyDisposedException) {
             return ProfileSplit.EMPTY
+        }
+    }
+
+    private fun componentBeanSplitWithTests(module: Module): ProfileSplit {
+        try {
+            synchronized(getMutexString(MutexType.SEARCH, module)) {
+                return cachedValuesManager.getCachedValue(module) {
+                    val modulePackagesHolder = PackageScanService.getInstance(module.project).getAllPackagesWithTests()
+                    val registrations = PackageScanService.getInstance(module.project).getBeanRegistrationsWithTests()
+                    CachedValueProvider.Result(
+                        componentBeanSplit(module, modulePackagesHolder, registrations),
+                        ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
+                    )
+                }
+            }
+        } catch (e: AlreadyDisposedException) {
+            return ProfileSplit.EMPTY
+        }
+    }
+
+    private fun componentBeanSplit(
+        module: Module, modulePackagesHolder: RootDataHolder, registrations: BeanRegistrations
+    ): ProfileSplit {
+        val scope = GlobalSearchScope.moduleWithDependenciesScope(module)
+        val annotationPsiClasses = projectScanAnnotations(module, modulePackagesHolder)
+        val allModuleWithDependenciesBeans = filterBeansByPackage(
+            searchBeanPsiClassesByAnnotations(module, annotationPsiClasses, scope),
+            modulePackagesHolder, module
+        )
+        val extraComponents = getExtraComponents(module, modulePackagesHolder)
+        val moduleWithDependenciesBeans = allModuleWithDependenciesBeans + extraComponents
+        val moduleLibraryBeans = scannedLibraryBeans(module, modulePackagesHolder)
+        val scannedBeans = moduleWithDependenciesBeans + moduleLibraryBeans
+        val scannedClasses = (scannedBeans.active + scannedBeans.profileInactive.keys)
+            .mapTo(mutableSetOf()) { it.psiClass }
+        val importedPsiBeans = getImportedBeans(registrations, module, scannedClasses)
+        val registrars = importOnlyRegistrars(registrations, module, scannedBeans)
+        val enabledScannedBeans = enabledPropertiesBeansOfScanned(modulePackagesHolder, module, scannedClasses)
+        val importedSplit = ProfileSplit(
+            importedPsiBeans + enabledScannedBeans.keys,
+            registrars = registrars,
+            beanRegistrars = enabledScannedBeans
+        )
+        return scannedBeans + importedSplit
+    }
+
+    /**
+     * The active beans a test context of [module] can hold: the production model widened by the scan roots and
+     * registrations declared in test sources. Equal to [getActiveBeansClasses] while test sources declare none.
+     */
+    fun getActiveBeansClassesWithTests(module: Module): Set<PsiBean> = foundBeansWithTests(module).active
+
+    /**
+     * [foundBeans] of a test context of [module]: the same conditional and profile filtering over the beans the
+     * scan roots and registrations declared in test sources add. Equal to [foundBeans] while test sources declare none.
+     */
+    fun foundBeansWithTests(module: Module): FoundBeans {
+        val packageScanService = PackageScanService.getInstance(project)
+        if (packageScanService.getAllPackagesWithTests() == packageScanService.getAllPackages()) {
+            return foundBeans(module)
+        }
+        synchronized(getMutexString(MutexType.CONDITIONAL_ON, module)) {
+            return cachedValuesManager.getCachedValue(module) {
+                val components = componentBeanSplitWithTests(module).active
+                val beans = components + searchComponentPsiClassesByBeanMethods(components) + getStaticBeans(module)
+                CachedValueProvider.Result(
+                    filterByConditionals(module, beans).withProfileInactive(module),
+                    ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
+                )
+            }
         }
     }
 
@@ -696,11 +746,11 @@ class SpringSearchService(private val project: Project) {
 
     private fun searchBeanPsiClassesByComponentAnnotationLibraryScopeCached(module: Module): ProfileSplit {
         return cachedValuesManager.getCachedValue(module) {
-            val annotationPsiClasses = SpringSearchUtils.getComponentClassAnnotations(module) +
-                    SpringSearchUtils.getConfigurationPropertiesAnnotations(module)
             CachedValueProvider.Result(
                 searchBeanPsiClassesByAnnotations(
-                    module, annotationPsiClasses, ModuleUtil.getOnlyLibrarySearchScope(module)
+                    module,
+                    SpringSearchUtils.getRuntimeBeanClassAnnotations(module),
+                    ModuleUtil.getRuntimeLibrarySearchScope(module)
                 ),
                 ModificationTrackerManager.getInstance(project).getLibraryTracker()
             )
@@ -1081,6 +1131,15 @@ object SpringSearchUtils {
                 ModificationTrackerManager.getInstance(project).getUastAnnotationAndLibraryTracker()
             )
         }
+    }
+
+    fun getRuntimeBeanClassAnnotations(module: Module): Collection<PsiClass> {
+        val runtimeScope = module.getModuleRuntimeScope(true)
+        val runtimeAnnotations = listOf(SpringCoreClasses.COMPONENT, SpringCoreClasses.CONFIGURATION_PROPERTIES)
+            .mapNotNull { JavaPsiFacade.getInstance(module.project).findClass(it, runtimeScope) }
+            .flatMap { ActuatorEndpointKeys.annotationWithChildren(it, runtimeScope) }
+        return (getComponentClassAnnotations(module) + getConfigurationPropertiesAnnotations(module) + runtimeAnnotations)
+            .distinctBy { it.qualifiedName }
     }
 
     fun getConfigurationPropertiesAnnotations(module: Module): Collection<PsiClass> {
