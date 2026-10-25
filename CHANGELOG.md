@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Spring Core
+- fix: An injection point with type arguments finds beans whose type arguments come from a supertype, such as a `@Bean TestGenericV1` with `TestGenericV1 extends TestGeneric<String>` for `TestGeneric<String>`, also inside `List`, `Optional`, `ObjectProvider` and `Map`, in bean gutters, the autowiring inspection and `explyt_find_spring_bean`; a bean whose inherited type arguments differ is a definite mismatch instead of an undecided one (#799)
 - fix: A `@ConfigurationProperties` class without `@Component` is a bean only when `@EnableConfigurationProperties` or `@ConfigurationPropertiesScan` registers it, named `<prefix>-<fully qualified class name>` as Spring does; a component scan alone no longer makes it a bean (#741)
 - fix: Beans registered by `@Import` and `@EnableConfigurationProperties` get the names Spring gives them: the fully qualified class name, or `<prefix>-<fully qualified name>` for prefixed configuration properties, instead of the component-scan default name (#781)
 - fix: A scanned component also listed in `@EnableConfigurationProperties` is two beans, as in Spring: the scan bean and `<prefix>-<fully qualified name>` conditioned on the enabling configuration, so injecting it by type is ambiguous unless a qualifier or the injection point name selects one (#782)

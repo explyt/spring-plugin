@@ -103,20 +103,10 @@ class ScopedBeanMatcher(private val project: Project) {
             when (isAssignable(declaredType, target)) {
                 true -> matched += record
                 false -> Unit
-                null -> when {
-                    declaredType != null && !declaredType.isUnreadable() -> {
-                        unresolved++
-                        limitations += TYPE_ARGUMENTS_NOT_COMPARABLE
-                        limitations += record.limitations
-                    }
-
-                    couldBeCandidate(record, target) -> {
-                        unresolved++
-                        limitations += TYPE_NOT_RESOLVABLE_IN_SCOPE
-                        limitations += record.limitations
-                    }
-
-                    else -> Unit
+                null -> if (couldBeCandidate(record, target)) {
+                    unresolved++
+                    limitations += TYPE_NOT_RESOLVABLE_IN_SCOPE
+                    limitations += record.limitations
                 }
             }
         }
@@ -166,23 +156,16 @@ class ScopedBeanMatcher(private val project: Project) {
     }
 
     /**
-     * `null` when compatibility could not be decided, which is neither a match nor a mismatch.
+     * `null` when the bean's declared type cannot be read, which is neither a match nor a mismatch.
      *
      * Compatibility is decided by the project's existing bean-type rule, so a query carrying type arguments is
-     * held to them: a `Repository<Bar>` bean does not answer a `Repository<Foo>` query, and a raw query still
-     * matches every repository.
-     *
-     * That rule compares type arguments at one level only. When the bean's own type declares none - a
-     * `FooRepository implements Repository<Foo>` against a `Repository<Foo>` query - the argument lives in a
-     * supertype the rule does not substitute through, so it reports no match for a bean that may well be one.
-     * Reporting that as "not compatible" would state something the model never established, so the record is
-     * counted as unresolved and the match becomes PARTIAL. The caller is told the inventory is incomplete
-     * instead of being handed a confident answer built on a comparison that did not happen.
+     * held to them, including arguments the bean inherits through a supertype: a `FooRepository implements
+     * Repository<Foo>` answers a `Repository<Foo>` query, a `BarRepository implements Repository<Bar>` does not,
+     * and a raw query still matches every repository.
      */
     private fun isAssignable(declaredType: PsiType?, target: PsiType): Boolean? {
         if (declaredType == null || declaredType.isUnreadable()) return null
-        if (declaredType.isEqualOrInheritorBeanType(target)) return true
-        return if (substitutionIsUnprovable(declaredType, target)) null else false
+        return declaredType.isEqualOrInheritorBeanType(target)
     }
 
     private fun PsiType.isUnreadable(): Boolean = this is PsiClassType && resolve() == null
@@ -219,18 +202,6 @@ class ScopedBeanMatcher(private val project: Project) {
     private fun erasedNameOf(type: PsiType): String =
         (type as? PsiClassType)?.resolve()?.qualifiedName ?: TypeConversionUtil.erasure(type).canonicalText
 
-    /**
-     * Whether the mismatch came from an argument the rule could not substitute rather than from an incompatible
-     * type: the bean is a subtype once the arguments are erased, but carries none of its own to compare.
-     */
-    private fun substitutionIsUnprovable(declaredType: PsiType, target: PsiType): Boolean {
-        if (target !is PsiClassType || target.parameterCount == 0) return false
-        if (declaredType !is PsiClassType || declaredType.parameterCount > 0) return false
-        val declaredClass = declaredType.resolve() ?: return false
-        val targetClass = target.resolve() ?: return false
-        return InheritanceUtil.isInheritorOrSelf(declaredClass, targetClass, true)
-    }
-
     private fun outcomeOf(match: BeanMatch): BeanOutcome = when {
         match.completeness == MatchCompleteness.PARTIAL -> BeanOutcome.INDETERMINATE
         match.records.isEmpty() -> BeanOutcome.NONE
@@ -242,7 +213,6 @@ class ScopedBeanMatcher(private val project: Project) {
         const val TYPE_NOT_FOUND = "TYPE_NOT_FOUND"
         const val TYPE_AMBIGUOUS_IN_SCOPE = "TYPE_AMBIGUOUS_IN_SCOPE"
         const val TYPE_NOT_RESOLVABLE_IN_SCOPE = "TYPE_NOT_RESOLVABLE_IN_SCOPE"
-        const val TYPE_ARGUMENTS_NOT_COMPARABLE = "TYPE_ARGUMENTS_NOT_COMPARABLE"
         const val APPLICATION_MODULE_NOT_FOUND = "APPLICATION_MODULE_NOT_FOUND"
     }
 }

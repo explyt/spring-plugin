@@ -636,7 +636,6 @@ object SpringCoreUtil {
             returnType?.isEqualOrInheritorBeanType(sourcePsiType) ?: false ||
                     returnType == sourcePsiType
                     || it.returnPsiType?.isEqualOrInheritorBeanType(sourcePsiType) == true
-                    || (returnType != null && sourcePsiType.isAssignableFrom(returnType))
                     || (!isSourcePsiTypeHasParameters || isSourcePsiTypeHasSingleUnboundedWildcardType)
                     && resolvedSourcePsiClass != null && it.returnPsiClass == resolvedSourcePsiClass
         }
@@ -672,13 +671,9 @@ object SpringCoreUtil {
     }
 
     fun Collection<PsiMethod>.filterByBeanPsiType(beanPsiType: PsiType): Sequence<PsiMethod> {
-        val inheritedPsiMethods = this.asSequence().filter {
+        return this.asSequence().filter {
             it.returnPsiType?.isEqualOrInheritorBeanType(beanPsiType) == true
         }
-        // This function added a candidate to the beans, where returned other type.
-        // Example: @Bean E dBean() { return new D(); }
-        // val filterByInheritedTypes = this.filterByInheritedTypes(sourcePsiType, beanPsiType)
-        return inheritedPsiMethods // + filterByInheritedTypes
     }
 
     fun Collection<PsiBean>.filterByBeanPsiTypeRegistrar(beanPsiType: PsiType): Sequence<PsiMethod> {

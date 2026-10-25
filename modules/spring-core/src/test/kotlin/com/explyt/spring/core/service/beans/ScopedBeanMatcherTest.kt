@@ -123,7 +123,8 @@ class ScopedBeanMatcherTest : ExplytJavaLightTestCase() {
      *
      * Comparing the raw classes would answer a `Repository<Foo>` query with a `Repository<Bar>` bean, which
      * Spring would never inject there. A bean typed `FooRepository` - whose argument lives in the
-     * `Repository<Foo>` supertype - is assignable to a `Repository<Foo>` query, so it is a confirmed match.
+     * `Repository<Foo>` supertype - is assignable to a `Repository<Foo>` query, so it is a confirmed match, and a
+     * `BarRepository` is a confirmed mismatch rather than an undecided record.
      */
     fun testTypeArgumentsNarrowTheInventoryIncludingThoseInheritedThroughSupertype() {
         myFixture.addClass("package com.explyt.demo; public interface Repository<T> {}")
@@ -146,7 +147,8 @@ class ScopedBeanMatcherTest : ExplytJavaLightTestCase() {
         assertEquals(MatchCompleteness.COMPLETE, forFoo.completeness)
 
         val viaSupertype = snapshotOf(
-            record("bean-foo", "foo", setOf("foo"), declaredType = typeOf("com.explyt.demo.FooRepository"))
+            record("bean-foo", "foo", setOf("foo"), declaredType = typeOf("com.explyt.demo.FooRepository")),
+            record("bean-bar", "bar", setOf("bar"), declaredType = typeOf("com.explyt.demo.BarRepository"))
         )
 
         val inherited = ScopedBeanMatcher(project)
@@ -163,7 +165,7 @@ class ScopedBeanMatcherTest : ExplytJavaLightTestCase() {
 
         assertEquals(
             "A raw query still asks for every repository",
-            listOf("bean-foo"), raw.records.map { it.id }
+            setOf("bean-foo", "bean-bar"), raw.records.map { it.id }.toSet()
         )
         assertEquals(MatchCompleteness.COMPLETE, raw.completeness)
     }
