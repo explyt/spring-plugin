@@ -40,12 +40,21 @@ class SpringInitializrJcefDescriptorTest {
         val implementationNames = descriptor.allElements().flatMap { element ->
             IMPLEMENTATION_ATTRIBUTES.mapNotNull { attribute -> element.getAttribute(attribute).takeIf(String::isNotEmpty) }
         }
-        assertTrue("precondition: main descriptor has registered implementations", implementationNames.isNotEmpty())
+        val groups = descriptor.getElementsByTagName("notificationGroup").asElements()
+        assertTrue("precondition: main descriptor is parsed and declares its notification group",
+            groups.any { it.getAttribute("id") == NOTIFICATION_GROUP })
         implementationNames.forEach { className ->
             val bytes = classBytes(className)
             assertNotNull("compiled class is absent: $className", bytes)
             assertFalse("main descriptor class references JCEF: $className", bytes!!.containsJcefMarker())
         }
+    }
+
+    @Test
+    fun testBytecodeGuardDetectsKnownJcefClass() {
+        val bytes = classBytes(WIZARD_STEP)
+        assertNotNull("precondition: known JCEF class is compiled", bytes)
+        assertTrue("negative control must contain the JCEF marker", bytes!!.containsJcefMarker())
     }
 
     private fun descriptor(resource: String) = resourceAsStream(resource).use { stream ->
@@ -71,6 +80,8 @@ class SpringInitializrJcefDescriptorTest {
     private companion object {
         const val MODULE_TYPE = "EXPLYT_SPRING_INITIALIZR"
         const val INITIALIZR_MODULE_TYPE = "com.explyt.spring.initializr.ExplytSpringInitializrModuleType"
+        const val WIZARD_STEP = "com.explyt.spring.initializr.SpringInitializrWizardStep"
+        const val NOTIFICATION_GROUP = "explytSpringInitializrNotificationGroup"
         val IMPLEMENTATION_ATTRIBUTES = listOf("implementation", "implementationClass", "serviceImplementation", "class")
     }
 }
