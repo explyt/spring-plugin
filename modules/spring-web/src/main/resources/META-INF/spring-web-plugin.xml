@@ -6,8 +6,7 @@
 <idea-plugin>
     <depends>com.intellij.modules.json</depends>
     <depends>com.intellij.java</depends>
-    <!-- JCEF is a separate bundled plugin since IntelliJ Platform 2026.2 -->
-    <depends>com.intellij.modules.jcef</depends>
+    <depends optional="true" config-file="spring-web-jcef.xml">com.intellij.modules.jcef</depends>
 
     <extensionPoints>
         <extensionPoint qualifiedName="com.explyt.spring.web.springWebEndpointsLoader" dynamic="true"
@@ -275,7 +274,6 @@
         <json.jsonSchemaGotoDeclarationSuppressor
                 implementation="com.explyt.spring.web.jsonSchema.OpenApiJsonGotoDeclarationSuppressor"/>
 
-        <fileEditorProvider implementation="com.explyt.spring.web.editor.openapi.OpenApiUIEditorProvider"/>
 
         <httpRequestHandler implementation="com.explyt.spring.web.editor.openapi.OpenApiResourcesRequestHandler"/>
         <httpRequestHandler implementation="com.explyt.spring.web.editor.openapi.OpenApiProxyRequestHandler"/>

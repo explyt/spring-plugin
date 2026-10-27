@@ -5,6 +5,7 @@
 
 package com.explyt.spring.web.providers
 
+import com.explyt.spring.web.editor.openapi.OpenApiUtils
 import com.explyt.spring.web.editor.openapi.OpenApiUtils.getServerFromPath
 import com.explyt.spring.web.editor.openapi.OpenApiUtils.isAbsolutePath
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
@@ -28,6 +29,7 @@ import org.jetbrains.uast.getUParentForIdentifier
 class RetrofitRunLineMarkerProvider : RunLineMarkerContributor() {
 
     override fun getInfo(psiElement: PsiElement): Info? {
+        if (!OpenApiUtils.isPreviewEditorAvailable()) return null
         if (!SpringWebUtil.isSpringWebProject(psiElement.project)) return null
         val uMethod = getUParentForIdentifier(psiElement) as? UMethod ?: return null
 
