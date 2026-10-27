@@ -37,7 +37,7 @@ class SpringUnknownBeanMethodInspection : SpringBaseUastLocalInspectionTool() {
         val searchService = SpringSearchService.getInstance(method.project)
 
         val metaHolder = searchService.getMetaAnnotations(module, BEAN)
-        val initDestroyMethodValues = metaHolder.getAnnotationValues(uMethod, setOf("initMethod", "destroyMethod"))
+        val initDestroyMethodValues = metaHolder.getDeclaredAnnotationValues(uMethod, setOf("initMethod", "destroyMethod"))
 
         val problems: MutableList<ProblemDescriptor> = mutableListOf()
 
