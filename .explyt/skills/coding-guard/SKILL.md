@@ -24,12 +24,14 @@ These apply **before** any technical rule below. Bias toward caution over speed;
 - **Surface ambiguity, don't resolve it silently.** If the request has multiple reasonable interpretations, list them and let the user choose.
 - **Push back when warranted.** If a simpler approach exists, say so before implementing the requested one.
 - **Stop and name confusion.** Don't patch over unclear behavior with plausible-looking code.
+- **Separate runtime correctness from the intended incomplete-code IDE workflow.** Before changing bean registration or matching, apply the consumer contracts in §0.5. If the intended behavior is unclear, ask the user before tightening a shared model; a permissive navigation candidate is not automatically a bug.
 
 ### 0.2 Simplicity first
 
 - **Minimum code that solves the problem.** No features beyond what was asked, no abstractions for single-use code, no unrequested configurability.
 - **No defensive code for scenarios the type system or existing invariants already rule out** (null checks on non-nullable Kotlin types, unreachable branches after an exhaustive `when` over a sealed type). Apply this only when an external explicit mechanism rules the case out — not your own "this can't happen" reasoning.
-- **Do not remove platform-mandated guards**: PSI `isValid` checks, `VirtualFile` validity checks, read/write-action wrappers, `ProgressManager.checkCanceled()` calls, and dumb-mode guards are required even if they look defensive.
+- **Preserve guards required by the specific platform contract**: read/write actions, cancellation, dumb-mode restrictions, and PSI/VirtualFile validity checks at deferred-use boundaries (for example after scheduling, coroutine suspension or a user edit). Keep existing guards when their necessity is unresolved; never remove them as an unrelated cleanup.
+- **Do not substitute stale-PSI filtering for cache recovery.** Trace the cache holder, modification dependencies and read-action lifetime. Before claiming a cache fix or removing a cache-related validity guard, test query → real edit → query without manual invalidation; assert the full updated result set, not merely the absence of an exception.
 - If you wrote 200 lines where 50 would do — rewrite.
 
 ### 0.3 Surgical changes
@@ -44,6 +46,24 @@ These apply **before** any technical rule below. Bias toward caution over speed;
 
 - Convert tasks into verifiable goals before coding: "Fix the bug" → "Write a test that reproduces it, then make it pass"; "Refactor X" → "Tests pass before and after".
 - For multi-step tasks, state a brief plan with a verification per step.
+
+### 0.5 Navigation, diagnostics and context analysis
+
+Before changing bean discovery, navigation, autowiring or context analysis, identify the affected consumers, their existing entry points, the module dependency graph, and whether an application/context is established. Apply these contracts; do not infer one from another:
+
+| Consumer | Required contract |
+|---|---|
+| Navigation | Find suitable declarations in incomplete code; do not require proof of runtime registration to offer a transition. |
+| Registration inspection | Explain an established configuration problem at its declaration and offer a valid quick fix; account for registration by a consuming application. |
+| Context-dependent inspection | Evaluate registration, profiles and conditions relative to an established application/context; without one, do not turn context uncertainty into a definitive missing-bean error. For ordinary static-editor autowiring, apply the properties diagnostic rule below. |
+| MCP bean query | Use the explicitly selected application/model or native snapshot, preserve its registration identities and conditions, and report unknowns and static/snapshot limitations. Never present a navigation candidate as a registered bean. |
+
+- **Preserve the properties workflow.** Treat a plain `@ConfigurationProperties` declaration as an IDE candidate for injection-to-declaration and reverse navigation even before registration is complete. In ordinary static-editor autowiring, diagnose missing properties registration at its declaration with the registration inspection and a valid quick fix, not with a duplicate missing-bean error at injection; this applies whether registration is unknown or established as absent. Preserve unrelated, established injection errors. MCP and explicit-context analysis must still report the actual model result; do not change native-snapshot behavior. Do not diagnose missing registration merely because the class's own module has no enabler or application.
+- **Treat shared modules as reusable, not as applications.** For `app1 → core ← app2`, each application can register the same core properties class differently. Do not silently select the first application, union their beans for a context verdict, or infer absence from searching only core and its dependencies. If a context-dependent verdict needs a choice that cannot be established, report uncertainty or defer that verdict while keeping navigation available.
+- **Keep precision at the consumer boundary.** Reuse discovery and registration primitives; do not introduce duplicate full models or a generic policy framework by default. Keep permissive editor candidates out of MCP and explicit-context matching and condition evaluation before those operations run, not just out of final JSON; ordinary static-editor candidate matching follows the properties workflow above. Never augment a native snapshot with statically imagined candidates. Follow `spring-mcp-contracts` for MCP changes.
+- **Do not make navigation pay for context simulation.** Trace the actual call path before adding profile, condition or application-registration analysis. If its result is not needed to find navigation targets, keep it off that path; adding permissive results after expensive analysis is not an optimization. Preserve profile/condition semantics for consumers that need context analysis; do not disable them globally.
+- **Measure performance claims.** Treat reported CPU load, fan noise or perceived slowdown as a reason to investigate, not proof of a cause. Before claiming a performance improvement, compare the same project, interaction and indexing state before/after; report cold/warm cache conditions, elapsed time and profiler evidence or computation counts. If measurements are unavailable, state that performance is unverified; moving work off the EDT or adding a cache alone is not evidence.
+- **Test both contracts on the same project.** For properties changes, cover unregistered and registered classes, both navigation directions, autowiring diagnostics, registration inspection and quick fix, and the contrasting MCP result through real entry points. Include sibling applications depending on a shared core with different registration/profile choices; assert dependency directions, no candidate/bean duplicates and no cross-application leakage. Apply production/test-source isolation and Java/Kotlin coverage where affected. Use query → edit → query tests without manual invalidation for cache changes.
 
 ---
 
@@ -167,3 +187,15 @@ Choose documentation by audience instead of copying the full changelog everywher
 - Public GitHub wiki (`explyt/spring-plugin.wiki`, commonly checked out as sibling `../spring-plugin.wiki`): document detailed workflows, examples, inspection matrices, limitations, and migration guidance.
 
 When a release adds a durable feature such as migration inspections or editor actions, update the concise entry points (`README.md` and `PLUGIN-DESCRIPTION.md`) and put the detailed usage in the public wiki. Keep isolated correctness fixes, EDT/PSI repairs, message fixes, and internal infrastructure changelog-only unless they change documented behavior.
+
+## Output and acceptance
+
+Report changed paths, the intended consumer behavior, verification commands/results, and unresolved limitations. If blocked or unverified, state that explicitly rather than claiming completion. For bean-model changes, distinguish IDE candidates from context-model results in the report.
+
+Before reporting a change complete, check each applicable item; mark unrelated items not applicable:
+- [ ] The affected consumer contracts are explicit; navigation remains available without proving runtime registration.
+- [ ] Shared-core diagnostics do not assume one application, and context/MCP results do not include permissive candidates or another application's beans.
+- [ ] Properties tests cover the IDE workflow and contrasting MCP behavior, including registration inspection/quick fix and multi-module cases; known absent registration does not reintroduce a duplicate missing-bean error at ordinary static-editor injection.
+- [ ] Cache tests assert the full updated result after real edits, not just filtered stale PSI or absence of crashes.
+- [ ] Performance claims include comparable measurements; otherwise performance is explicitly unverified.
+- [ ] Existing platform guards, threading rules and directly covering tests are preserved or their intentional changes are verified.
