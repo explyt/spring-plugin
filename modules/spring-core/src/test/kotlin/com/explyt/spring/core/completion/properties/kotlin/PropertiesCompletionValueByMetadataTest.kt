@@ -26,11 +26,11 @@ class PropertiesCompletionValueByMetadataTest : AbstractSpringPropertiesCompleti
         myFixture.copyFileToProject("META-INF/additional-spring-configuration-metadata.json")
         myFixture.configureByText("application.properties", "main.code-log-level=<caret>")
         doTest(
-            "DEBUG",
-            "ERROR",
-            "INFO",
-            "TRACE",
-            "WARN"
+            "debug",
+            "error",
+            "info",
+            "trace",
+            "warn"
         )
     }
 

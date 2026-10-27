@@ -7,11 +7,16 @@ package com.explyt.spring.core.util.java
 
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.util.ExplytPsiUtil.isCollection
+import com.explyt.util.ExplytPsiUtil.isEqualOrInheritor
 import com.explyt.util.ExplytPsiUtil.isList
 import com.explyt.util.ExplytPsiUtil.isMap
 import com.explyt.util.ExplytPsiUtil.isOptional
 import com.explyt.util.ExplytPsiUtil.isString
+import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.psi.JavaPsiFacade
+import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiField
+import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.PsiTreeUtil
 
 class ExplytPsiUtilTypeCheckJavaTest : ExplytJavaLightTestCase() {
@@ -98,5 +103,20 @@ class ExplytPsiUtilTypeCheckJavaTest : ExplytJavaLightTestCase() {
 
     fun testJavaPrimitiveIsNotMap() {
         assertFalse("int should not be isMap", fieldType("javaPrimitive").isMap)
+    }
+
+    fun testInvalidClassIsNotEqualOrInheritor() {
+        val sourceFile = myFixture.file
+        val invalidClass = PsiTreeUtil.findChildOfType(sourceFile, PsiClass::class.java)!!
+        val baseClass = JavaPsiFacade.getInstance(project)
+            .findClass("java.lang.Object", GlobalSearchScope.allScope(project))!!
+
+        WriteCommandAction.runWriteCommandAction(project) {
+            sourceFile.virtualFile.delete(this)
+        }
+        myFixture.addFileToProject("psiutil/TypeChecks.java", "public class Reconfigured {}")
+
+        assertFalse("the original class must be invalidated", invalidClass.isValid)
+        assertFalse("an invalid class must fail closed", invalidClass.isEqualOrInheritor(baseClass))
     }
 }

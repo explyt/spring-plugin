@@ -18,12 +18,26 @@ object SpringWebClasses {
     const val REQUEST_MAPPING = "org.springframework.web.bind.annotation.RequestMapping"
     const val PATH_VARIABLE = "org.springframework.web.bind.annotation.PathVariable"
     const val REQUEST_PARAM = "org.springframework.web.bind.annotation.RequestParam"
+    const val REQUEST_PART = "org.springframework.web.bind.annotation.RequestPart"
+    const val MVC_DISPATCHER_SERVLET = "org.springframework.web.servlet.DispatcherServlet"
+    const val HTTP_REQUEST_HANDLER = "org.springframework.web.HttpRequestHandler"
+    const val SERVLET_MVC_CONTROLLER = "org.springframework.web.servlet.mvc.Controller"
+    const val WEBFLUX_DISPATCHER_HANDLER = "org.springframework.web.reactive.DispatcherHandler"
     const val REQUEST_HEADER = "org.springframework.web.bind.annotation.RequestHeader"
     const val COOKIE_VALUE = "org.springframework.web.bind.annotation.CookieValue"
     const val REQUEST_BODY = "org.springframework.web.bind.annotation.RequestBody"
     const val RESPONSE_ENTITY = "org.springframework.http.ResponseEntity"
+    const val MEDIA_TYPE = "org.springframework.http.MediaType"
     const val FEIGN_CLIENT = "org.springframework.cloud.openfeign.FeignClient"
     const val JAVA_HTTP_CLIENT = "java.net.http.HttpClient"
+    const val JAVA_HTTP_REQUEST = "java.net.http.HttpRequest"
+    const val JAVA_HTTP_REQUEST_BUILDER = "$JAVA_HTTP_REQUEST.Builder"
+    const val REST_OPERATIONS = "org.springframework.web.client.RestOperations"
+    const val REST_TEMPLATE = "org.springframework.web.client.RestTemplate"
+
+    const val TEST_REST_TEMPLATE = "org.springframework.boot.test.web.client.TestRestTemplate"
+    const val REST_CLIENT_URI_SPEC = "org.springframework.web.client.RestClient.UriSpec"
+    const val HTTP_METHOD = "org.springframework.http.HttpMethod"
     const val HTTP_EXCHANGE = "org.springframework.web.service.annotation.HttpExchange"
 
     const val RETROFIT_PATH_PARAM = "retrofit2.http.Path"
@@ -32,6 +46,7 @@ object SpringWebClasses {
     const val RETROFIT_HTTP = "retrofit2.http.HTTP"
 
     const val MOCK_MVC_REQUEST_BUILDERS = "org.springframework.test.web.servlet.request.MockMvcRequestBuilders"
+    const val MOCK_MVC = "org.springframework.test.web.servlet.MockMvc"
     private const val WEB_CLIENT = "org.springframework.web.reactive.function.client.WebClient"
     const val WEB_TEST_CLIENT = "org.springframework.test.web.reactive.server.WebTestClient"
     const val WEB_TEST_CLIENT_URI_SPEC = "$WEB_TEST_CLIENT.UriSpec"
@@ -64,6 +79,9 @@ object SpringWebClasses {
     const val JAVAX_HTTP_SERVLET_RESPONSE: String = "javax.servlet.http.HttpServletResponse"
     const val JAKARTA_HTTP_SERVLET_RESPONSE: String = "jakarta.servlet.http.HttpServletResponse"
 
+    const val JAVAX_HTTP_PART: String = "javax.servlet.http.Part"
+    const val JAKARTA_HTTP_PART: String = "jakarta.servlet.http.Part"
+
     const val JAVAX_HTTP_SESSION: String = "javax.servlet.http.HttpSession"
     const val JAKARTA_HTTP_SESSION: String = "jakarta.servlet.http.HttpSession"
 
@@ -74,8 +92,56 @@ object SpringWebClasses {
     const val ROUTE_FUNCTION = "org.springframework.web.reactive.function.server.RouterFunction"
     const val ROUTE_FUNCTION_BUILDER = "org.springframework.web.reactive.function.server.RouterFunctions.Builder"
 
+    const val SERVLET_ROUTE_FUNCTION = "org.springframework.web.servlet.function.RouterFunction"
+    const val SERVLET_ROUTE_FUNCTION_BUILDER = "org.springframework.web.servlet.function.RouterFunctions.Builder"
+
+    val ROUTE_FUNCTION_BUILDERS = listOf(ROUTE_FUNCTION_BUILDER, SERVLET_ROUTE_FUNCTION_BUILDER)
+
+    val ROUTE_FUNCTION_BUILDER_VERBS = listOf("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS")
+    const val ROUTE_PATH = "path"
+    const val ROUTE_NEST = "nest"
+
+    const val REQUEST_PREDICATES = "org.springframework.web.reactive.function.server.RequestPredicates"
+    const val SERVLET_REQUEST_PREDICATES = "org.springframework.web.servlet.function.RequestPredicates"
+    val REQUEST_PREDICATES_CLASSES = listOf(REQUEST_PREDICATES, SERVLET_REQUEST_PREDICATES)
+    val REQUEST_PREDICATES_METHOD_FACTORIES = setOf("method", "methods")
+    val REQUEST_PREDICATES_PATH_FREE_FACTORIES = setOf(
+        "accept", "contentType", "headers", "method", "methods", "all", "param", "queryParam", "version"
+    )
+
+    const val REQUEST_PREDICATE = "org.springframework.web.reactive.function.server.RequestPredicate"
+    const val SERVLET_REQUEST_PREDICATE = "org.springframework.web.servlet.function.RequestPredicate"
+    val REQUEST_PREDICATE_CLASSES = listOf(REQUEST_PREDICATE, SERVLET_REQUEST_PREDICATE)
+    const val REQUEST_PREDICATE_AND = "and"
+
+    /**
+     * Entry points of the Kotlin router DSL. `router` names both the reactive and the servlet DSL, so the stack is
+     * told apart by the enclosing bean's type rather than by this name.
+     */
+    val ROUTER_DSL_ENTRY_POINTS = listOf("coRouter", "router")
+
+    val ROUTER_DSL_CLASSES = listOf(
+        "org.springframework.web.reactive.function.server.CoRouterFunctionDsl",
+        "org.springframework.web.reactive.function.server.RouterFunctionDsl",
+        "org.springframework.web.servlet.function.RouterFunctionDsl"
+    )
+
+    val REQUEST_PREDICATE_FACTORY_CLASSES = REQUEST_PREDICATES_CLASSES + ROUTER_DSL_CLASSES
+    val REQUEST_PREDICATE_OPERATOR_CLASSES = REQUEST_PREDICATE_CLASSES + ROUTER_DSL_CLASSES
+
     const val OPEN_FEIGN_CLIENT_CONFIG = "spring.cloud.openfeign.client.config"
 
-    val URI_TYPE = listOf("GET", "POST", "PUT", "PATCH", "DELETE")
+    const val ROUTER_DSL_GENERIC_METHOD = "method"
+
+    /**
+     * Route methods of the Kotlin router DSL. `method` carries its verb in the argument instead of the name, so a
+     * caller matching on this list must read the verb rather than reuse the called name.
+     */
+    val ROUTER_DSL_ROUTE_METHODS = ROUTE_FUNCTION_BUILDER_VERBS + ROUTER_DSL_GENERIC_METHOD
+
+    /** HTTP verbs offered as tool window filter entries, kept in step with the icons rendered per verb. */
+    val HTTP_METHOD_FILTER = listOf(
+        "CONNECT", "DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT", "TRACE"
+    )
 
 }

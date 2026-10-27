@@ -7,6 +7,7 @@ package com.explyt.spring.core.completion.properties
 
 import com.explyt.spring.core.JavaCoreClasses
 import com.explyt.spring.core.PrimitiveTypes
+import com.explyt.spring.core.SpringProperties
 import com.explyt.util.ExplytPsiUtil.isMap
 import com.explyt.util.ExplytPsiUtil.resolvedPsiClass
 import com.intellij.json.psi.JsonProperty
@@ -48,6 +49,10 @@ interface ConfigurationPropertiesLoader {
         }
 
         fun getPropertyType(psiClass: PsiClass?, type: String?): PropertyType? {
+            // A metadata array type is the plain string `com.example.Include[]`. The class lookup behind [psiClass]
+            // strips generics but not the brackets, so an array type never resolves and would be taken for a scalar.
+            if (type?.endsWith("[]") == true) return PropertyType.ARRAY
+
             val propertyType = type?.let {
                 psiClass ?: return@let null
                 if (!type.contains(".Map<")) return@let null
@@ -102,7 +107,14 @@ data class PropertyHint(
     val name: String,
     val values: List<ValueHint>,
     val providers: List<ProviderHint>
-)
+) {
+    /**
+     * Whether the literals are the only values the property accepts: a hint whose provider is `any` lists common
+     * values of an open set, so a value outside it is not an error.
+     */
+    fun declaresClosedValueSet(): Boolean = values.isNotEmpty() &&
+            (providers.isEmpty() || providers.filter { it.name != null }.any { it.name != SpringProperties.ANY })
+}
 
 data class ElementHint(
     val name: String,

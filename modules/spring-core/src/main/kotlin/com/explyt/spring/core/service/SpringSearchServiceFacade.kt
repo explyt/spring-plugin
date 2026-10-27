@@ -8,9 +8,14 @@ package com.explyt.spring.core.service
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.service.NativeSearchService.Companion.getLoadedProjects
 import com.explyt.spring.core.service.NativeSearchService.Companion.isActiveDiPredicate
+import com.explyt.spring.core.service.beans.BeanSnapshotService
+import com.explyt.spring.core.service.beans.BeanSourcePreference
+import com.explyt.spring.core.service.beans.ScopedBeanSnapshot
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.core.tracker.ModificationTrackerManager
+import com.explyt.spring.core.util.InjectionConstructors
+import com.explyt.spring.core.util.InjectionPointOwners
 import com.explyt.spring.core.util.SpringCoreUtil
 import com.explyt.spring.core.util.SpringCoreUtil.getQualifierAnnotation
 import com.explyt.spring.core.util.SpringCoreUtil.hasComponentAnnotation
@@ -18,6 +23,7 @@ import com.explyt.spring.core.util.SpringCoreUtil.isCandidate
 import com.explyt.util.ExplytPsiUtil
 import com.explyt.util.ExplytPsiUtil.allSupers
 import com.explyt.util.ExplytPsiUtil.isAnnotatedBy
+import com.explyt.util.ExplytPsiUtil.resolvedPsiClass
 import com.intellij.lang.Language
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
@@ -41,11 +47,38 @@ class SpringSearchServiceFacade(private val project: Project) {
         return springSearchService.getAllBeansClassesConsideringContext(project)
     }
 
+    /**
+     * The beans of one explicitly chosen model, for callers that must not depend on the selected editor.
+     *
+     * Separate from [getAllActiveBeans] on purpose: that one answers the editor-driven question "what is in
+     * context here", and its native branch merges every loaded root. A query that names its application needs the
+     * opposite guarantee - one root, chosen before any bean is read - so it gets its own entry point rather than a
+     * changed meaning for the existing callers.
+     *
+     * Must run under a read action.
+     */
+    fun getBeanSnapshot(
+        application: PsiClass,
+        source: BeanSourcePreference = BeanSourcePreference.AUTO,
+        contextId: String? = null,
+        injectionFile: PsiFile? = null
+    ): ScopedBeanSnapshot = BeanSnapshotService(project).read(application, source, contextId, injectionFile)
+
     fun getAllActiveBeans(module: Module, isNative: Boolean = false): Set<PsiBean> {
         return if (isNative || isExternalProjectExist(project)) {
             nativeSearchService.getAllActiveBeans()
         } else {
-            springSearchService.getActiveBeansClasses(module)
+            // The source path caches beans too, so it can hand out a bean whose PSI was invalidated by an edit just
+            // like the native path can. Filter it here as well: callers dereference `psiClass` without a guard.
+            nativeSearchService.filterValidBeans(springSearchService.getActiveBeansClasses(module))
+        }
+    }
+
+    fun getInjectionPointOwnerBeans(module: Module, isNative: Boolean = false): Set<PsiBean> {
+        return if (isNative || isExternalProjectExist(project)) {
+            nativeSearchService.getAllActiveBeans()
+        } else {
+            nativeSearchService.filterValidBeans(springSearchService.getInjectionPointOwnerBeans(module))
         }
     }
 
@@ -57,11 +90,21 @@ class SpringSearchServiceFacade(private val project: Project) {
         }
     }
 
-    fun getComponentBeanPsiMethods(module: Module): Set<PsiMethod> {
+    fun getComponentBeanFactoryMethods(module: Module): Map<PsiMethod, PsiMethod> {
+        return if (isExternalProjectExist(project)) {
+            nativeSearchService.getBeanPsiMethods().associateWith { it }
+        } else {
+            springSearchService.getComponentBeanFactoryMethods(module)
+        }
+    }
+
+    fun getActiveGenericBeanFactoryMethods(module: Module): Map<PsiMethod, PsiMethod> {
         return if (isExternalProjectExist(project)) {
             nativeSearchService.getBeanPsiMethods()
+                .filter { it.returnType?.resolvedPsiClass is PsiTypeParameter }
+                .associateWith { it }
         } else {
-            springSearchService.getComponentBeanPsiMethods(module)
+            springSearchService.getActiveGenericBeanFactoryMethods(module)
         }
     }
 
@@ -89,6 +132,14 @@ class SpringSearchServiceFacade(private val project: Project) {
         }
     }
 
+    fun getBeansExcludedByCondition(module: Module): Set<PsiBean> {
+        return if (isExternalProjectExist(project)) {
+            emptySet()
+        } else {
+            springSearchService.foundBeans(module).excludedByCondition
+        }
+    }
+
     fun findActiveBeanDeclarations(
         module: Module,
         byBeanName: String,
@@ -96,16 +147,29 @@ class SpringSearchServiceFacade(private val project: Project) {
         byBeanPsiType: PsiType? = null,
         qualifier: PsiAnnotation? = null,
         psiElement: PsiElement? = null
-    ): List<PsiMember> {
+    ): List<PsiMember> =
+        findActiveBeans(module, byBeanName, language, byBeanPsiType, qualifier, psiElement)
+            .map { it.psiMember }.distinct()
+
+    fun findActiveBeans(
+        module: Module,
+        byBeanName: String,
+        language: Language,
+        byBeanPsiType: PsiType? = null,
+        qualifier: PsiAnnotation? = null,
+        psiElement: PsiElement? = null
+    ): List<PsiBean> {
         return if (isExternalProjectExist(project)) {
             val beans = nativeSearchService.getAllActiveBeans()
-            nativeSearchService.findActiveBeanDeclarations(beans, byBeanName, language, byBeanPsiType, qualifier)
+            nativeSearchService.findActiveBeans(beans, byBeanName, language, byBeanPsiType, qualifier)
         } else {
             val isTestSource = ExplytPsiUtil.isTestFiles(psiElement)
-            val beans = springSearchService.getActiveBeansClasses(module)
-            nativeSearchService.findActiveBeanDeclarations(
+            val activeBeans = if (isTestSource) springSearchService.getActiveBeansClassesWithTests(module)
+            else springSearchService.getActiveBeansClasses(module)
+            val beans = nativeSearchService.filterValidBeans(activeBeans)
+            nativeSearchService.findActiveBeans(
                 beans, byBeanName, language, byBeanPsiType, qualifier, module
-            ).filter { filterBeanByTest(it, psiElement, isTestSource) }
+            ).filter { filterBeanByTest(it.psiMember, psiElement, isTestSource) }
         }
     }
 
@@ -113,6 +177,12 @@ class SpringSearchServiceFacade(private val project: Project) {
         uClass: UClass?, uMethod: UMethod?, module: Module, isNative: Boolean = false
     ): Collection<PsiElement> {
         StatisticService.getInstance().addActionUsage(StatisticActionId.GUTTER_BEAN_USAGE)
+        return findInjectionPoints(uClass, uMethod, module, isNative)
+    }
+
+    fun findInjectionPoints(
+        uClass: UClass?, uMethod: UMethod?, module: Module, isNative: Boolean = false
+    ): Collection<PsiElement> {
         val isArrayType = uMethod?.returnType is PsiArrayType
         val uElement = uClass ?: uMethod ?: throw RuntimeException("No uElement")
         val targetType = if (uElement is UMethod) uElement.returnType else null
@@ -123,10 +193,17 @@ class SpringSearchServiceFacade(private val project: Project) {
         val allAutowiredAnnotations = SpringSearchUtils.getAutowiredFieldAnnotations(module)
         val allAutowiredAnnotationsNames = allAutowiredAnnotations.mapNotNull { it.qualifiedName }
 
-        val allBeans = getAllActiveBeans(module, isNative)
+        val allBeans = getInjectionPointOwnerBeans(module, isNative)
 
-        val allFieldsWithAutowired = allBeans.asSequence()
-            .mapNotNull { bean -> bean.psiClass.toUElementOfType<UClass>()?.fields }
+        val beanClasses = allBeans.mapTo(HashSet()) { it.psiClass }
+        val owners = InjectionPointOwners.of(beanClasses.asSequence())
+        val componentBeans = if (isNative || isExternalProjectExist(project))
+            nativeSearchService.getBeanPsiClassesAnnotatedByComponent()
+        else springSearchService.getInjectionPointComponentBeans(module)
+        val componentClasses = componentBeans.mapTo(HashSet()) { it.psiClass }
+
+        val allFieldsWithAutowired = owners.asSequence()
+            .mapNotNull { owner -> owner.toUElementOfType<UClass>()?.fields }
             .flatMap { field ->
                 field.asSequence()
                     .filter { it.isAnnotatedBy(allAutowiredAnnotationsNames) }
@@ -136,15 +213,17 @@ class SpringSearchServiceFacade(private val project: Project) {
 
 
         val allParametersWithAutowired = mutableSetOf<UVariable>()
-        allBeans.forEach { bean ->
-            val methods = bean.psiClass.toUElementOfType<UClass>()?.methods ?: return@forEach
+        owners.forEach { owner ->
+            val methods = owner.toUElementOfType<UClass>()?.methods ?: return@forEach
+            val injectionConstructors = InjectionConstructors.of(owner) { it.isAnnotatedBy(allAutowiredAnnotationsNames) }
             allParametersWithAutowired.addAll(
                 methods.asSequence()
                     .filter {
-                        it.isAnnotatedBy(allAutowiredAnnotationsNames)
+                        if (it.isConstructor) owner in beanClasses
+                                && (owner in componentClasses || it.isAnnotatedBy(allAutowiredAnnotationsNames))
+                                && it.javaPsi in injectionConstructors
+                        else it.isAnnotatedBy(allAutowiredAnnotationsNames)
                                 || it.isAnnotatedBy(SpringCoreClasses.BEAN)
-                                || it.isConstructor
-                                && bean in nativeSearchService.getBeanPsiClassesAnnotatedByComponent()
                     }
                     .flatMap { it.parameterList.parameters.asSequence() }
                     .filter { it.isCandidate(targetType, targetClass, targetClasses) }

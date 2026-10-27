@@ -78,7 +78,7 @@ class SpringConfigurationPropertiesInspectionTest : ExplytInspectionJavaTestCase
         myFixture.configureByText(
             "TestClass.java",
             """
-            <warning>@${SpringCoreClasses.CONFIGURATION_PROPERTIES}("KEBAB")</warning>            
+            <weak_warning>@${SpringCoreClasses.CONFIGURATION_PROPERTIES}("KEBAB")</weak_warning>            
             public class TestClass {}
             """.trimIndent()
         )
@@ -90,7 +90,7 @@ class SpringConfigurationPropertiesInspectionTest : ExplytInspectionJavaTestCase
             "TestClass.java",
             """                        
             public class TestClass {
-                <warning>@${SpringCoreClasses.CONFIGURATION_PROPERTIES}("kebab_kebab")</warning>
+                <weak_warning>@${SpringCoreClasses.CONFIGURATION_PROPERTIES}("kebab_kebab")</weak_warning>
                 public Object method() { return "1";}
             }
             """.trimIndent()

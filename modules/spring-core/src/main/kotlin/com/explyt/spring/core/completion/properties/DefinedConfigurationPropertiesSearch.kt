@@ -30,6 +30,7 @@ import com.intellij.util.Processor
 import org.jetbrains.yaml.YAMLLanguage
 import org.jetbrains.yaml.psi.YAMLFile
 import org.jetbrains.yaml.psi.YAMLKeyValue
+import org.jetbrains.yaml.psi.YAMLSequence
 import org.jetbrains.yaml.psi.impl.YAMLPlainTextImpl
 import org.jetbrains.yaml.psi.impl.YAMLQuotedTextImpl
 
@@ -109,9 +110,15 @@ class DefinedConfigurationPropertiesSearch(val project: Project) {
         val propertiesFileType = PropertiesLanguage.INSTANCE.associatedFileType ?: return emptySet()
         val yamlFileType = YAMLLanguage.INSTANCE.associatedFileType ?: return emptySet()
 
+        // Dependents: a library module's configuration lives in the applications depending on it.
+        // Dependencies: a Gradle test source-set module has no dependents, yet its code runs against
+        // the main resources too, so without them a test-source `@Value` neither resolves to the
+        // main key nor counts as its usage (issue #381). Project modules only, like #276.
+        val scope = module.moduleWithDependentsScope
+            .uniteWith(GlobalSearchScope.moduleWithDependenciesScope(module))
         val sources = mutableSetOf<PropertySource>()
-        collectPropertySources(propertiesFileType, sources, module.moduleWithDependentsScope)
-        collectPropertySources(yamlFileType, sources, module.moduleWithDependentsScope)
+        collectPropertySources(propertiesFileType, sources, scope)
+        collectPropertySources(yamlFileType, sources, scope)
         return sources
     }
 
@@ -183,7 +190,14 @@ class YamlPropertySource(yamlFile: YAMLFile) : FilePropertySource(yamlFile) {
             return yamlFile.documents.flatMap { document ->
                 val result = mutableListOf<DefinedConfigurationProperty>()
                 PsiTreeUtil.processElements(document, YAMLKeyValue::class.java) { keyValue ->
-                    if (keyValue.value is YAMLPlainTextImpl || keyValue.value is YAMLQuotedTextImpl) {
+                    // A sequence is a leaf just like a scalar: `paths-to-exclude: [ ... ]` is a whole property, not a
+                    // path to nested ones. Without it every per-key check — canonical form, unresolved key,
+                    // deprecation — skipped list-valued keys entirely. A mapping value stays excluded: it is an
+                    // intermediate node whose children carry the real keys.
+                    if (keyValue.value is YAMLPlainTextImpl
+                        || keyValue.value is YAMLQuotedTextImpl
+                        || keyValue.value is YAMLSequence
+                    ) {
                         result.add(YamlDefinedConfigurationProperty(keyValue, yamlFile.name))
                     }
                     true

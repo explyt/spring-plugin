@@ -7,7 +7,11 @@ package com.explyt.spring.web.completion.java
 
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.web.TestUtil.findTypedReferenceAt
+import com.explyt.spring.web.loader.EndpointElement
 import com.explyt.spring.web.references.ExplytControllerMethodReference
+import com.explyt.spring.web.service.SpringWebEndpointsSearcher
+import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.psi.PsiMember
 import junit.framework.TestCase
 
@@ -21,6 +25,85 @@ class UastMockMvcUrlReferenceContributorTest : ExplytJavaLightTestCase() {
             TestLibrary.springBootAutoConfigure_3_1_1,
             TestLibrary.springReactiveWeb_3_1_1
         )
+
+    fun testGetCompletionOffersAnAnyMethodMapping() {
+        addAnyMethodController()
+
+        assertEquals(listOf("/any", "/only-get"), variantPaths("get(\"/<caret>\")"))
+    }
+
+    fun testPostResolvesToAnAnyMethodMapping() {
+        addAnyMethodController()
+
+        assertEquals(listOf("any"), resolvedNames("post(\"/<caret>any\")"))
+    }
+
+    fun testOptionsResolvesToAnAnyMethodMapping() {
+        addAnyMethodController()
+
+        assertEquals(listOf("any"), resolvedNames("options(\"/<caret>any\")"))
+    }
+
+    fun testPostDoesNotResolveToAGetMapping() {
+        addAnyMethodController()
+
+        assertEquals(emptyList<String>(), resolvedNames("post(\"/only-<caret>get\")"))
+    }
+
+    fun testGetResolvesToAGetMapping() {
+        addAnyMethodController()
+
+        assertEquals(listOf("onlyGet"), resolvedNames("get(\"/only-<caret>get\")"))
+    }
+
+    private fun addAnyMethodController() {
+        myFixture.addFileToProject(
+            "com/example/AnyController.java", """
+            package com.example;
+
+            import org.springframework.web.bind.annotation.*;
+
+            @RestController
+            public class AnyController {
+                @RequestMapping("/any") public String any() { return "any"; }
+                @GetMapping("/only-get") public String onlyGet() { return "get"; }
+                @PostMapping("/only-post") public String onlyPost() { return "post"; }
+            }
+            """.trimIndent()
+        )
+        val byPath = anyControllerEndpoints().associate { it.path to it.requestMethods }
+        assertEquals(
+            mapOf("/any" to emptyList(), "/only-get" to listOf("GET"), "/only-post" to listOf("POST")),
+            byPath
+        )
+    }
+
+    private fun anyControllerEndpoints(): List<EndpointElement> =
+        SpringWebEndpointsSearcher.getInstance(project).getAllEndpoints(module)
+            .filter { it.containingClass?.name == "AnyController" }
+
+    private fun urlReference(request: String): ExplytControllerMethodReference {
+        myFixture.configureByText(
+            "AnyControllerTest.java", """
+            import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+
+            class AnyControllerTest {
+                void justForTest() {
+                    MockMvcRequestBuilders.$request;
+                }
+            }
+            """.trimIndent()
+        )
+        val reference = file.findTypedReferenceAt<ExplytControllerMethodReference>(myFixture.caretOffset)
+        assertNotNull("The URL must carry an endpoint reference", reference)
+        return reference!!
+    }
+
+    private fun resolvedNames(request: String): List<String> =
+        urlReference(request).multiResolve(false).mapNotNull { (it.element as? PsiMember)?.name }.sorted()
+
+    private fun variantPaths(request: String): List<String> =
+        urlReference(request).variants.mapNotNull { (it as? LookupElement)?.lookupString }.sorted()
 
     fun testPut() {
         myFixture.copyFileToProject("ProductController.java")
