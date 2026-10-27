@@ -1,0 +1,105 @@
+/*
+ * Copyright (c) 2026 Explyt Ltd
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+package com.explyt.spring.ai.mcp.entities
+
+import com.explyt.spring.ai.mcp.EntityFieldJson
+import com.explyt.spring.ai.mcp.EntityIndexJson
+import com.explyt.spring.ai.mcp.WholeAnswer
+import com.explyt.spring.ai.mcp.beans.BeanQueryRevision
+import com.explyt.spring.core.tracker.ModificationTrackerManager
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.node.ArrayNode
+import com.fasterxml.jackson.databind.node.ObjectNode
+import com.intellij.openapi.project.Project
+
+/** Schema of one entity: everything a compact listing deliberately leaves out. */
+data class EntitySchema(
+    val fields: List<EntityFieldJson>,
+    val indexes: List<EntityIndexJson>
+)
+
+/**
+ * One entity's identity, plus the means to read its schema when a caller actually asks for it.
+ *
+ * [readSchema] is a function rather than a computed value because expanding fields, relationships and indexes
+ * is the expensive half of this tool: a page of twenty names must not pay for the schema of every entity in
+ * the project.
+ */
+class EntityRecord(
+    val name: String,
+    val className: String,
+    val tableName: String,
+    val filePath: String?,
+    val line: Int?,
+    val library: String? = null,
+    val tableQuoted: Boolean = false,
+    val readSchema: () -> EntitySchema,
+)
+
+/**
+ * Turns entities into the two fixed JSON projections the tool promises, and versions the answer they belong to.
+ *
+ * Which fields a projection carries is decided here rather than per record, so a client can parse the shape
+ * without inspecting it: a compact record never carries a schema, and a detailed one always does - including
+ * the empty index list of an entity that genuinely declares none. Emitting `indexes` only when non-empty would
+ * report "this entity has no index" and "the schema was not read" as the same thing.
+ */
+class EntityInventory(private val mapper: ObjectMapper = ObjectMapper()) {
+
+    /**
+     * The order every page is cut from.
+     *
+     * Fixed before anything is projected: a continuation that re-derived its order from a re-read model could
+     * repeat an entity on one page and skip another.
+     */
+    fun ordered(records: List<EntityRecord>): List<EntityRecord> = records.sortedBy { it.className }
+
+    fun compact(record: EntityRecord): ObjectNode {
+        val node = mapper.createObjectNode()
+        node.put("name", record.name)
+        node.put("className", record.className)
+        node.put("tableName", record.tableName)
+        if (record.tableQuoted) node.put("tableQuoted", true)
+        node.put("filePath", record.filePath)
+        record.library?.let { node.put("library", it) }
+        node.put("line", record.line)
+        return node
+    }
+
+    fun details(record: EntityRecord): ObjectNode {
+        val node = compact(record)
+        val schema = record.readSchema()
+        node.set<ArrayNode>("fields", mapper.valueToTree(schema.fields))
+        node.set<ArrayNode>("indexes", mapper.valueToTree(schema.indexes))
+        return node
+    }
+
+    companion object {
+
+        /**
+         * Opaque version of one answer: the model state it was read from, the answer itself, and the question.
+         *
+         * The stamp is the Spring model's revision tracker: a structural source edit, a configuration edit or a
+         * classpath change moves it, while indexing, dropped PSI caches and edits of unrelated files leave it
+         * alone. That tracker ignores method bodies, field initializers and field types, which the endpoint,
+         * contract and trace tools read from PSI on every call, so the [WholeAnswer.digest] of the served answer
+         * is bound as well: a continuation never serves a page of a result set that no longer exists.
+         *
+         * Paging parameters are stripped rather than trusted to be absent: binding `limit` would turn every
+         * page-size change into `RESULT_CHANGED` for an answer that did not change at all.
+         */
+        fun revision(project: Project, normalizedQuery: Map<String, String?>, answerDigest: String? = null): String {
+            val modelStamp =
+                ModificationTrackerManager.getInstance(project).getModelRevisionTracker().modificationCount.toString()
+            return BeanQueryRevision.compute(
+                answerDigest?.let { "$modelStamp:$it" } ?: modelStamp,
+                normalizedQuery.filterKeys { it !in PAGING_KEYS }
+            )
+        }
+
+        private val PAGING_KEYS = setOf("offset", "limit", "maxChars", "expectedRevision")
+    }
+}

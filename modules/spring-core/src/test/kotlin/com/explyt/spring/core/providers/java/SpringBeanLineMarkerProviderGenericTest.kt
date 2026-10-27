@@ -121,4 +121,159 @@ class SpringBeanLineMarkerProviderGenericTest : ExplytJavaLightTestCase() {
         val gutterTargetString = getGutterTargetString(allBeanGutters)
         assertTrue(gutterTargetString.isEmpty())
     }
+
+    fun testGenericInterface() {
+        @Language("JAVA") val genericInterface = """            
+public class TestGeneric<T> {
+    public T body;
+}
+        """.trimIndent()
+
+        @Language("JAVA") val genericImplClass = """            
+public class TestGenericV1 extends TestGeneric<String> {}
+        """.trimIndent()
+
+        @Language("JAVA") val demoService = """
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class DemoService {
+    @Autowired java.util.List<TestGeneric<String>> generic;
+    
+    @Bean
+    public TestGenericV1 genericV1() {
+        return new TestGenericV1();
+    }
+}
+        """.trimIndent()
+        myFixture.addClass(genericInterface)
+        myFixture.addClass(genericImplClass)
+        myFixture.configureByText("DemoService.java", demoService)
+
+        val allBeanGutters = getAllBeanGuttersByIcon(myFixture, SpringIcons.SpringBeanDependencies)
+        val gutterTargetString = getGutterTargetString(allBeanGutters)
+
+        assertEquals(1, gutterTargetString.flatMap { gutter ->
+            gutter.filter { it == "genericV1()" }
+        }.size)
+    }
+
+    fun testGenericInterfaceNoMatch() {
+        @Language("JAVA") val genericInterface = """            
+public class TestGeneric<T> {
+    public T body;
+}
+        """.trimIndent()
+
+        @Language("JAVA") val genericImplClass = """            
+public class TestGenericV1 extends TestGeneric<String> {}
+        """.trimIndent()
+
+        @Language("JAVA") val demoService = """
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class DemoService {
+    @Autowired TestGeneric<Integer> generic;
+    
+    @Bean
+    public TestGenericV1 genericV1() {
+        return new TestGenericV1();
+    }
+}
+        """.trimIndent()
+
+        myFixture.addClass(genericInterface)
+        myFixture.addClass(genericImplClass)
+        myFixture.configureByText("DemoService.java", demoService)
+
+        val allBeanGutters = getAllBeanGuttersByIcon(myFixture, SpringIcons.SpringBeanDependencies)
+        val gutterTargetString = getGutterTargetString(allBeanGutters)
+
+        assertTrue(gutterTargetString.flatMap { gutter ->
+            gutter.filter { it == "genericV1()" }
+        }.isEmpty())
+    }
+
+    fun testGenericBeanWrapper() {
+        @Language("JAVA") val genericInterface = """            
+public class TestGeneric<T> {
+    public T body;
+}
+        """.trimIndent()
+
+        @Language("JAVA") val genericImplClass = """            
+public class TestGenericV1 extends TestGeneric<String> {}
+        """.trimIndent()
+
+        @Language("JAVA") val demoService = """
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class DemoService {
+    @Autowired TestGeneric<String> generic;
+    @Autowired java.util.List<TestGeneric<String>> genericList;
+    @Autowired java.util.Optional<TestGeneric<String>> genericOpt;
+    @Autowired org.springframework.beans.factory.ObjectProvider<TestGeneric<String>> genericProvider;
+    
+    @Bean
+    public TestGenericV1 genericV1() {
+        return new TestGenericV1();
+    }
+}
+        """.trimIndent()
+
+        myFixture.addClass(genericInterface)
+        myFixture.addClass(genericImplClass)
+        myFixture.configureByText("DemoService.java", demoService)
+
+        val allBeanGutters = getAllBeanGuttersByIcon(myFixture, SpringIcons.SpringBeanDependencies)
+        val gutterTargetString = getGutterTargetString(allBeanGutters)
+
+        assertEquals(4, gutterTargetString.size)
+        assertEquals(setOf("genericV1()"), gutterTargetString.flatten().toSet())
+    }
+
+    fun testGenericComponentWrapper() {
+        @Language("JAVA") val genericInterface = """            
+public class TestGeneric<T> {
+    public T body;
+}
+        """.trimIndent()
+
+        @Language("JAVA") val genericImplClass = """ 
+@org.springframework.stereotype.Component
+public class TestGenericV1 extends TestGeneric<String> {}
+        """.trimIndent()
+
+        @Language("JAVA") val demoService = """
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class DemoService {
+    @Autowired TestGeneric<String> generic;
+    @Autowired java.util.List<TestGeneric<String>> genericList;
+    @Autowired java.util.Optional<TestGeneric<String>> genericOpt;
+    @Autowired org.springframework.beans.factory.ObjectProvider<TestGeneric<String>> genericProvider;  
+}
+        """.trimIndent()
+
+        myFixture.addClass(genericInterface)
+        myFixture.addClass(genericImplClass)
+        myFixture.configureByText("DemoService.java", demoService)
+
+        val allBeanGutters = getAllBeanGuttersByIcon(myFixture, SpringIcons.SpringBeanDependencies)
+        val gutterTargetString = getGutterTargetString(allBeanGutters)
+
+        assertEquals(4, gutterTargetString.size)
+        assertEquals(setOf("TestGenericV1"), gutterTargetString.flatten().toSet())
+    }
 }

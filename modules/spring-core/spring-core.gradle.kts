@@ -53,7 +53,6 @@ tasks {
 
 val baseProject = project(":base")
 
-val defaultIdeaType: String by rootProject
 val defaultIdeaVersion: String by rootProject
 
 dependencies {
@@ -71,6 +70,7 @@ dependencies {
             useInstaller = false
         }
         bundledPlugins(intellijPlugins)
+        testBundledPlugin("tanvd.grazi")
         testFramework(TestFrameworkType.Platform)
         testFramework(TestFrameworkType.Plugin.Java)
     }

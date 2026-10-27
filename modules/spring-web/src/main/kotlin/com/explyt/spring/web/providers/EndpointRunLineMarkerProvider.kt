@@ -9,16 +9,22 @@ import com.explyt.spring.core.completion.properties.DefinedConfigurationProperti
 import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.web.SpringWebBundle
 import com.explyt.spring.web.SpringWebClasses
+import com.explyt.spring.web.editor.openapi.OpenApiUtils
 import com.explyt.spring.web.editor.openapi.OpenApiUtils.getServerFromPath
 import com.explyt.spring.web.editor.openapi.OpenApiUtils.isAbsolutePath
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
 import com.explyt.spring.web.util.OpenApiFileUtil.Companion.DEFAULT_SERVER
+import com.explyt.spring.web.util.ApplicationBasePath
+import com.explyt.spring.web.util.HandlerMethods
+import com.explyt.spring.web.util.HandlerMethods.firstPathOrNull
+import com.explyt.spring.web.util.HandlerSignature
+import com.explyt.spring.web.util.MappingPathPlaceholders
 import com.explyt.spring.web.util.OpenApiFileUtil.Companion.DEFAULT_SERVER_HOST
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.spring.web.util.SpringWebUtil.removeParams
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytUastUtil.getCommentText
-import com.intellij.codeInsight.AnnotationUtil
+
 import com.intellij.execution.lineMarker.RunLineMarkerContributor
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.module.ModuleUtilCore
@@ -31,17 +37,23 @@ import org.jetbrains.uast.getUParentForIdentifier
 class EndpointRunLineMarkerProvider : RunLineMarkerContributor() {
 
     override fun getInfo(psiElement: PsiElement): Info? {
+        if (!OpenApiUtils.isPreviewEditorAvailable()) return null
         val uMethod = getUParentForIdentifier(psiElement) as? UMethod ?: return null
         val psiMethod = uMethod.javaPsi
 
         if (!SpringWebUtil.isSpringWebProject(psiElement.project)) return null
         val module = ModuleUtilCore.findModuleForPsiElement(psiElement) ?: return null
 
-        if (!psiMethod.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING)) return null
+        if (!psiMethod.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING)) {
+            val containingClass = psiMethod.containingClass ?: return null
+            if (!SpringWebUtil.isRequestHandlerClass(containingClass)) return null
+        }
+        val mappingSource = SpringWebUtil.requestMappingSourceOf(psiMethod) ?: return null
 
         val requestMappingMah = MetaAnnotationsHolder.of(module, SpringWebClasses.REQUEST_MAPPING)
 
-        val path = getUrlPath(requestMappingMah, psiMethod)
+        val urlPath = getUrlPath(requestMappingMah, psiMethod, mappingSource) ?: return null
+        val path = MappingPathPlaceholders.resolve(module, urlPath)
 
         val fullPath = if (isAbsolutePath(path)) path else "$DEFAULT_SERVER/$path"
 
@@ -49,7 +61,7 @@ class EndpointRunLineMarkerProvider : RunLineMarkerContributor() {
         val server = if (serverPart.startsWith('/')) serverPart.substring(1) else serverPart
         val apiPart = if (serverPart.length == fullPath.length) "/" else fullPath.substring(serverPart.length)
 
-        val endpointInfo = getEndpointInfo(uMethod, apiPart) ?: return null
+        val endpointInfo = getEndpointInfo(uMethod, mappingSource, apiPart) ?: return null
 
         return Info(
             AllIcons.RunConfigurations.TestState.Run,
@@ -61,17 +73,13 @@ class EndpointRunLineMarkerProvider : RunLineMarkerContributor() {
     private fun getUrlPath(
         requestMappingMah: MetaAnnotationsHolder,
         psiMethod: PsiMethod,
-    ): String {
-        var path = requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("path", "value")).asSequence()
-            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
-            .firstOrNull() ?: ""
+        mappingSource: PsiMethod,
+    ): String? {
+        var path = HandlerMethods.methodMapping(mappingSource, requestMappingMah).firstPathOrNull() ?: return null
         if (isAbsolutePath(path)) return path
 
         val containingClass = psiMethod.containingClass ?: return path
-        val prefix = if (containingClass.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING)) {
-            requestMappingMah.getAnnotationMemberValues(containingClass, setOf("path", "value"))
-                .firstNotNullOfOrNull { AnnotationUtil.getStringAttributeValue(it) } ?: ""
-        } else ""
+        val prefix = HandlerMethods.requestMappingPrefixes(containingClass, requestMappingMah).firstOrNull() ?: ""
         if (prefix.isNotEmpty()) {
             path = SpringWebUtil.simplifyUrl("$prefix/$path")
             path = if (path.startsWith('/')) path.substring(1) else path
@@ -79,34 +87,26 @@ class EndpointRunLineMarkerProvider : RunLineMarkerContributor() {
         return path
     }
 
-    private fun getEndpointInfo(uMethod: UMethod, apiPath: String): EndpointInfo? {
+    private fun getEndpointInfo(uMethod: UMethod, mappingSource: PsiMethod, apiPath: String): EndpointInfo? {
         ProgressManager.checkCanceled()
 
         val psiMethod = uMethod.javaPsi
 
         val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return null
 
-        if (!psiMethod.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING)) return null
 
-        val requestMappingMah = MetaAnnotationsHolder.of(module, SpringWebClasses.REQUEST_MAPPING)
-        val produces = requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("produces"))
-            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
-        val consumes = requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("consumes"))
-            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
+        val mapping = HandlerMethods.methodMapping(
+            mappingSource, MetaAnnotationsHolder.of(module, SpringWebClasses.REQUEST_MAPPING)
+        )
 
         val fullPath = SpringWebUtil.simplifyUrl(removeParams(apiPath))
 
-        val requestMethods =
-            requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("method"))
-                .map { it.text.split('.').last() }
-
         val description = uMethod.comments.firstOrNull()?.getCommentText() ?: ""
-        val returnType = uMethod.returnType
-        val returnTypeFqn = SpringWebUtil.getTypeFqn(returnType, psiMethod.language)
+        val returnTypeFqn = SpringWebUtil.getTypeFqn(HandlerSignature.declaredReturnType(psiMethod), psiMethod.language)
 
         return EndpointInfo(
             fullPath,
-            requestMethods,
+            mapping.methods,
             psiMethod,
             uMethod.name,
             "default",
@@ -116,8 +116,8 @@ class EndpointRunLineMarkerProvider : RunLineMarkerContributor() {
             SpringWebUtil.collectRequestParameters(psiMethod),
             SpringWebUtil.getRequestBodyInfo(psiMethod),
             SpringWebUtil.collectRequestHeaders(psiMethod),
-            produces,
-            consumes
+            mapping.produces,
+            mapping.consumes
         )
     }
 
@@ -126,21 +126,20 @@ class EndpointRunLineMarkerProvider : RunLineMarkerContributor() {
             return applyServerPortSettings(psiElement, DEFAULT_SERVER)
         }
 
+        /**
+         * The servers a request to this module's endpoints goes to: `localhost` on each configured port, followed by
+         * the base path the application declares, so a generated request reaches the path Spring serves.
+         */
         private fun applyServerPortSettings(psiElement: PsiElement, server: String): List<String> {
             if (server != DEFAULT_SERVER) return listOf(server)
             val module = ModuleUtilCore.findModuleForPsiElement(psiElement) ?: return listOf(DEFAULT_SERVER)
+            val basePath = ApplicationBasePath.of(module).orEmpty()
 
             val ports = (DefinedConfigurationPropertiesSearch.getInstance(psiElement.project)
                 .findProperties(module, "server.port").asSequence()
                 .mapNotNull { it.value } + listOf("8080"))
-                .map {
-                    if (it.contains("{")) {
-                        it.substringAfter("{").substringBefore("}").substringAfter(":")
-                    } else {
-                        it
-                    }
-                }
-                .map { DEFAULT_SERVER_HOST + it }
+                .mapNotNull { MappingPathPlaceholders.resolve(module, it).trim().toIntOrNull() }
+                .map { DEFAULT_SERVER_HOST + it + basePath }
                 .distinct()
                 .toList()
                 .takeIf { it.isNotEmpty() } ?: listOf(DEFAULT_SERVER)

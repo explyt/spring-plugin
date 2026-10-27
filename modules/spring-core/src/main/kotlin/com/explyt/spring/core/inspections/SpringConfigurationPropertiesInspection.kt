@@ -18,6 +18,7 @@ import com.intellij.codeInsight.navigation.getPsiElementPopup
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor
+import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.ide.DataManager
 import com.intellij.openapi.module.Module
@@ -75,7 +76,12 @@ class SpringConfigurationPropertiesInspection : SpringBaseUastLocalInspectionToo
                 AddAnnotationValueQuickFix(sourcePsi, "prefix", "prefix")
             )
         } else if (isNotKebabCase(valueText)) {
-            holder.registerProblem(sourcePsi, message("explyt.spring.inspection.config.prefix.kebab"))
+            // Relaxed binding accepts any spelling of the prefix, so this is a style deviation rather than a defect.
+            holder.registerProblem(
+                sourcePsi,
+                message("explyt.spring.inspection.config.prefix.kebab"),
+                ProblemHighlightType.WEAK_WARNING
+            )
         }
 
         val duplicateElements = findDuplicate(module, valueText)

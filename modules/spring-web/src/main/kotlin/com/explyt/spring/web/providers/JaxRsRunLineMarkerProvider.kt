@@ -8,9 +8,11 @@ package com.explyt.spring.web.providers
 import com.explyt.spring.core.util.SpringCoreUtil.isMapWithStringKey
 import com.explyt.spring.web.SpringWebBundle
 import com.explyt.spring.web.WebEeClasses
+import com.explyt.spring.web.editor.openapi.OpenApiUtils
 import com.explyt.spring.web.editor.openapi.OpenApiUtils.getServerFromPath
 import com.explyt.spring.web.editor.openapi.OpenApiUtils.isAbsolutePath
 import com.explyt.spring.web.service.SpringWebEndpointsSearcher
+import com.explyt.spring.web.util.HandlerSignature
 import com.explyt.spring.web.util.OpenApiFileUtil.Companion.DEFAULT_SERVER
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.spring.web.util.SpringWebUtil.PathArgumentInfo
@@ -18,6 +20,7 @@ import com.explyt.spring.web.util.SpringWebUtil.getTypeFqn
 import com.explyt.spring.web.util.SpringWebUtil.simplifyUrl
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytPsiUtil.isOptional
+import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.execution.lineMarker.RunLineMarkerContributor
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.module.Module
@@ -25,6 +28,7 @@ import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiMethod
+import com.intellij.psi.PsiParameter
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.getContainingUClass
@@ -33,6 +37,7 @@ import org.jetbrains.uast.getUParentForIdentifier
 class JaxRsRunLineMarkerProvider : RunLineMarkerContributor() {
 
     override fun getInfo(psiElement: PsiElement): Info? {
+        if (!OpenApiUtils.isPreviewEditorAvailable()) return null
         val uParent = getUParentForIdentifier(psiElement) ?: return null
 
         return when (uParent) {
@@ -106,7 +111,7 @@ class JaxRsRunLineMarkerProvider : RunLineMarkerContributor() {
 
         fun getRequestBodyInfo(psiMethod: PsiMethod, requestMethods: List<String>): PathArgumentInfo? {
             if (requestMethods.size == 1 && requestMethods[0].lowercase() == "get") return null
-            val bodyParams = psiMethod.parameterList.parameters.filter { it.annotations.isEmpty() }
+            val bodyParams = HandlerSignature.requestParameters(psiMethod).filter { it.isUnannotated() }
 
             for (param in bodyParams) {
                 val paramType = param.type
@@ -124,6 +129,15 @@ class JaxRsRunLineMarkerProvider : RunLineMarkerContributor() {
             }
             return null
         }
+
+        /**
+         * Whether a parameter carries no binding annotation. A Kotlin parameter always carries the nullability
+         * annotation its light method synthesizes, which says nothing about how the request binds it.
+         */
+        private fun PsiParameter.isUnannotated(): Boolean =
+            annotations.all { it.qualifiedName in NULLABILITY_ANNOTATIONS }
+
+        private val NULLABILITY_ANNOTATIONS = setOf(AnnotationUtil.NOT_NULL, AnnotationUtil.NULLABLE)
     }
 
 }

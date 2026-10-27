@@ -6,8 +6,7 @@
 <idea-plugin>
     <depends>com.intellij.modules.json</depends>
     <depends>com.intellij.java</depends>
-    <!-- JCEF is a separate bundled plugin since IntelliJ Platform 2026.2 -->
-    <depends>com.intellij.modules.jcef</depends>
+    <depends optional="true" config-file="spring-web-jcef.xml">com.intellij.modules.jcef</depends>
 
     <extensionPoints>
         <extensionPoint qualifiedName="com.explyt.spring.web.springWebEndpointsLoader" dynamic="true"
@@ -19,10 +18,12 @@
     </extensionPoints>
 
 
-    <extensions defaultExtensionNs="com.explyt.spring.web">
+    <extensions defaultExtensionNs="com.explyt.spring.core">
         <additionalBeansDiscoverer
                 implementation="com.explyt.spring.web.service.beans.discoverer.SpringWebAdditionalBeansDiscoverer"/>
+    </extensions>
 
+    <extensions defaultExtensionNs="com.explyt.spring.web">
         <springWebEndpointsLoader
                 implementation="com.explyt.spring.web.loader.SpringWebControllerLoader"/>
         <springWebEndpointsLoader
@@ -31,6 +32,8 @@
                 implementation="com.explyt.spring.web.loader.JaxRsExchangeLoader"/>
         <springWebEndpointsLoader
                 implementation="com.explyt.spring.web.loader.SpringWebFluxEndpointsLoader"/>
+        <springWebEndpointsLoader
+                implementation="com.explyt.spring.web.loader.SpringWebMvcFnEndpointsLoader"/>
         <springWebEndpointsLoader
                 implementation="com.explyt.spring.web.loader.SpringWebOpenApiEndpointsLoader"/>
         <springWebEndpointsLoader
@@ -41,6 +44,8 @@
                 implementation="com.explyt.spring.web.loader.SpringBootEndpointLoader"/>
         <springWebEndpointsLoader
                 implementation="com.explyt.spring.web.loader.EventListenersEndpointLoader"/>
+        <springWebEndpointsLoader
+                implementation="com.explyt.spring.web.loader.ActuatorEndpointLoader"/>
 
 
     </extensions>
@@ -134,6 +139,28 @@
                          implementationClass="com.explyt.spring.web.inspections.RequestMappingDuplicateInspection"/>
 
         <localInspection language="UAST"
+                         shortName="ControllerBeanNameAsPath"
+                         groupBundle="messages.SpringWebBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.web.notifications"
+                         bundle="messages.SpringWebBundle"
+                         key="explyt.spring.web.inspection.controller.beanNameAsPath"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.web.inspections.ControllerBeanNameAsPathInspection"/>
+
+        <localInspection language="UAST"
+                         shortName="DuplicateActuatorWebExtension"
+                         groupBundle="messages.SpringWebBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.web.notifications"
+                         bundle="messages.SpringWebBundle"
+                         key="explyt.spring.web.inspection.actuator.duplicateWebExtension"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="com.explyt.spring.web.inspections.DuplicateActuatorWebExtensionInspection"/>
+
+        <localInspection language="UAST"
                          shortName="JavaWebClientMethodWrongType"
                          groupBundle="messages.SpringWebBundle"
                          groupPath="Explyt Spring"
@@ -200,6 +227,8 @@
                                         implementationClass="com.explyt.spring.web.providers.CoRouterEndpointActionsLineMarkerProvider"/>
         <codeInsight.lineMarkerProvider language="UAST"
                                         implementationClass="com.explyt.spring.web.providers.HttpExchangeEndpointActionsLineMarkerProvider"/>
+        <codeInsight.lineMarkerProvider language="UAST"
+                                        implementationClass="com.explyt.spring.web.providers.ActuatorEndpointActionsLineMarkerProvider"/>
 
         <codeInsight.lineMarkerProvider language="UAST"
                                         implementationClass="com.explyt.spring.web.providers.RetrofitEndpointActionsLineMarkerProvider"/>
@@ -245,10 +274,10 @@
         <json.jsonSchemaGotoDeclarationSuppressor
                 implementation="com.explyt.spring.web.jsonSchema.OpenApiJsonGotoDeclarationSuppressor"/>
 
-        <fileEditorProvider implementation="com.explyt.spring.web.editor.openapi.OpenApiUIEditorProvider"/>
 
         <httpRequestHandler implementation="com.explyt.spring.web.editor.openapi.OpenApiResourcesRequestHandler"/>
         <httpRequestHandler implementation="com.explyt.spring.web.editor.openapi.OpenApiProxyRequestHandler"/>
+        <httpRequestHandler implementation="com.explyt.spring.web.editor.openapi.OpenApiOAuth2RedirectRequestHandler"/>
 
         <notificationGroup id="com.explyt.spring.notification.web"
                            displayType="BALLOON"

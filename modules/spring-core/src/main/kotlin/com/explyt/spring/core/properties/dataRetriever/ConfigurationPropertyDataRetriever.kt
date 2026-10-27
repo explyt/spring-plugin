@@ -7,6 +7,7 @@ package com.explyt.spring.core.properties.dataRetriever
 
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.completion.properties.DefinedConfigurationPropertiesSearch
+import com.explyt.spring.core.completion.properties.MetadataDeclarations
 import com.explyt.spring.core.completion.properties.SpringConfigurationPropertiesSearch
 import com.explyt.spring.core.service.ConfigurationPropertiesService
 import com.explyt.spring.core.tracker.ModificationTrackerManager
@@ -18,6 +19,7 @@ import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
+import java.util.Locale.getDefault
 
 abstract class ConfigurationPropertyDataRetriever {
 
@@ -37,8 +39,12 @@ abstract class ConfigurationPropertyDataRetriever {
             DefinedConfigurationPropertiesSearch.getInstance(module.project)
                 .getAllProperties(module).asSequence()
                 .filter {
-                    PropertyUtil.toCommonPropertyForm(it.key)
-                        .startsWith(PropertyUtil.toCommonPropertyForm(propertyFqn))
+                    // Entries and elements of this member, not every key that merely shares its spelling:
+                    // `foo.bar` must not collect the unrelated `foo.barbaz`.
+                    PropertyUtil.isOwnedBy(
+                        PropertyUtil.toCommonPropertyForm(it.key),
+                        PropertyUtil.toCommonPropertyForm(propertyFqn)
+                    )
                 }
                 .mapNotNull { it.psiElement }.toList()
         } else {
@@ -53,12 +59,11 @@ abstract class ConfigurationPropertyDataRetriever {
         val propertyFqn = prefix + name
         val hints = SpringConfigurationPropertiesSearch.getInstance(module.project)
             .getElementNameHints(module)
-
-        return hints
-            .asSequence()
             .filter { PropertyUtil.isSameProperty(it.name, propertyFqn) }
+
+        return MetadataDeclarations
+            .distinct(hints, { it.name }, { it.jsonProperty.containingFile })
             .mapNotNull { it.jsonProperty.value }
-            .toList()
     }
 
     companion object {
@@ -82,12 +87,12 @@ abstract class ConfigurationPropertyDataRetriever {
         }
     }
 
-    protected fun toPascalFormat(memberName: String?): String {
+    protected fun String?.toPascalFormat(): String {
         return when {
-            memberName == null -> ""
-            memberName.startsWith("set") -> memberName.substring(3)
-            memberName.startsWith("get") -> memberName.substring(3)
-            else -> memberName.capitalize()
+            this == null -> ""
+            this.startsWith("set") -> this.substring(3)
+            this.startsWith("get") -> this.substring(3)
+            else -> this.replaceFirstChar { if (it.isLowerCase()) it.titlecase(getDefault()) else it.toString() }
         }
     }
 

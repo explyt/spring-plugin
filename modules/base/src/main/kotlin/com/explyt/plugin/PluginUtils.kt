@@ -23,7 +23,9 @@ enum class PluginIds(val pluginId: String) {
     SH_JB("com.jetbrains.sh"),
     ;
 
-    fun findEnabled() = findEnabledDetails(PluginId.getId(pluginId))
+    private val id = PluginId.getId(pluginId)
+
+    fun findEnabled() = findEnabledDetails(id)
 
     fun isEnabled() = findEnabled() != null
 

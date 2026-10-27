@@ -12,6 +12,7 @@ import com.intellij.json.psi.*
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.PlatformDataKeys
+import com.intellij.openapi.fileEditor.FileEditorProvider
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
@@ -76,8 +77,15 @@ object OpenApiUtils {
     fun proxyUrl(): String =
         "${localServer()}$OPENAPI_INTERNAL_CORS"
 
+    fun oauth2RedirectUrl(): String =
+        "${localServer()}$OPENAPI_OAUTH2_REDIRECT"
+
     fun localServer(): String =
         "http://localhost:${BuiltInServerManager.getInstance().port}"
+
+    fun isPreviewEditorAvailable(): Boolean =
+        FileEditorProvider.EP_FILE_EDITOR_PROVIDER.extensionList
+            .any { it.editorTypeId == OPENAPI_EDITOR_TYPE_ID }
 
     fun createPreviewAction(tag: String, operationId: String): AnAction {
         return object : AnAction({ "Open in UI" }, AllIcons.RunConfigurations.TestState.Run) {
@@ -179,6 +187,14 @@ object OpenApiUtils {
 
     const val EXPLYT_OPENAPI = "explyt-openapi"
     const val OPENAPI_INTERNAL_CORS = "/${EXPLYT_OPENAPI}_internal-cors"
+
+    /**
+     * Stable path of the Swagger UI OAuth2 redirect page.
+     *
+     * An OAuth2 provider only redirects to a `redirect_uri` registered with it beforehand, so this
+     * URL must not carry the per-session specification key that [resourceUrl] appends.
+     */
+    const val OPENAPI_OAUTH2_REDIRECT = "/${EXPLYT_OPENAPI}_oauth2-redirect"
     const val OPENAPI_ORIGINAL_URL = "${EXPLYT_OPENAPI}_original-url"
     const val OPENAPI_AUTH_HEADER = "${EXPLYT_OPENAPI}_auth-header"
     const val OPENAPI_EDITOR_TYPE_ID = "explyt.web.openapi.ui.editor"
