@@ -19,6 +19,7 @@ import org.jetbrains.yaml.psi.impl.YAMLPlainTextImpl
 class YamlRunEndpointLineMarkerProvider : RunLineMarkerContributor() {
 
     override fun getInfo(element: PsiElement): Info? {
+        if (!OpenApiUtils.isPreviewEditorAvailable()) return null
         if (element !is LeafPsiElement) return null
         if (!SpringWebUtil.isSpringWebProject(element.project)) return null
         val yamlKeyValue = element.parent as? YAMLKeyValue ?: return null

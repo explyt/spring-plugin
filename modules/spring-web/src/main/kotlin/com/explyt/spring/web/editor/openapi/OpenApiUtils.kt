@@ -12,6 +12,7 @@ import com.intellij.json.psi.*
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.PlatformDataKeys
+import com.intellij.openapi.fileEditor.FileEditorProvider
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
@@ -81,6 +82,10 @@ object OpenApiUtils {
 
     fun localServer(): String =
         "http://localhost:${BuiltInServerManager.getInstance().port}"
+
+    fun isPreviewEditorAvailable(): Boolean =
+        FileEditorProvider.EP_FILE_EDITOR_PROVIDER.extensionList
+            .any { it.editorTypeId == OPENAPI_EDITOR_TYPE_ID }
 
     fun createPreviewAction(tag: String, operationId: String): AnAction {
         return object : AnAction({ "Open in UI" }, AllIcons.RunConfigurations.TestState.Run) {

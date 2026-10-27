@@ -9,6 +9,7 @@ import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.web.SpringWebBundle
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.util.HandlerMethods
+import com.explyt.spring.web.editor.openapi.OpenApiUtils
 import com.explyt.spring.web.editor.openapi.OpenApiUtils.isAbsolutePath
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
@@ -23,6 +24,7 @@ import org.jetbrains.uast.getUParentForIdentifier
 class ControllerRunLineMarkerProvider : RunLineMarkerContributor() {
 
     override fun getInfo(psiElement: PsiElement): Info? {
+        if (!OpenApiUtils.isPreviewEditorAvailable()) return null
         val uClass = getUParentForIdentifier(psiElement) as? UClass ?: return null
         val psiClass = uClass.javaPsi
 

@@ -32,7 +32,7 @@ This release is the last one for IntelliJ IDEA 2024.2 and 2024.3. Later releases
 - Fewer false errors: bean-name checks in `@Lookup`, `@DependsOn`, cache annotations and `@WithUserDetails` skip classes that Spring does not register (#783)
 
 ### Endpoints and HTTP
-- Spring Explyt installs in IDEs without the JCEF module (e.g. Android Studio); the OpenAPI preview and Spring Initializr wizard are available only where JCEF is present (#817)
+- Spring Explyt installs in IDEs without the JCEF module (e.g. Android Studio); the OpenAPI preview, its "Run in Swagger" and "Open in UI" gutters, and Spring Initializr wizard are available only where JCEF is present (#817)
 - The Endpoints tool window lists the built-in Actuator endpoints (`health`, `info`, `metrics` and others) next to project endpoints, with exposure and access as Boot reads them (#476, #512, #315)
 - Find an endpoint from a URL that you paste from a browser, a log or a curl command (#453)
 - Functional routes: `router { }`, WebMvc.fn, Java `RouterFunctions` builders, nested `path()` and `nest()` prefixes and verb predicates are listed as Spring serves them (#415, #580, #606, #627)
