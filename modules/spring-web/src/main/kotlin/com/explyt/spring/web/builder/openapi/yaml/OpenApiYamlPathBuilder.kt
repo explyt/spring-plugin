@@ -8,6 +8,7 @@ package com.explyt.spring.web.builder.openapi.yaml
 import com.explyt.spring.web.builder.openapi.OpenApiPathBuilder
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
 
+
 class OpenApiYamlPathBuilder(
     private val path: String,
     indent: String = "",
@@ -17,11 +18,9 @@ class OpenApiYamlPathBuilder(
     override fun build() {
         builder.appendLine()
         builder.append("$indent${path}:")
-        for (endpoint in endpointInfos) {
-            for (httpType in endpoint.requestMethods) {
-                OpenApiYamlPathHttpTypeBuilder(endpoint, httpType, "$indent  ", builder)
-                    .build()
-            }
+        for ((endpoint, httpType) in operations()) {
+            OpenApiYamlPathHttpTypeBuilder(endpoint, httpType, "$indent  ", builder)
+                .build()
         }
     }
 

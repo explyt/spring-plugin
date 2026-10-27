@@ -5,28 +5,32 @@
 
 package com.explyt.spring.core.properties.contributors
 
-import com.explyt.spring.core.SpringCoreClasses.SCHEDULED
-import com.explyt.spring.core.SpringCoreClasses.VALUE
 import com.explyt.spring.core.properties.providers.ConditionalOnConfigurationPropertyReferenceProvider
 import com.explyt.spring.core.properties.providers.GetPropertyMethodPropertyReferenceProvider
 import com.explyt.spring.core.properties.providers.ValueConfigurationPropertyReferenceProvider
-import com.explyt.util.ExplytContributorUtil
 import com.intellij.patterns.PsiJavaPatterns
+import com.intellij.patterns.StandardPatterns.string
 import com.intellij.patterns.uast.callExpression
 import com.intellij.patterns.uast.injectionHostUExpression
+import com.intellij.patterns.uast.uAnnotationQualifiedNamePattern
 import com.intellij.psi.PsiReferenceContributor
 import com.intellij.psi.PsiReferenceRegistrar
 import com.intellij.psi.registerUastReferenceProvider
 
 class UastConfigurationPropertyReferenceContributor : PsiReferenceContributor() {
     override fun registerReferenceProviders(registrar: PsiReferenceRegistrar) {
-        val injection = injectionHostUExpression()
-
-        ExplytContributorUtil.addAnnotationValueContributor(
-            registrar, injection, VALUE, ValueConfigurationPropertyReferenceProvider()
-        )
-        ExplytContributorUtil.addAnnotationValueContributor(
-            registrar, injection, SCHEDULED, ValueConfigurationPropertyReferenceProvider(), VALUE_SCHEDULED
+        // Spring resolves ${...} through the embedded value resolver in string attributes of its
+        // own annotations (@KafkaListener topics/groupId, @RequestMapping paths, @Scheduled cron,
+        // ...), not only in @Value, so an attribute list per annotation would go stale with every
+        // Spring release. The provider extracts nothing from a literal without ${, and the pattern
+        // unwraps array initializers, so topics = ["..."] maps to the topics attribute.
+        registrar.registerUastReferenceProvider(
+            injectionHostUExpression().annotationParams(
+                uAnnotationQualifiedNamePattern(string().startsWith(SPRING_ANNOTATION_PACKAGE_PREFIX)),
+                string()
+            ),
+            ValueConfigurationPropertyReferenceProvider(),
+            PsiReferenceRegistrar.LOWER_PRIORITY
         )
         registrar.registerUastReferenceProvider(
             injectionHostUExpression(),
@@ -51,6 +55,6 @@ class UastConfigurationPropertyReferenceContributor : PsiReferenceContributor() 
     }
 
     companion object {
-        val VALUE_SCHEDULED = listOf("cron", "initialDelayString", "fixedDelayString", "fixedRateString", "zone")
+        private const val SPRING_ANNOTATION_PACKAGE_PREFIX = "org.springframework."
     }
 }
