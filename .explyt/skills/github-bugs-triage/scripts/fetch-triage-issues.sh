@@ -17,21 +17,24 @@ if ! [[ "$issue_limit" =~ ^[1-9][0-9]*$ ]]; then
   exit 1
 fi
 
-# 1. Collect open issues carrying either triage-relevant form label,
-#    oldest first, de-duplicated across the two label queries.
-all_issue_rows=$(
-  for label in "plugin-bug" "compatibility"; do
-    gh issue list --repo "$repo" \
-      --state open \
-      --label "$label" \
-      --limit 200 \
-      --json number,createdAt \
-      --jq '.[] | "\(.createdAt)\t\(.number)"'
-  done | sort -u
-)
+list_open_bug_rows() {
+  gh issue list --repo "$repo" \
+    --state open \
+    "$@" \
+    --limit 200 \
+    --json number,createdAt,issueType,labels \
+    --jq '.[]
+      | select(.issueType == null or .issueType.name == "Bug")
+      | select([.labels[].name] | index("question") | not)
+      | "\(.createdAt)\t\(.number)"'
+}
+
+bug_rows=$(list_open_bug_rows --type=Bug)
+compatibility_rows=$(list_open_bug_rows --label=compatibility)
+all_issue_rows=$(printf '%s\n%s\n' "$bug_rows" "$compatibility_rows" | sed '/^$/d' | sort -u)
 
 if [[ -z "$all_issue_rows" ]]; then
-  echo "info: no open plugin-bug/compatibility issues found in $repo" >&2
+  echo "info: no open Bug-type or compatibility issues found in $repo" >&2
   exit 0
 fi
 
@@ -41,11 +44,12 @@ selected_rows=$(printf '%s\n' "$all_issue_rows" | sort | awk -v n="$issue_limit"
 # 3. Emit issue details for analysis (JSONL, one object per line)
 while IFS=$'\t' read -r _created_at issue_number; do
   gh issue view "$issue_number" --repo "$repo" \
-    --json number,title,url,body,labels,comments \
+    --json number,title,url,issueType,body,labels,comments \
   | jq -c '{
       number,
       title,
       url,
+      type: .issueType.name,
       body,
       labels: [.labels[] | {name, description}],
       comments: [.comments[].body]

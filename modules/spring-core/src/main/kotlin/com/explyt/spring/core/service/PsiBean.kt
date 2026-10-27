@@ -9,6 +9,7 @@ import com.explyt.spring.core.util.SpringCoreUtil.getBeanName
 import com.intellij.psi.PsiAnnotation
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiMember
+import com.intellij.psi.PsiMethod
 
 data class PsiBean(
     val name: String,
@@ -16,7 +17,11 @@ data class PsiBean(
     val psiQualifier: PsiAnnotation? = null,
     val psiMember: PsiMember = psiClass,
     val isPrimary: Boolean = false,
+    val factoryOverride: PsiMethod? = null,
 ) {
+
+    val factoryMethod: PsiMethod?
+        get() = factoryOverride ?: psiMember as? PsiMethod
 
     constructor(psiClass: PsiClass) : this(
         name = psiClass.getBeanName() ?: "",

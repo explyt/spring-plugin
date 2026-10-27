@@ -18,7 +18,7 @@ class SpringWebAdditionalBeansDiscoverer : AdditionalBeansDiscoverer() {
     }
 
     override fun discoverBeans(module: Module): Collection<PsiBean> {
-        return if (SpringWebUtil.hasJakartaClasses(module)) {
+        val servletBeans = if (SpringWebUtil.hasJakartaClasses(module)) {
             listOfNotNull(
                 getStaticBean(module, SpringWebClasses.JAKARTA_SERVLET_CONTEXT, "servletContext"),
                 getStaticBean(module, SpringWebClasses.JAKARTA_SERVLET_CONFIG, "servletConfig"),
@@ -39,6 +39,21 @@ class SpringWebAdditionalBeansDiscoverer : AdditionalBeansDiscoverer() {
                 getStaticBean(module, SpringWebClasses.WEB_APPLICATION_CONTEXT, "webApplicationContext"),
             )
         }
+
+        return servletBeans + testClientBeans(module)
     }
+
+    /**
+     * Beans contributed by Spring Boot's *test* auto-configuration (`spring-boot-test-autoconfigure`), which is not
+     * part of the regular auto-configuration model: `@AutoConfigureMockMvc` and the slice annotations such as
+     * `@WebMvcTest` register them, so autowiring them in a test is valid.
+     *
+     * `getStaticBean` resolves the class in the module scope and returns `null` when it is absent, so listing a type
+     * here has no effect on modules without the corresponding test dependency.
+     */
+    private fun testClientBeans(module: Module): List<PsiBean> = listOfNotNull(
+        getStaticBean(module, SpringWebClasses.MOCK_MVC, "mockMvc"),
+        getStaticBean(module, SpringWebClasses.WEB_TEST_CLIENT, "webTestClient"),
+    )
 
 }

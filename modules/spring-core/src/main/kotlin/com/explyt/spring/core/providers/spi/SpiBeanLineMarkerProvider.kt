@@ -49,7 +49,10 @@ class SpiBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             if (virtualFile.parent.name != "services") break
             if (virtualFile.parent.parent.name != SpringProperties.META_INF) break
 
-            val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringSetting)
+            val builder = NavigationGutterIconBuilder.create(
+                SpringIcons.SpringSetting,
+                SpringCoreBundle.message("explyt.spring.gutter.group.spi")
+            )
                 .setAlignment(GutterIconRenderer.Alignment.LEFT)
                 .setTargets(NotNullLazyValue.lazy { getTarget(virtualFile.toNioPath(), project) })
                 .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.spi.tooltip.title.usage"))

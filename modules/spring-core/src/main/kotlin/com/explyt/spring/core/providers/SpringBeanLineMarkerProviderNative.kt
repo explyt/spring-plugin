@@ -48,7 +48,9 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
             if (!SpringCoreUtil.isSpringBeanCandidateClass(uElement.javaPsi)) return
             val inContextBean = isContextBean(module, uElement)
             val componentCandidate = isComponentCandidate(uElement.javaPsi)
-            if (componentCandidate && !inContextBean) {
+            if (!inContextBean && AbstractComponentLineMarker.isAbstractComponent(uElement.javaPsi)) {
+                addAbstractComponent(uElement, module, result)
+            } else if (componentCandidate && !inContextBean) {
                 addComponentCandidateBean(uElement, module, result)
             } else {
                 if (isMethodBean(uElement, inContextBean, componentCandidate)) {
@@ -98,7 +100,10 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
         if (!isAutowiredFieldExpression(psiField) && !isLombok) return
 
         val sourcePsi = uField.uastAnchor?.sourcePsi ?: return
-        val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBeanDependencies)
+        val builder = NavigationGutterIconBuilder.create(
+            SpringIcons.SpringBeanDependencies,
+            SpringCoreBundle.message("explyt.spring.gutter.group.bean")
+        )
             .setAlignment(GutterIconRenderer.Alignment.LEFT)
             .setTargets(NotNullLazyValue.lazy { getBeanDeclarations(uField, module) })
             .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.bean.candidate"))
@@ -134,7 +139,10 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
         }
 
         if (method.javaPsi.isMetaAnnotatedBy(SpringCoreClasses.BEAN) && isMethodBean(module, method)) {
-            val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBean)
+            val builder = NavigationGutterIconBuilder.create(
+                SpringIcons.SpringBean,
+                SpringCoreBundle.message("explyt.spring.gutter.group.bean")
+            )
                 .setAlignment(GutterIconRenderer.Alignment.LEFT)
                 .setTargets(NotNullLazyValue.lazy {
                     SpringSearchServiceFacade.getInstance(module.project)
@@ -161,7 +169,10 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
     ) {
         for (uParameter in method.uastParameters) {
             val sourcePsi = uParameter.uastAnchor?.sourcePsi ?: continue
-            val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBeanDependencies)
+            val builder = NavigationGutterIconBuilder.create(
+                SpringIcons.SpringBeanDependencies,
+                SpringCoreBundle.message("explyt.spring.gutter.group.bean")
+            )
                 .setAlignment(GutterIconRenderer.Alignment.LEFT)
                 .setTargets(NotNullLazyValue.lazy { getBeanDeclarations(uParameter, module) })
                 .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.bean.candidate"))
@@ -177,7 +188,10 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
     ) {
         val sourcePsi = uClass.uastAnchor?.sourcePsi ?: return
-        val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBean)
+        val builder = NavigationGutterIconBuilder.create(
+            SpringIcons.SpringBean,
+            SpringCoreBundle.message("explyt.spring.gutter.group.bean")
+        )
             .setAlignment(GutterIconRenderer.Alignment.LEFT)
             .setTargets(NotNullLazyValue.lazy {
                 SpringSearchServiceFacade.getInstance(module.project)
@@ -195,7 +209,10 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
     ) {
         val sourcePsi = uClass.uastAnchor?.sourcePsi ?: return
-        val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBeanDependencies)
+        val builder = NavigationGutterIconBuilder.create(
+            SpringIcons.SpringBeanDependencies,
+            SpringCoreBundle.message("explyt.spring.gutter.group.bean")
+        )
             .setAlignment(GutterIconRenderer.Alignment.LEFT)
             .setTargets(NotNullLazyValue.lazy { findBeanDeclarations(uClass) })
             .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.bean.candidate"))
@@ -204,13 +221,29 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
         result.add(builder.createLineMarkerInfo(sourcePsi))
     }
 
+    private fun addAbstractComponent(
+        uClass: UClass,
+        module: Module,
+        result: MutableCollection<in RelatedItemLineMarkerInfo<*>>,
+    ) {
+        val sourcePsi = uClass.uastAnchor?.sourcePsi ?: return
+        val beans = NativeSearchService.getInstance(module.project).getAllActiveBeans()
+        result.add(AbstractComponentLineMarker.create(sourcePsi, uClass.javaPsi, beans) {
+            SpringSearchServiceFacade.getInstance(module.project)
+                .findInjectionPoints(uClass, null, module, true)
+        })
+    }
+
     private fun addComponentCandidateBean(
         uClass: UClass,
         module: Module,
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>,
     ) {
         val sourcePsi = uClass.uastAnchor?.sourcePsi ?: return
-        val builder = NavigationGutterIconBuilder.create(SpringIcons.springBeanInactive)
+        val builder = NavigationGutterIconBuilder.create(
+            SpringIcons.springBeanInactive,
+            SpringCoreBundle.message("explyt.spring.gutter.group.bean")
+        )
             .setAlignment(GutterIconRenderer.Alignment.LEFT)
             .setTargets(NotNullLazyValue.lazy {
                 SpringSearchServiceFacade.getInstance(module.project)

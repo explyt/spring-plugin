@@ -40,8 +40,38 @@ foo:
             "application.yaml",
             """
 foo:
-    <warning descr="Should be kebab-case">barBaz</warning>: some1
-    <warning descr="Should be kebab-case">bar-Baz1</warning>: some1
+    <weak_warning descr="Key is not in Spring's canonical form">barBaz</weak_warning>: some1
+    <weak_warning descr="Key is not in Spring's canonical form">bar-Baz1</weak_warning>: some1
+            """.trimIndent()
+        )
+        myFixture.testHighlighting("application.yaml")
+    }
+
+    fun testLoggingLevelUppercaseValueIsNotAnError() {
+        myFixture.configureByText(
+            "application.yaml",
+            """
+logging:
+  level:
+    root: INFO
+    org.springframework.kafka: DEBUG
+            """.trimIndent()
+        )
+        myFixture.testHighlighting("application.yaml")
+    }
+
+    fun testHintValueGateUsesValuesHint() {
+        myFixture.copyFileToProject(
+            "hintValueGate/META-INF/additional-spring-configuration-metadata.json",
+            "META-INF/additional-spring-configuration-metadata.json"
+        )
+        myFixture.configureByText(
+            "application.yaml",
+            """
+explyt.modes:
+    mode: <error descr="Invalid value 'hyper', must be one of [fast, slow]">hyper</error>
+explyt.maponly:
+    beta: anything
             """.trimIndent()
         )
         myFixture.testHighlighting("application.yaml")
@@ -157,9 +187,9 @@ explyt.digit:
             "application.yaml",
             """
 explyt.camel:
-  camelWritten:
+  <weak_warning descr="Key is not in Spring's canonical form">camelWritten</weak_warning>:
     items:
-      - <warning descr="Should be kebab-case">name</warning>: first
+      - name: first
             """.trimIndent()
         )
         myFixture.testHighlighting("application.yaml")
@@ -213,7 +243,7 @@ explyt.placeholder:
             "application.yaml",
             """
 foo:
-    <warning descr="Should be kebab-case">barbaz.testProp</warning>: some1    
+    barbaz.<weak_warning descr="Key is not in Spring's canonical form">testProp</weak_warning>: some1    
             """.trimIndent()
         )
         myFixture.testHighlighting("application.yaml")
@@ -281,4 +311,82 @@ foo:
         """.trimIndent(), true
         )
     }
+
+    /**
+     * A key whose value is a sequence is a leaf property like any other. It used to be collected only when its
+     * value was a scalar, so every per-key check skipped it silently.
+     */
+    fun testSequenceKeyInNonCanonicalFormIsReported() {
+        myFixture.addClass(listConfigurationProperties("pathsToExclude"))
+        myFixture.configureByText(
+            "application.yaml",
+            """
+explyt.doc:
+  <weak_warning descr="Key is not in Spring's canonical form">paths_to_exclude</weak_warning>:
+    - /actuator/**
+    - /internal/**
+            """.trimIndent()
+        )
+        myFixture.testHighlighting("application.yaml")
+    }
+
+    fun testSequenceKeyThatDoesNotResolveIsReported() {
+        myFixture.addClass(listConfigurationProperties("pathsToExclude"))
+        myFixture.configureByText(
+            "application.yaml",
+            """
+explyt.doc:
+  <warning descr="Cannot resolve key property 'explyt.doc.unknown-list'">unknown-list</warning>:
+    - /actuator/**
+            """.trimIndent()
+        )
+        myFixture.testHighlighting("application.yaml")
+    }
+
+    /** The regression guard for over-reporting: a resolvable list key must stay clean. */
+    fun testResolvableSequenceKeyIsNotReported() {
+        myFixture.addClass(listConfigurationProperties("pathsToExclude"))
+        myFixture.configureByText(
+            "application.yaml",
+            """
+explyt.doc:
+  paths-to-exclude:
+    - /actuator/**
+    - /internal/**
+            """.trimIndent()
+        )
+        myFixture.testHighlighting("application.yaml")
+    }
+
+    /**
+     * The value checks run on a scalar value. A sequence has no scalar value — `YAMLKeyValue.getValueText` answers a
+     * synthetic `<sequence:…>` marker — so a class-reference key must report nothing rather than the marker.
+     */
+    fun testClassReferenceCheckDoesNotFireOnASequence() {
+        myFixture.configureByText(
+            "application.yaml",
+            """
+spring:
+  main:
+    sources:
+      - com.explyt.NotAClassButAListElement
+            """.trimIndent()
+        )
+        myFixture.testHighlighting("application.yaml")
+    }
+
+    @Language("java")
+    private fun listConfigurationProperties(propertyName: String) = """
+        import java.util.List;
+
+        @org.springframework.context.annotation.Configuration
+        @org.springframework.boot.context.properties.ConfigurationProperties(prefix = "explyt.doc")
+        public class DocConfigProperties {
+            private List<String> $propertyName;
+            public List<String> get${propertyName.replaceFirstChar { it.uppercase() }}() { return $propertyName; }
+            public void set${propertyName.replaceFirstChar { it.uppercase() }}(List<String> $propertyName) {
+                this.$propertyName = $propertyName;
+            }
+        }
+    """.trimIndent()
 }

@@ -5,7 +5,11 @@ name: test
 
 on:
   push:
+    branches:
+      - main
+      - 'release/**'
   pull_request:
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -23,7 +27,19 @@ permissions:
 
 jobs:
   build:
+    name: test (${{ matrix.shard }})
     runs-on: ubuntu-latest
+    timeout-minutes: 105
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: core
+            tasks: ':spring-core:test'
+          - shard: web
+            tasks: ':spring-web:test'
+          - shard: rest
+            tasks: ':spring-bootstrap:test -x :spring-core:test -x :spring-web:test'
     steps:
       - name: Checkout sources
         uses: actions/checkout@v6
@@ -41,15 +57,35 @@ jobs:
           cache-read-only: ${{ github.event_name == 'pull_request' }}
           gradle-home-cache-cleanup: true
       - name: Build with Gradle
+        timeout-minutes: 90
         env:
           GRADLE_OPTS: -Dfile.encoding=UTF-8
-        run: ./gradlew --stacktrace --info --warning-mode all :spring-bootstrap:test
+        run: ./gradlew --stacktrace --info --warning-mode all ${{ matrix.tasks }}
+      - name: Dump JVM threads
+        if: failure() || cancelled()
+        run: |
+          jps -lv || true
+          for p in $(jps -q); do
+            jstack -l "$p" > "jstack-$p.txt" 2>&1 || true
+          done
+      - name: Upload test diagnostics
+        if: failure() || cancelled()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-diagnostics-${{ matrix.shard }}
+          path: |
+            .intellijPlatform/sandbox/**/log-test/**
+            jstack-*.txt
+            modules/*/build/test-results/test/*.xml
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@v6
+        continue-on-error: true
         if: success() || failure() # always run even if the previous step fails
         with:
+          check_name: JUnit Test Report (${{ matrix.shard }})
           verbose_summary: true
           comment: true
           report_paths: 'modules/**/build/test-results/test/TEST-*.xml'
-
 

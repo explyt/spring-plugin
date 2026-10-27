@@ -5,7 +5,7 @@
 
 package com.explyt.spring.core.inspections
 
-import com.explyt.base.LibraryClassCache
+import com.explyt.inspection.InspectionAvailability
 import com.explyt.spring.core.SpringCoreBundle.message
 import com.explyt.spring.core.util.SpringBootUtil
 import com.explyt.util.SpringBaseClasses.CORE_ENVIRONMENT
@@ -40,7 +40,7 @@ import org.jetbrains.kotlin.psi.KtVisitorVoid
 class SpringBoot3JakartaMigrationInspection : LocalInspectionTool() {
 
     override fun isAvailableForFile(file: PsiFile): Boolean {
-        return LibraryClassCache.searchForLibraryClass(file.project, CORE_ENVIRONMENT) != null
+        return InspectionAvailability.hasLibraryClass(file, CORE_ENVIRONMENT)
                 && SpringBootUtil.isAtLeastSpringBoot3(file)
                 && isAnyLegacyJavaxAvailable(file)
     }
