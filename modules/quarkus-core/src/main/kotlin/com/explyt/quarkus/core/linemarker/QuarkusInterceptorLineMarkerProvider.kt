@@ -48,7 +48,10 @@ class QuarkusInterceptorLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 getInterceptorBindingAnnotationQualifiedNames(uAnnotations)
                     .forEach {
                         val sourcePsi = uElement.uastAnchor?.sourcePsi ?: return@forEach
-                        val builder = NavigationGutterIconBuilder.create(QuarkusCoreIcons.Advice)
+                        val builder = NavigationGutterIconBuilder.create(
+                            QuarkusCoreIcons.Advice,
+                            message("explyt.quarkus.gutter.group.advice")
+                        )
                             .setAlignment(GutterIconRenderer.Alignment.LEFT)
                             .setTargets(NotNullLazyValue.lazy { findInterceptorUsages(it, javaPsiClass) })
                             .setTooltipText(message("explyt.quarkus.gutter.interceptor.usages.tooltip"))
@@ -72,7 +75,10 @@ class QuarkusInterceptorLineMarkerProvider : RelatedItemLineMarkerProvider() {
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>,
     ) {
         val element = annotation.uastAnchor?.sourcePsi ?: return
-        val builder = NavigationGutterIconBuilder.create(QuarkusCoreIcons.Advice)
+        val builder = NavigationGutterIconBuilder.create(
+            QuarkusCoreIcons.Advice,
+            message("explyt.quarkus.gutter.group.advice")
+        )
             .setAlignment(GutterIconRenderer.Alignment.LEFT)
             .setTargets(NotNullLazyValue.lazy { goToInterceptor(annotation) })
             .setTooltipText(message("explyt.quarkus.gutter.interceptor.goto.tooltip"))

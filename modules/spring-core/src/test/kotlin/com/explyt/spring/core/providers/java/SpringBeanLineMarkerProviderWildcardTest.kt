@@ -145,9 +145,9 @@ class SpringBeanLineMarkerProviderWildcardTest : ExplytJavaLightTestCase() {
         val allBeanGutters = getAllBeanGuttersByIcon(myFixture, icons)
         val gutterTargetString = getGutterTargetString(allBeanGutters)
 
-        assertEquals(gutterTargetString.flatten().size, 2)
-        assertEquals(gutterTargetString.flatMap { gutter -> gutter.filter { it == "E" } }.size, 1)
-        assertEquals(gutterTargetString.flatMap { gutter -> gutter.filter { it == "dBean()" } }.size, 1)
+        assertEquals(2, gutterTargetString.flatten().size)
+        assertEquals(1, gutterTargetString.flatMap { gutter -> gutter.filter { it == "E" } }.size)
+        assertEquals(1, gutterTargetString.flatMap { gutter -> gutter.filter { it == "dBean()" } }.size)
     }
 
     fun testLineMarkerWildcard_toAutowired_setAllWildcardSuperI() {
@@ -653,12 +653,9 @@ class SpringBeanLineMarkerProviderWildcardTest : ExplytJavaLightTestCase() {
         return """
             import org.springframework.stereotype.Component;
             import org.springframework.context.annotation.Configuration;
-            import org.springframework.context.annotation.Bean
+            import org.springframework.context.annotation.Bean;
             
-            import java.util.HashMap;
-            import java.util.List;
-            import java.util.Map;
-            import java.util.Set;
+            import java.util.*;
 
             interface I {}
 

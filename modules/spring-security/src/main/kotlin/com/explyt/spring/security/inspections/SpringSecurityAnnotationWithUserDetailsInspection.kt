@@ -5,6 +5,7 @@
 
 package com.explyt.spring.security.inspections
 
+import com.explyt.spring.core.service.SpringBeanOwner
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.security.SpringSecurityBundle
@@ -21,6 +22,7 @@ import com.intellij.psi.util.InheritanceUtil
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UDeclaration
 import org.jetbrains.uast.UMethod
+import org.jetbrains.uast.getContainingUClass
 
 class SpringSecurityAnnotationWithUserDetailsInspection : AbstractBaseUastLocalInspectionTool() {
     override fun checkMethod(
@@ -56,6 +58,8 @@ class SpringSecurityAnnotationWithUserDetailsInspection : AbstractBaseUastLocalI
             .mapNotNull { it.javaPsi }
             .firstOrNull { metaHolder.contains(it) }
             ?: return emptyArray()
+        val owner = member as? UClass ?: member.getContainingUClass() ?: return emptyArray()
+        if (!SpringBeanOwner.isProcessedBySpring(module, owner.javaPsi)) return emptyArray()
 
         val details = metaHolder.getAnnotationMemberValues(psiAnnotation, setOf("userDetailsServiceBeanName"))
             .firstOrNull() ?: return emptyArray()

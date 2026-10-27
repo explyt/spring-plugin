@@ -16,6 +16,9 @@ import com.explyt.spring.web.tracker.OpenApiLanguagesModificationTracker
 import com.explyt.util.CacheKeyStore
 import com.intellij.ide.scratch.RootType
 import com.intellij.json.JsonFileType
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
@@ -32,23 +35,23 @@ import com.intellij.psi.SingleRootFileViewProvider
 import com.intellij.psi.util.CachedValue
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
+import com.intellij.util.concurrency.AppExecutorUtil
 import org.jetbrains.yaml.YAMLFileType
 import java.io.File
+import java.util.concurrent.Callable
 
 class OpenApiFileUtil {
 
     fun findSpecificationType(
-        project: Project,
-        psiFile: PsiFile,
-        virtualFile: VirtualFile
+        psiFile: PsiFile
     ): OpenApiSpecificationType {
-        val key: Key<CachedValue<OpenApiSpecificationType>> = SPECIFICATION_TYPE_KEY
-        return CachedValuesManager.getManager(project).getCachedValue(
+        return CachedValuesManager.getManager(psiFile.project).getCachedValue(
             psiFile,
-            key,
             {
-                val result = getSpecificationType(virtualFile, psiFile)
-                val modificationTracker = project.getService(OpenApiLanguagesModificationTracker::class.java)
+                val virtualFile = psiFile.virtualFile
+                val result = virtualFile?.let { getSpecificationType(it, psiFile) }
+                    ?: OpenApiSpecificationType.OpenApiUndefined
+                val modificationTracker = psiFile.project.getService(OpenApiLanguagesModificationTracker::class.java)
                     ?: ModificationTracker.NEVER_CHANGED
 
                 CachedValueProvider.Result.create(
@@ -56,8 +59,7 @@ class OpenApiFileUtil {
                     modificationTracker,
                     CacheKeyStore.cacheReset
                 )
-            },
-            false
+            }
         )
     }
 
@@ -73,7 +75,7 @@ class OpenApiFileUtil {
             ?.getSpecificationType(fileUrl) ?: OpenApiSpecificationType.OpenApiUndefined
 
         return localSpecificationType.takeUnless { it is OpenApiSpecificationType.OpenApiUndefined }
-            ?: findSpecificationType(psiFile.project, psiFile, file)
+            ?: findSpecificationType(psiFile)
     }
 
     private fun isValidFileType(file: VirtualFile): Boolean {
@@ -108,28 +110,50 @@ class OpenApiFileUtil {
         project: Project,
         endpointInfos: List<AddEndpointToOpenApiIntention.EndpointInfo>,
         servers: List<String>,
-        layout: TextEditorWithPreview.Layout
+        layout: TextEditorWithPreview.Layout,
+        endpointServers: List<String>? = null
     ) {
-        val fileType = YAMLFileType.YML
+        ReadAction.nonBlocking(Callable {
+            buildContent(endpointInfos, servers, endpointServers ?: endpointServersOf(endpointInfos))
+        })
+            .inSmartMode(project)
+            .expireWhen { project.isDisposed }
+            .submit(AppExecutorUtil.getAppExecutorService())
+            .onSuccess { content ->
+                AppExecutorUtil.getAppExecutorService().execute {
+                    val file = File.createTempFile("openapi-", ".${YAMLFileType.YML.defaultExtension}")
+                    file.deleteOnExit()
+                    val document = OpenApiDocument(file, content)
+                    ApplicationManager.getApplication().invokeLater({
+                        show(project, document, layout)
+                    }, ModalityState.nonModal(), project.disposed)
+                }
+            }
+    }
 
-        val file = File.createTempFile("openapi-", ".${fileType.defaultExtension}")
-        file.deleteOnExit()
-        val virtualFile = LocalFileSystem.getInstance().findFileByIoFile(file) ?: return
-
-        val openapiBuilder = OpenApiBuilderFactory.getOpenApiFileBuilder(fileType)
+    private fun buildContent(
+        endpointInfos: List<AddEndpointToOpenApiIntention.EndpointInfo>,
+        servers: List<String>,
+        endpointServers: List<String>
+    ): String {
+        val openapiBuilder = OpenApiBuilderFactory.getOpenApiFileBuilder(YAMLFileType.YML)
         val serversToAdd = servers.ifEmpty { listOf(DEFAULT_SERVER) }
-        val servers = endpointInfos.firstOrNull()
-            ?.let { EndpointRunLineMarkerProvider.applyServerPortSettings(it.psiElement) } ?: emptyList()
-        val allServers = (servers + serversToAdd).toLinkedSet()
+        val allServers = LinkedHashSet<String>(8)
+        allServers.addAll(endpointServers)
+        allServers.addAll(serversToAdd)
         for (server in allServers) {
             openapiBuilder.addServer(server)
         }
         for (info in endpointInfos) {
             openapiBuilder.addEndpoint(info)
         }
+        return openapiBuilder.toString()
+    }
 
+    private fun show(project: Project, document: OpenApiDocument, layout: TextEditorWithPreview.Layout) {
+        val virtualFile = LocalFileSystem.getInstance().findFileByIoFile(document.file) ?: return
         runWriteAction {
-            VfsUtil.saveText(virtualFile, openapiBuilder.toString())
+            VfsUtil.saveText(virtualFile, document.content)
             val openFileDescriptor = OpenFileDescriptor(project, virtualFile)
             val openapiEditor = FileEditorManager.getInstance(project)
                 .openEditor(openFileDescriptor, true)
@@ -139,11 +163,19 @@ class OpenApiFileUtil {
         }
     }
 
+    fun endpointServersOf(endpointInfos: List<AddEndpointToOpenApiIntention.EndpointInfo>): List<String> =
+        endpointInfos.firstOrNull()
+            ?.let { EndpointRunLineMarkerProvider.applyServerPortSettings(it.psiElement) }
+            .orEmpty()
+
+    private data class OpenApiDocument(val file: File, val content: String)
+
     private fun getSpecificationType(file: VirtualFile, psiFile: PsiFile): OpenApiSpecificationType {
         return when {
             !isOpenApiFile(file, psiFile) -> OpenApiSpecificationType.OpenApiUndefined
             isOpenApiV30File(file, psiFile) -> OpenApiSpecificationType.OpenApiV30.INSTANCE
             isOpenApiV31File(file, psiFile) -> OpenApiSpecificationType.OpenApiV31.INSTANCE
+            isOpenApiV32File(file, psiFile) -> OpenApiSpecificationType.OpenApiV32.INSTANCE
             else -> OpenApiSpecificationType.OpenApiUndefined
         }
     }
@@ -154,6 +186,10 @@ class OpenApiFileUtil {
 
     private fun isOpenApiV31File(file: VirtualFile, psiFile: PsiFile): Boolean {
         return isSpecificationFileType(file, psiFile, reg31)
+    }
+
+    private fun isOpenApiV32File(file: VirtualFile, psiFile: PsiFile): Boolean {
+        return isSpecificationFileType(file, psiFile, reg32)
     }
 
     private fun isSpecificationFileType(
@@ -172,7 +208,6 @@ class OpenApiFileUtil {
 
     companion object {
         val INSTANCE: OpenApiFileUtil = OpenApiFileUtil()
-        val SPECIFICATION_TYPE_KEY: Key<CachedValue<OpenApiSpecificationType>> = Key.create("openApiSpecificationType")
         val SPECIFICATION_ICON_TYPE_KEY: Key<OpenApiSpecificationType> = Key.create("openApiIconSpecificationType")
 
         const val DEFAULT_SERVER = "http://localhost:8080"
@@ -180,10 +215,12 @@ class OpenApiFileUtil {
 
         private var reg30: Regex
         private var reg31: Regex
+        private var reg32: Regex
 
         init {
             reg30 = createRegex(SpringWebUtil.OPEN_API, "3\\.0\\.\\d+(-.+)?")
             reg31 = createRegex(SpringWebUtil.OPEN_API, "3\\.1\\.\\d+(-.+)?")
+            reg32 = createRegex(SpringWebUtil.OPEN_API, "3\\.2\\.\\d+(-.+)?")
         }
 
         private fun createRegex(placeholder: String, versionPattern: String): Regex {

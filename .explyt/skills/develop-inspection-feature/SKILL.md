@@ -42,7 +42,9 @@ Resolve before starting:
    - File-level checks (properties/YAML) → extend `SpringBaseLocalInspectionTool` / `Spring4LocalInspectionTool` and gate with `SpringCoreUtil.isConfigurationPropertyFile(file)`.
    - If a version-gated base for your version does not exist, create it once in a shared/foundational change: `isAvailableForFile = super.isAvailableForFile(file) && SpringBootUtil.isAtLeast<Version>(file)` (version lookup is cached per module).
    - Add narrower `isAvailableForFile` overrides on top of `super`:
-     - migration-of-old-class inspections: require the OLD class to be resolvable — fresh projects without the legacy class must skip the inspection entirely; use the `isClassAvailable` / `isAnyClassAvailable` helpers from the version-gated base (create them there if missing: `JavaPsiFacade.findClass(fqn, file.resolveScope) != null`);
+     - migration inspections gate on the REPLACEMENT symbol being resolvable: a gate on the legacy symbol disables itself once the upgrade removes that symbol, exactly when stale source most needs reporting. Gate on the OLD class only when the inspection reports use of a legacy API that must still be present (e.g. Jackson 2 `ObjectMapper` injection) or a package rename where a fresh project without legacy `javax.*` should skip entirely. Use the `isClassAvailable` / `isAnyClassAvailable` helpers from the version-gated base (create them there if missing: `JavaPsiFacade.findClass(fqn, file.resolveScope) != null`);
+     - a replacement gate is not a version discriminator (Framework can be upgraded under an older Boot): keep the version floor too, and change it per inspection by overriding the base's `isSupportedBootVersion(file)` hook, never per PSI element;
+     - visitors must recognise UNRESOLVED legacy source (null annotation FQN, short written type name); reuse the base's `legacyAnnotationFqn` / `legacyTypeFqn` / `writtenAnnotationName` and give removal-case fixtures only the replacement classes; cover the deprecation window separately with both APIs present;
      - test-only features (e.g. `@SpringBootTest` checks): require `ExplytPsiUtil.isTestFiles(file)`.
 
 4. **Implement detection + quick-fix.** Reuse existing quick-fixes before writing new ones:
@@ -54,14 +56,15 @@ Resolve before starting:
 
 5. **Register.** In the module's plugin.xml:
    - `language="UAST"` for UAST-based inspections; `language="Properties"` / `language="yaml"` for single-format property inspections (repo precedent); omit `language` only when one class must serve multiple file types (e.g. `.properties` + YAML via `checkFile`, or raw-PSI visitors);
-   - `shortName` must equal the description HTML filename in `inspectionDescriptions/<ShortName>.html` — create it;
+   - `shortName` must equal the description HTML filename in `inspectionDescriptions/<ShortName>.html` — create it; never rename an existing `shortName` (user profiles persist suppressions and severities by it), change the display name instead;
+   - while a legacy symbol is only deprecated (it still resolves) the platform already reports the deprecation: use `WEAK_WARNING` with a `<base>.deprecated` bundle key; keep full strength once it is gone;
    - messages go to the module bundle (`messages/SpringCoreBundle.properties`); no-arg messages must not double apostrophes, parameterized (`{0}`) messages must double them.
 
 6. **Test.** Base classes `ExplytInspectionJavaTestCase` / `ExplytInspectionKotlinTestCase`; declare `override val libraries: Array<TestLibrary>` (add a new `TestLibrary` coordinate if the version is missing — it downloads from Maven Central). Cover: positive highlight, negative (new API / unrelated code), quick-fix result. Known gotchas:
    - the highlight marker must wrap the WHOLE visible element: `<warning>@Annotation(args)</warning>` including `@` and arguments; for type references just the type name token;
    - stub classes removed/relocated from real jars with `myFixture.addClass(...)`; annotation stubs need `@Retention(RUNTIME)` or annotation-rewrite fixes won't offer in-code placement;
    - `configureByText("src/test/java/X.java", ...)` fails ("Invalid file name"); for test-source gating mark a root in `setUp`: `PsiTestUtil.addSourceRoot(module, myFixture.tempDirFixture.findOrCreateDir("src/test/java"), true)`, then `myFixture.addFileToProject(path, text)` + `configureFromExistingVirtualFile(...)`;
-   - if the legacy import cannot resolve, add the legacy library/stub too, or the Kotlin compiler errors pollute `testHighlighting`;
+   - For removal-case fixtures, keep legacy imports unresolved and suppress only expected unresolved-reference diagnostics in the highlighting check; add legacy stubs only in separate deprecation-window fixtures.
    - prefer semantic quick-fix assertions on `myFixture.file.text` (contains new annotation/import, old one gone) over exact `checkResult`; find intentions with `availableIntentions.firstOrNull { it.text.contains(...) }`; the fix may legitimately leave the now-unused old import for the IDE's unused-import inspection;
    - run the single test class (`./gradlew :spring-core:test --tests "...TestName"` or the IDE runner). Fix-and-rerun loop: max 4 iterations, then stop and report.
 

@@ -23,7 +23,9 @@ class ExplytCapturingProcessAdapter(
     private val latch = CountDownLatch(1)
     private var explytLog = false
     private val gson = Gson()
-    var classNotFoundError = false
+
+    var missingClassName: String? = null
+        private set
 
     override fun processTerminated(event: ProcessEvent) {
         super.processTerminated(event)
@@ -38,8 +40,8 @@ class ExplytCapturingProcessAdapter(
                 listener.onTaskOutput(id, event.text, true)
             }
         } else {
-            if (event.text.contains("NoClassDefFoundError")) {
-                classNotFoundError = true
+            if (missingClassName == null) {
+                missingClassName = parseMissingClassName(event.text)
             }
             listener.onTaskOutput(id, event.text, true)
         }
@@ -61,6 +63,20 @@ class ExplytCapturingProcessAdapter(
     }
 
     companion object {
+        /**
+         * The JVM prints the type it failed to load slash-separated, optionally wrapped in
+         * `Could not initialize class`. Only the class name identifies the cause; the rest of the launch output
+         * is a Spring stack trace that says nothing about which dependency is absent.
+         */
+        private val NO_CLASS_DEF_FOUND = Regex(
+            """NoClassDefFoundError:\s*(?:Could not initialize class\s+)?([\w$/.]+)"""
+        )
+
+        fun parseMissingClassName(text: String): String? {
+            val rawClassName = NO_CLASS_DEF_FOUND.find(text)?.groupValues?.get(1) ?: return null
+            return rawClassName.replace('/', '.')
+        }
+
         fun getSpringContextInfo(lines: List<String>): SpringContextInfo {
             return getSpringContextInfo(lines, Gson())
         }

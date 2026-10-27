@@ -33,6 +33,30 @@ class SpringDataPackageScanServiceTest : ExplytKotlinLightTestCase() {
         TestCase.assertTrue(allActiveBeans.any { it.qualifiedName?.contains("TestRepo") == true })
     }
 
+    fun testDefaultPackageApplicationFindsRepositoryInNamedPackage() {
+        myFixture.addFileToProject(
+            "DemoApplication.kt",
+            """
+            @org.springframework.boot.autoconfigure.SpringBootApplication
+            class DemoApplication
+            """.trimIndent()
+        )
+        myFixture.addFileToProject(
+            "com/x/PersonRepository.kt",
+            """
+            package com.x
+
+            interface PersonRepository : org.springframework.data.repository.Repository<Any, Long>
+            """.trimIndent()
+        )
+
+        val activeBeans = SpringSearchService.getInstance(project).getAllActiveBeans(module)
+            .mapNotNullTo(mutableSetOf()) { it.qualifiedName }
+
+        TestCase.assertTrue("precondition: the application is a bean, got $activeBeans", "DemoApplication" in activeBeans)
+        TestCase.assertTrue("the repository is scanned, got $activeBeans", "com.x.PersonRepository" in activeBeans)
+    }
+
     fun testDefaultPackage() {
         myFixture.copyDirectoryToProject("service/jpa-data-default", "")
         val allActiveBeans = SpringSearchService.getInstance(project).getAllActiveBeans(module)
