@@ -1,0 +1,42 @@
+<!--
+  ~ Copyright (c) 2026 Explyt Ltd
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
+<html lang="en">
+<head>
+    <title>Duplicate Actuator Web Extension Inspection</title>
+</head>
+<body>
+
+<p>Reports an Actuator endpoint extended by more than one <code>@EndpointWebExtension</code> bean.
+Spring Boot fails the application at startup with <i>Found multiple extensions for the endpoint bean</i>.</p>
+
+<p>The failure happens only for an endpoint exposed over HTTP through
+<code>management.endpoints.web.exposure.include</code> and <code>exclude</code>: an unexposed endpoint is never
+converted, so its extensions are not compared. <code>management.endpoint.&lt;id&gt;.access=none</code> and
+<code>enabled=false</code> do not prevent the failure.</p>
+
+<p>Only extension beans count: a class without a bean definition, an extension whose bean condition does not match,
+and an extension in test sources of a production endpoint are ignored. A bean subclass of an extension bean is a
+second extension: the problem is reported on the extension annotation of the base class.</p>
+
+<p>The problem is an error when the endpoint is exposed and at least two of its extension beans are registered whatever
+their bean conditions decide, and a warning when the exposure cannot be decided from the project configuration or
+fewer than two extension beans are certain to be registered.</p>
+
+<p><b>Example:</b></p>
+<pre><code lang="java">
+    @Component
+    @EndpointWebExtension(endpoint = StatusEndpoint.class)
+    class StatusWebExtension {
+    }
+
+    @Component
+    @EndpointWebExtension(endpoint = StatusEndpoint.class)
+    class DetailedStatusWebExtension {
+    }
+</code></pre>
+
+</body>
+</html>

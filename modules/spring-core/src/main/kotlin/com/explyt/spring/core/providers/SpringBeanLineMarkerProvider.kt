@@ -6,11 +6,14 @@
 package com.explyt.spring.core.providers
 
 import com.explyt.spring.core.*
+import com.explyt.spring.core.SpringCoreClasses.MOCK_BEANS_ANNOTATIONS
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.core.service.SpringSearchUtils
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
+import com.explyt.spring.core.util.InjectionConstructors
+import com.explyt.spring.core.util.InjectionPointOwners
 import com.explyt.spring.core.util.SpringCoreUtil
 import com.explyt.spring.core.util.SpringCoreUtil.getArrayType
 import com.explyt.spring.core.util.SpringCoreUtil.getQualifierAnnotation
@@ -82,8 +85,13 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
     ) {
         val processor = getLineMarkerElementProcessor(element) ?: return
 
-        if (processor.isComponentClassOrBeanMethod()) {
-            val builder = NavigationGutterIconBuilder.create(getComponentIcon(processor))
+        if (processor.isAbstractComponent()) {
+            result.add(processor.createAbstractComponentMarker())
+        } else if (processor.isComponentClassOrBeanMethod()) {
+            val builder = NavigationGutterIconBuilder.create(
+                getComponentIcon(processor),
+                SpringCoreBundle.message("explyt.spring.gutter.group.bean")
+            )
                 .setAlignment(GutterIconRenderer.Alignment.LEFT)
                 .setTargets(NotNullLazyValue.lazy { processor.findFieldsAndMethodsWithAutowired() })
                 .setTooltipText(getTooltipMessage(processor))
@@ -92,7 +100,10 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 .setTargetRenderer { getTargetRender() }
             result.add(builder.createLineMarkerInfo(element))
         } else if (processor.isClassForBeanMethod()) {
-            val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBeanDependencies)
+            val builder = NavigationGutterIconBuilder.create(
+                SpringIcons.SpringBeanDependencies,
+                SpringCoreBundle.message("explyt.spring.gutter.group.bean")
+            )
                 .setAlignment(GutterIconRenderer.Alignment.LEFT)
                 .setTargets(NotNullLazyValue.lazy { processor.findBeanDeclarations() })
                 .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.bean.candidate"))
@@ -100,7 +111,10 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title.choose.bean.candidate"))
             result.add(builder.createLineMarkerInfo(element))
         } else if (processor.isFieldOrAutowiredParameter()) {
-            val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBeanDependencies)
+            val builder = NavigationGutterIconBuilder.create(
+                SpringIcons.SpringBeanDependencies,
+                SpringCoreBundle.message("explyt.spring.gutter.group.bean")
+            )
                 .setAlignment(GutterIconRenderer.Alignment.LEFT)
                 .setTargets(NotNullLazyValue.lazy { processor.getBeanDeclarations() })
                 .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.bean.candidate"))
@@ -139,6 +153,22 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         private val springSearchService = SpringSearchService.getInstance(module.project)
 
         var inSpringContextClass: Boolean? = null
+
+        fun isAbstractComponent(): Boolean =
+            uParent is UClass && AbstractComponentLineMarker.isAbstractComponent(uParent.javaPsi)
+
+        fun createAbstractComponentMarker(): RelatedItemLineMarkerInfo<PsiElement> {
+            val uClass = uParent as UClass
+            val facade = SpringSearchServiceFacade.getInstance(module.project)
+            return AbstractComponentLineMarker.create(
+                element,
+                uClass.javaPsi,
+                facade.getAllActiveBeans(module),
+                facade.getActiveGenericBeanFactoryMethods(module)
+            ) {
+                facade.findInjectionPoints(uClass, null, module)
+            }
+        }
 
         fun isComponentClassOrBeanMethod(): Boolean {
             var result = false
@@ -276,11 +306,15 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             val allAutowiredAnnotations = SpringSearchUtils.getAutowiredFieldAnnotations(module)
             val allAutowiredAnnotationsNames = allAutowiredAnnotations.mapNotNull { it.qualifiedName }
 
-            val allBeans = springSearchService.getActiveBeansClasses(module) +
-                    springSearchService.getDependentBeanPsiClassesAnnotatedByComponent(module)
+            val allBeans = springSearchService.getInjectionPointOwnerBeans(module)
 
-            val allFieldsWithAutowired = allBeans.asSequence()
-                .mapNotNull { bean -> bean.psiClass.toUElementOfType<UClass>()?.fields }
+            val beanClasses = allBeans.mapTo(HashSet()) { it.psiClass }
+            val owners = InjectionPointOwners.of(beanClasses.asSequence())
+            val componentClasses = springSearchService.getInjectionPointComponentBeans(module)
+                .mapTo(HashSet()) { it.psiClass }
+
+            val allFieldsWithAutowired = owners.asSequence()
+                .mapNotNull { owner -> owner.toUElementOfType<UClass>()?.fields }
                 .flatMap { field ->
                     field.asSequence()
                         .filter { it.isAnnotatedBy(allAutowiredAnnotationsNames) }
@@ -290,15 +324,18 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
 
             val allParametersWithAutowired = mutableSetOf<UVariable>()
-            allBeans.forEach { bean ->
-                val methods = bean.psiClass.toUElementOfType<UClass>()?.methods ?: return@forEach
+            owners.forEach { owner ->
+                val methods = owner.toUElementOfType<UClass>()?.methods ?: return@forEach
+                val injectionConstructors =
+                    InjectionConstructors.of(owner) { it.isAnnotatedBy(allAutowiredAnnotationsNames) }
                 allParametersWithAutowired.addAll(
                     methods.asSequence()
                         .filter {
-                            it.isAnnotatedBy(allAutowiredAnnotationsNames)
+                            if (it.isConstructor) owner in beanClasses
+                                    && (owner in componentClasses || it.isAnnotatedBy(allAutowiredAnnotationsNames))
+                                    && it.javaPsi in injectionConstructors
+                            else it.isAnnotatedBy(allAutowiredAnnotationsNames)
                                     || it.isAnnotatedBy(SpringCoreClasses.BEAN)
-                                    || it.isConstructor
-                                    && bean in springSearchService.getBeanPsiClassesAnnotatedByComponent(module)
                         }
                         .flatMap { it.parameterList.parameters.asSequence() }
                         .filter { it.isCandidate(targetType, targetClass, targetClasses) }
@@ -386,16 +423,16 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         return if (matcher.matches()) matcher.group(2) else locationString
     }
 
-    fun getModuleTextWithIcon(value: Any?): TextWithIcon? {
-        val factory = ModuleRendererFactory.findInstance(value)
-        if (factory is PlatformModuleRendererFactory) {
-            return null
-        }
-        return factory.getModuleTextWithIcon(value)
-    }
-
     companion object {
         private val CONTAINER_PATTERN = Pattern.compile("(\\(in |\\()?([^)]*)(\\))?")
+
+        fun getModuleTextWithIcon(value: Any?): TextWithIcon? {
+            val factory = ModuleRendererFactory.findInstance(value)
+            if (factory is PlatformModuleRendererFactory) {
+                return null
+            }
+            return factory.getModuleTextWithIcon(value)
+        }
 
         fun isLombokAnnotatedClassFieldExpression(psiField: PsiField): Boolean {
             return psiField.containingClass?.let {
@@ -408,8 +445,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             return javaPsi.isMetaAnnotatedBy(SpringCoreClasses.AUTOWIRED)
                     || javaPsi.isAnnotatedBy(JavaEeClasses.INJECT.allFqns)
                     || javaPsi.isAnnotatedBy(JavaEeClasses.RESOURCE.allFqns)
-                    || javaPsi.isAnnotatedBy(SpringCoreClasses.MOCK_BEAN)
-                    || javaPsi.isAnnotatedBy(SpringCoreClasses.SPY_BEAN)
+                    || javaPsi.isAnnotatedBy(MOCK_BEANS_ANNOTATIONS)
         }
 
         fun isAutowiredMethodExpression(javaPsi: PsiMethod): Boolean {

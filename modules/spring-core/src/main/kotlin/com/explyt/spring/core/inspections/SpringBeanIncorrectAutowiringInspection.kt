@@ -10,6 +10,8 @@ import com.explyt.spring.core.JavaEeClasses
 import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.inspections.quickfix.AddQualifierQuickFix
+import com.explyt.spring.core.service.PsiBean
+import com.explyt.spring.core.service.SpringBeanOwner
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.core.util.SpringCoreUtil
@@ -56,7 +58,7 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
         if (arrayType != null) {
             val isArrayBeanExist = SpringSearchServiceFacade.getInstance(manager.project)
                 .searchArrayComponentPsiClassesByBeanMethods(module).asSequence()
-                .mapNotNull { (it.psiMember as? PsiMethod)?.returnType }
+                .mapNotNull { it.factoryMethod?.returnType }
                 .any { arrayType.isAssignableFrom(it) }
             if (isArrayBeanExist) return emptyArray()
         }
@@ -204,9 +206,10 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
         val problemElement = descriptorElement ?: originalProblemElement
 
         val springSearchService = SpringSearchServiceFacade.getInstance(module.project)
-        val beanDeclarations = springSearchService.findActiveBeanDeclarations(
+        val beanCandidates = springSearchService.findActiveBeans(
             module, element.name ?: "", element.language, psiType, element.getQualifierAnnotation(), element
         )
+        val beanDeclarations = beanCandidates.map { it.psiMember }
 
         if (psiType.isOptional || element.isAutowiredByRequiredTrue() == false) {
             if (beanDeclarations.size > 1) {
@@ -218,7 +221,7 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
                         manager.createProblemDescriptor(
                             problemElement,
                             getWarningMessageInheritor(
-                                module, beanDeclarations,
+                                module, beanCandidates,
                                 SpringCoreBundle.message(
                                     "explyt.spring.inspection.bean.autowired.optional.too-many",
                                     nameClass
@@ -257,7 +260,7 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
         if (beanDeclarations.isEmpty() || !psiType.isMultipleBean(module)) {
             if (!ExplytPsiUtil.isTestFiles(element)) {
                 val message = getWarningMessageInheritor(
-                    module, beanDeclarations,
+                    module, beanCandidates,
                     SpringCoreBundle.message("explyt.spring.inspection.bean.autowired.too-many", nameClass)
                 )
                 problems += if (descriptorElement == null) {
@@ -294,7 +297,7 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
 
         val qualifier = element.getQualifierAnnotation() ?: return ProblemDescriptor.EMPTY_ARRAY
         val beanDeclarations = SpringSearchServiceFacade.getInstance(module.project)
-            .findActiveBeanDeclarations(module, element.name ?: "", element.language, element.type, qualifier)
+            .findActiveBeanDeclarations(module, element.name ?: "", element.language, element.type, qualifier, element)
 
         if (beanDeclarations.isNotEmpty()) {
             return ProblemDescriptor.EMPTY_ARRAY
@@ -317,11 +320,9 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
     }
 
     private fun isBeanExist(module: Module, psiClass: PsiClass): Boolean {
+        if (!psiClass.isValid) return false
         if (SpringCoreUtil.isComponentCandidate(psiClass)) return true
-
-        return SpringSearchServiceFacade.getInstance(module.project).getAllActiveBeans(module).asSequence()
-            .filter { it.psiClass.qualifiedName == psiClass.qualifiedName }
-            .toList().isNotEmpty()
+        return SpringBeanOwner.isProcessedBySpring(module, psiClass)
     }
 
     private fun getProblemByMethodWithoutParams(
@@ -377,15 +378,19 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
 
     private fun getWarningMessageInheritor(
         module: Module,
-        beanCandidates: List<PsiMember>,
+        beanCandidates: List<PsiBean>,
         errorText: String
     ): String {
+        val beansByMember = beanCandidates.groupBy { it.psiMember }
         val message = StringBuilder()
         message.append("<html><table><tr><td>")
         message.append(errorText)
         message.append("</td></tr><tr><td><table><tr><td valign='top'> Beans: </td><td>")
-        beanCandidates.map { bean -> "${bean.resolveBeanName(module)} {@link ${bean.targetClass?.name}${(bean as? PsiMethod)?.name?.let { "#$it" } ?: ""}}" }
-            .sorted().joinTo(message, " <br>")
+        beanCandidates.map { bean ->
+            val member = bean.psiMember
+            val names = if (beansByMember.getValue(member).size > 1) setOf(bean.name) else member.resolveBeanName(module)
+            "$names {@link ${member.targetClass?.name}${(member as? PsiMethod)?.name?.let { "#$it" } ?: ""}}"
+        }.sorted().joinTo(message, " <br>")
         message.append("</td></tr></table></td></tr></table></html>")
         return message.toString()
     }

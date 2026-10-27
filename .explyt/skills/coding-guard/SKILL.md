@@ -1,7 +1,7 @@
 ---
 name: "coding-guard"
 schemaVersion: "v0.1"
-description: "Compact explyt/spring-plugin coding guard for branch-aware versions, IntelliJ threading and PSI, inspections, tests, Kotlin bytecode, Plugin Verifier, bundles, statistics, and PR hygiene. Use before any code modification in this repository."
+description: "Compact coding guidelines for the explyt/spring-plugin repository - covers process rules (think first, simplicity, surgical changes), module layout, IntelliJ Platform threading and PSI rules, inspection and test conventions, message bundles, statistics tracking, and PR hygiene. You must call this skill before any code modification in this repository."
 agent: null
 used-by:
   - "Code"
@@ -49,10 +49,9 @@ These apply **before** any technical rule below. Bias toward caution over speed;
 
 ## 1. Project facts (verify before assuming)
 
-- **Read the active branch values before editing.** Release branches can intentionally use older Kotlin or IntelliJ Platform versions than the main branch; do not copy versions from this skill without checking `gradle.properties` and the build scripts.
-- Kotlin-idiomatic code is expected; latest language features supported by the active branch are welcome.
+- **Kotlin 2.3.20, JDK 21** (`kotlinVersion` in `gradle.properties`; JDK toolchain in root `build.gradle.kts`). Kotlin-idiomatic code is expected; latest language features are welcome.
 - Multi-module Gradle build: each module lives in `modules/<name>/` and is configured by `modules/<name>/<name>.gradle.kts` (not `build.gradle.kts`).
-- `spring-bootstrap` is the assembly module. Run the sandbox with `./gradlew :spring-bootstrap:runIde` (the root `runIde` is intentionally disabled); build the ZIP with `./gradlew :spring-bootstrap:buildPlugin`. Read the active branch's default sandbox IDE from `defaultIdeaVersion` and `defaultIdeaType` in `gradle.properties`.
+- `spring-bootstrap` is the assembly module. Run the sandbox with `./gradlew :spring-bootstrap:runIde` (the root `runIde` is intentionally disabled); build the ZIP with `./gradlew :spring-bootstrap:buildPlugin`. Default sandbox IDE is IntelliJ IDEA Community 2026.1 (`defaultIdeaVersion` / `defaultIdeaType=IC`).
 - Package roots: `com.explyt.spring.<module>`, `com.explyt.quarkus.core`, `com.explyt.jpa`, `com.explyt.base`.
 
 ### Module boundaries
@@ -90,7 +89,7 @@ Put new code in the module that owns the feature area; shared utilities go to `b
 
 "Slow operation on EDT" is a dedicated component in this repo's bug-report form — it is a known recurring defect class. Rules:
 
-- **Never** perform file I/O, network calls, indexes access, or heavy PSI work on the EDT.
+- **Never** perform file I/O, network calls, slow/index-backed/blocking or unknown-cost PSI work on the EDT. A separately proven short read-only access is allowed only when the specific IntelliJ callback contract permits it and its cost is bounded.
 - PSI reads happen under a read action; PSI/document/VFS writes under a write action (`WriteCommandAction` for document/PSI modifications, as quick fixes here do).
 - Prefer `smartReadAction` / dumb-mode-aware code for index-dependent work; expect and handle `IndexNotReadyException` paths by design, not by catching blindly.
 - Add `ProgressManager.checkCanceled()` inside loops that run under a read action or in long computations.
@@ -98,7 +97,9 @@ Put new code in the module that owns the feature area; shared utilities go to `b
 - Don't store raw `PsiElement` in fields or pass it across async/invokeLater boundaries — use `SmartPsiElementPointer` and check `isValid` on access.
 - Cache PSI getter results in local `val`s inside hot code (line markers, inspections, completion) — getters traverse the tree on every call.
 - Line marker providers, inspections, and completion contributors are hot paths: no resolve-heavy work in `getLineMarkerInfo` for leaf elements beyond what the platform contract allows; follow the patterns of existing providers in the same package.
-- **Do not make state-synchronizing platform callbacks asynchronous without proving the callback contract permits it.** In particular, `ExplytRunManagerListener.runConfigurationChanged` must make a linked project's renamed `runConfigurationName` visible before the callback returns because `RunConfigurationExtractor` may read it immediately. Keep cheap/stable-identity checks first, but retain a synchronous fallback for legacy links that require PSI resolution.
+- **Do not make state-synchronizing platform callbacks asynchronous without proving the callback contract permits it.** For `ExplytRunManagerListener.runConfigurationChanged`, update links synchronously only when `configuration.mainClassName` matches the stored `qualifiedMainClassName` using stable metadata. Legacy and Kotlin-façade links have no equivalent non-PSI identity: schedule `NativeLinkRepairService`'s smart-mode background repair instead of resolving `configuration.mainClass` with `runReadActionBlocking` on the EDT. `RunConfigurationExtractor`'s path fallback must keep a sync started before repair working with the renamed configuration.
+- **`AnAction.getActionUpdateThread() = BGT` applies only to `update()`, not `actionPerformed()`.** Any PSI, index, project-model, UAST, or VFS work in `actionPerformed()` must be moved to a cancellable background read action or pooled task, with only UI/write operations returned to the EDT.
+- **Treat static slow-operation reports as reachability hypotheses.** Before changing code, verify loader/type filters, guards, dynamic dispatch and read-lock branches; a broad interface sink or a sink after an excluded branch is not proof that the runtime path is reachable.
 
 ---
 
@@ -123,14 +124,6 @@ Put new code in the module that owns the feature area; shared utilities go to `b
 - Before claiming no test covers a changed symbol, search `modules/<module>/src/test` for the class and symbol names. Run every directly covering existing test; compile-only or per-file lint is not sufficient.
 - Run `:spring-core:test` classes **sequentially**, never as concurrent Gradle invocations and preferably not as broad wildcard batches. The IntelliJ fixture shares its sandbox, indices, test-result files, and library caches; concurrent/broad runs produce environmental `NoSuchFileException`, `StorageException`, `ZipException`, and `ServiceNotReadyException` failures. Re-run the exact failing class alone before attributing such failures to a code change.
 - Add or update a test for any behavior change — PRs without tests are questioned in review.
-
-### Plugin Verifier failures caused by generated Kotlin methods
-
-- Plugin Verifier analyzes compiled bytecode, so a reported method may be a compiler-generated compatibility accessor absent from source. Confirm with `javap -p -s` before adding a source override or excluding the verifier category.
-- If the active branch compiles with `-Xjvm-default=all-compatibility`, an implementation of a Kotlin interface can receive concrete delegating methods for inherited defaults. If one default signature mentions an IntelliJ internal type, the generated method can trigger `INTERNAL_API_USAGES`.
-- Prefer the already-shipped project fix when available: commit `34e312c7` switches bundled modules to `-Xjvm-default=all`. This suppresses compatibility bridges globally and avoids source-level coupling to one IntelliJ interface. Treat the mode change as an ABI change: rebuild every bundled module together and do not mix stale jars from different modes.
-- `@JvmDefaultWithoutCompatibility` can suppress generated super-call methods on one leaf class, but use that fallback only when a project-wide mode change is inappropriate and after checking binary compatibility.
-- Keep `INTERNAL_API_USAGES` fatal. Fix the compiled reference rather than weakening `failureLevel`.
 
 ---
 
@@ -158,7 +151,7 @@ Put new code in the module that owns the feature area; shared utilities go to `b
 ## 8. PR hygiene (from CONTRIBUTING.md)
 
 - One logical change per PR; reference the related issue (`Closes #123`).
-- Branch names like `feature/kotlin-bean-inspection` or `fix/openapi-npe`.
+- Branch names `username/feature-name`, e.g. `imuromtsev/kotlin-bean-inspection` (CONTRIBUTING.md).
 - Clean, Kotlin-idiomatic code with the SPDX header present in every new file.
 - Update docs/messages when behavior or usage changes; state how you verified the change.
 

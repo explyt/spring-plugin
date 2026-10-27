@@ -6,8 +6,6 @@
 package com.explyt.spring.core.properties
 
 import com.cronutils.descriptor.CronDescriptor
-import com.explyt.spring.core.completion.properties.DefinedConfigurationPropertiesSearch
-import com.explyt.spring.core.completion.properties.DefinedConfigurationProperty
 import com.explyt.spring.core.inspections.CRON_PARSER
 import com.explyt.spring.core.inspections.SpringScheduledInspection
 import com.explyt.spring.core.util.PropertyUtil
@@ -70,10 +68,10 @@ class ValueAnnotationFoldingBuilder : FoldingBuilderEx() {
             }
 
             val (key, defaultValue) = matchResult.destructured
-            val propertyInfo = getPropertyInfo(module, key)
+            val propertyValue = FoldedPropertyValue.resolve(module, key)
 
-            if (propertyInfo != null || defaultValue.isNotEmpty()) {
-                val placeholder = getPlaceholder(uElement, propertyInfo, defaultValue) ?: return
+            if (propertyValue != null || defaultValue.isNotEmpty()) {
+                val placeholder = getPlaceholder(uElement, propertyValue, defaultValue) ?: return
                 descriptors.add(
                     FoldingDescriptor(element.node, element.textRange, group, placeholder)
                 )
@@ -82,14 +80,17 @@ class ValueAnnotationFoldingBuilder : FoldingBuilderEx() {
     }
 
     private fun getPlaceholder(
-        uElement: UExpression, propertyInfo: DefinedConfigurationProperty?, defaultValue: String
+        uElement: UExpression, propertyValue: FoldedPropertyValue?, defaultValue: String
     ): String? {
-        val placeholder = propertyInfo?.value ?: defaultValue
+        val resolvedValue = propertyValue?.value
+        val placeholder = resolvedValue ?: defaultValue
         val uastParent = uElement.uastParent
-        if (uastParent is UNamedExpression && uastParent.name == SpringScheduledInspection.CRON_PARAM) {
-            return parseCron(placeholder)
+        val text = if (uastParent is UNamedExpression && uastParent.name == SpringScheduledInspection.CRON_PARAM) {
+            parseCron(placeholder) ?: return null
+        } else {
+            placeholder
         }
-        return placeholder
+        return if (resolvedValue != null) propertyValue.decorate(text) else text
     }
 
     private fun parseCron(placeholder: String, returnNullOnError: Boolean = false): String? {
@@ -109,19 +110,10 @@ class ValueAnnotationFoldingBuilder : FoldingBuilderEx() {
 
         val (key, defaultValue) = matchResult.destructured
 
-        val propertyValue = getPropertyInfo(module, key)
+        val propertyValue = FoldedPropertyValue.resolve(module, key)
             ?: return defaultValue.ifBlank { StringUtil.THREE_DOTS }
 
-        return propertyValue.value
-    }
-
-    private fun getPropertyInfo(
-        module: Module,
-        key: String
-    ): DefinedConfigurationProperty? {
-        return DefinedConfigurationPropertiesSearch.getInstance(module.project)
-            .findProperties(module, key)
-            .firstOrNull()
+        return propertyValue.presentation
     }
 
     override fun isCollapsedByDefault(node: ASTNode): Boolean = true
