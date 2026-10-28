@@ -54,6 +54,7 @@ This release is the last one for IntelliJ IDEA 2024.2 and 2024.3. Later releases
 ### Native Context Mode
 - Link a Gradle `bootRun` run configuration (#376)
 - Sync failures name the class that is missing, and broken project links heal themselves
+- A sync started before the module has a JDK, for example while the build is still being imported, fails at once with a message naming the module instead of an IDE error and a stalled sync
 
 ### MCP tools for AI agents
 - New `explyt_find_spring_bean` tells an agent which bean Spring injects at a field or a constructor parameter
