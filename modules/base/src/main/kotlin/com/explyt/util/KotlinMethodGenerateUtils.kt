@@ -11,6 +11,7 @@ import com.intellij.codeInsight.template.TemplateManager
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiFile
 import com.intellij.psi.util.PsiTreeUtil
@@ -32,8 +33,13 @@ object KotlinMethodGenerateUtils {
 
         val targetClass = getTargetClass(editor, file) ?: return false
         if (!targetClass.isValid) return false
-        val filter = RootKindFilter.projectSources.copy(includeScriptsOutsideSourceRoots = true)
-        return RootKindMatcher.matches(targetClass, filter) && predicate.test(project)
+        return isProjectSourceOrScript(project, file, targetClass) && predicate.test(project)
+    }
+
+    private fun isProjectSourceOrScript(project: Project, file: KtFile, targetClass: KtClassOrObject): Boolean {
+        if (RootKindMatcher.matches(targetClass, RootKindFilter.projectSources)) return true
+        val virtualFile = file.virtualFile ?: return false
+        return file.isScript() && ProjectFileIndex.getInstance(project).isInContent(virtualFile)
     }
 
     fun getTargetClass(editor: Editor, file: PsiFile): KtClassOrObject? {

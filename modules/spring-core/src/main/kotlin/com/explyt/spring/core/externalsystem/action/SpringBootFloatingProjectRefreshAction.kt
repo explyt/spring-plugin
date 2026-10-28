@@ -5,6 +5,7 @@
 
 package com.explyt.spring.core.externalsystem.action
 
+import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.SpringIcons
 import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
 import com.explyt.spring.core.service.SpringSearchServiceFacade
@@ -15,7 +16,6 @@ import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.ApplicationNamesInfo
 import com.intellij.openapi.externalSystem.importing.ImportSpecBuilder
-import com.intellij.openapi.externalSystem.util.ExternalSystemBundle
 import com.intellij.openapi.externalSystem.util.ExternalSystemUtil
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.xdebugger.XDebuggerManager
@@ -38,12 +38,12 @@ class SpringBootFloatingProjectRefreshAction : DumbAwareAction() {
 
         val productName = ApplicationNamesInfo.getInstance().fullProductName
         e.presentation.text =
-            ExternalSystemBundle.message(
-                "external.system.reload.notification.action.reload.text",
+            SpringCoreBundle.message(
+                "explyt.external.project.sync.changes.text",
                 SYSTEM_ID.readableName
             )
-        e.presentation.description = ExternalSystemBundle.message(
-            "external.system.reload.notification.action.reload.description",
+        e.presentation.description = SpringCoreBundle.message(
+            "explyt.external.project.sync.changes.description",
             SYSTEM_ID.readableName,
             productName
         )
@@ -61,9 +61,9 @@ class SpringBootFloatingProjectRefreshAction : DumbAwareAction() {
         val productName = ApplicationNamesInfo.getInstance().fullProductName
         templatePresentation.icon = AllIcons.Actions.BuildLoadChanges
         templatePresentation.text =
-            ExternalSystemBundle.message("external.system.reload.notification.action.reload.text.empty")
-        templatePresentation.description = ExternalSystemBundle.message(
-            "external.system.reload.notification.action.reload.description.empty",
+            SpringCoreBundle.message("explyt.external.project.sync.changes.text.empty")
+        templatePresentation.description = SpringCoreBundle.message(
+            "explyt.external.project.sync.changes.description.empty",
             productName
         )
     }

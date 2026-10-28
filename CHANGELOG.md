@@ -67,6 +67,7 @@ This release is the last one for IntelliJ IDEA 2024.2 and 2024.3. Later releases
 - Fewer UI freezes when a project opens, when a run configuration is selected and on the first action after startup (#294, #307)
 - Faster highlighting of `application.yaml` and `.properties` files
 - Gradle `gradlew` and `mvnw` are executable in projects generated through Spring Initializr (#60)
+- Compatible with IntelliJ IDEA 2026.3: endpoint actions and the configuration metadata intention no longer depend on classes that 2026.3 removes
 
 ## [262.34.101] - 2026-08-19
 

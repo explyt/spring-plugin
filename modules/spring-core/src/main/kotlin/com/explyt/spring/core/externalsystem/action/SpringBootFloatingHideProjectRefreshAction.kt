@@ -5,13 +5,13 @@
 
 package com.explyt.spring.core.externalsystem.action
 
+import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.externalSystem.util.ExternalSystemBundle
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.xdebugger.XDebuggerManager
 
@@ -38,7 +38,7 @@ class SpringBootFloatingHideProjectRefreshAction : DumbAwareAction() {
     override fun getActionUpdateThread() = ActionUpdateThread.BGT
 
     init {
-        templatePresentation.text = ExternalSystemBundle.message("external.system.reload.notification.action.hide.text")
+        templatePresentation.text = SpringCoreBundle.message("explyt.external.project.sync.changes.hide.text")
         templatePresentation.icon = AllIcons.Actions.Close
         templatePresentation.hoveredIcon = AllIcons.Actions.CloseHovered
     }
