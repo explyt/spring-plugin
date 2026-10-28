@@ -9,7 +9,6 @@ import com.explyt.spring.core.SpringRunConfigurationBundle
 import com.explyt.spring.core.runconfiguration.SpringBootRunConfiguration
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
-import com.intellij.execution.ExecutionBundle
 import com.intellij.execution.JavaExecutionUtil
 import com.intellij.execution.application.ClassEditorField
 import com.intellij.execution.application.JavaSettingsEditorBase
@@ -113,12 +112,16 @@ class SpringBootConfigurationEditor(
         mainClass.background = UIUtil.getTextFieldBackground()
         mainClass.setShowPlaceholderWhenFocused(true)
         CommonParameterFragments.setMonospaced(mainClass)
-        val placeholder = ExecutionBundle.message("application.configuration.main.class.placeholder")
+        val placeholder = SpringRunConfigurationBundle.message("run.configuration.boot.editor.main.class.placeholder")
         mainClass.setPlaceholder(placeholder)
         mainClass.accessibleContext.accessibleName = placeholder
         CommandLinePanel.setMinimumWidth(mainClass, 300)
         val mainClassFragment = SettingsEditorFragment(
-            "mainClass", ExecutionBundle.message("application.configuration.main.class"), null, mainClass, 20,
+            "mainClass",
+            SpringRunConfigurationBundle.message("run.configuration.boot.editor.main.class"),
+            null,
+            mainClass,
+            20,
             { configuration: SpringBootRunConfiguration, component: EditorTextField ->
                 component.setText(
                     getQName(configuration.mainClassName)
@@ -132,7 +135,7 @@ class SpringBootConfigurationEditor(
             },
             Predicates.alwaysTrue()
         )
-        mainClassFragment.setHint(ExecutionBundle.message("application.configuration.main.class.hint"))
+        mainClassFragment.setHint(SpringRunConfigurationBundle.message("run.configuration.boot.editor.main.class.hint"))
         mainClassFragment.isRemovable = false
         mainClassFragment.setEditorGetter { field: EditorTextField ->
             val editor = field.editor

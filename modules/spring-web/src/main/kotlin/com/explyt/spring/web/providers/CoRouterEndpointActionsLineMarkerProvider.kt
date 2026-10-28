@@ -13,13 +13,13 @@ import com.explyt.spring.web.route.RouterDslRoutes
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytUastUtil.getCommentText
+import com.explyt.util.lowercaseFirstChar
 import com.intellij.codeInsight.daemon.LineMarkerInfo
 import com.intellij.codeInsight.daemon.LineMarkerProviderDescriptor
 import com.intellij.openapi.editor.markup.GutterIconRenderer
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiElement
 import org.jetbrains.kotlin.idea.KotlinLanguage
-import org.jetbrains.kotlin.lombok.utils.decapitalize
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 import org.jetbrains.kotlin.psi.KtStringTemplateExpression
@@ -59,7 +59,7 @@ class CoRouterEndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor()
         val description = uCallExpression.comments.firstOrNull()?.getCommentText() ?: ""
         val returnTypeFqn = "java.lang.String"
         val endpointMethodName = getEndpointMethodName(uCallExpression)
-        val tag = method.name.decapitalize()
+        val tag = method.name.lowercaseFirstChar()
 
         val endpointElement = EndpointInfo(
             fullPath,

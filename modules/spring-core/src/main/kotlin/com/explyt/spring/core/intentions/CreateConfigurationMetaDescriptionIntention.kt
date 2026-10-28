@@ -8,13 +8,13 @@ package com.explyt.spring.core.intentions
 import com.explyt.spring.core.completion.properties.SpringConfigurationPropertiesSearch
 import com.explyt.spring.core.properties.dataRetriever.ConfigurationPropertyDataRetriever
 import com.explyt.spring.core.properties.dataRetriever.ConfigurationPropertyDataRetrieverFactory
+import com.explyt.util.lowercaseFirstChar
 import com.intellij.json.psi.JsonElementGenerator
 import com.intellij.json.psi.JsonObject
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.psi.*
 import com.intellij.psi.util.PsiTypesUtil
-import org.jetbrains.kotlin.lombok.utils.decapitalize
 import org.jetbrains.uast.*
 
 class CreateConfigurationMetaDescriptionIntention : BaseCreateMetaDescriptionIntention() {
@@ -29,7 +29,7 @@ class CreateConfigurationMetaDescriptionIntention : BaseCreateMetaDescriptionInt
         val memberName = dataRetriever.getMemberName() ?: return false
         if (prefixValue.isBlank()) return false
 
-        val keyName = prefixValue + memberName.decapitalize()
+        val keyName = prefixValue + memberName.lowercaseFirstChar()
         return SpringConfigurationPropertiesSearch.getInstance(psiElement.project)
             .findHint(module, keyName) == null
     }
@@ -60,7 +60,7 @@ class CreateConfigurationMetaDescriptionIntention : BaseCreateMetaDescriptionInt
         val nameElement = dataRetriever.getNameElementPsi() ?: return null
 
         return PropertyInfo(
-            name = prefixValue + memberName.decapitalize(),
+            name = prefixValue + memberName.lowercaseFirstChar(),
             type = getType(nameElement),
             nameElement
         )
