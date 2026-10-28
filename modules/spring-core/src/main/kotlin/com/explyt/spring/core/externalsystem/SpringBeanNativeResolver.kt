@@ -22,6 +22,7 @@ import com.explyt.spring.core.externalsystem.utils.Constants
 import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
 import com.explyt.spring.core.externalsystem.utils.NativeBootUtils
 import com.explyt.spring.core.externalsystem.utils.NativeClasspathValidator
+import com.explyt.spring.core.externalsystem.utils.NativeRunJdkValidator
 import com.explyt.spring.core.profile.SpringProfilesService
 import com.explyt.spring.core.profile.SpringProfilesService.Companion.DEFAULT_PROFILE_LIST
 import com.explyt.spring.core.statistic.StatisticActionId
@@ -266,6 +267,7 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
             patchClasspath(runConfigurationHolder, modules, id, listener)
         }
 
+        NativeRunJdkValidator.requireJdkToRun(runConfiguration)
         val processAdapter = ExplytCapturingProcessAdapter(id, listener)
         executeRunConfiguration(id, runConfiguration, processAdapter, modules, listener)
 
