@@ -38,10 +38,8 @@ import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
-import com.intellij.openapi.diagnostic.RuntimeExceptionWithAttachments
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
-import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.modules
 import com.intellij.psi.*
@@ -420,21 +418,12 @@ class SpringSearchService(private val project: Project) {
     private fun searchBeanPsiClassesByAnnotations(
         module: Module, annotationPsiClasses: Collection<PsiClass>, scope: SearchScope
     ): Set<PsiBean> {
-        try {
-            return annotationPsiClasses.asSequence()
-                .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, scope) }
-                .filter { it.isValid }
-                .filter { SpringCoreUtil.isSpringBeanCandidateClass(it) }
-                .filter { isActive(it) }
-                .map { PsiBean(it.resolveBeanName(module), it, it.getQualifierAnnotation(), it) }
-                .toSet()
-        } catch (e: RuntimeExceptionWithAttachments) {
-            // PSI/document/stub can be transiently out of sync during editing ("file text mismatch").
-            // Abort this pass via cancellation so the cached value is recomputed once PSI is
-            // consistent again, instead of caching a partial result or logging a crash (issue #232).
-            if (e.userMessage != FILE_TEXT_MISMATCH_MESSAGE) throw e
-            throw ProcessCanceledException(e)
-        }
+        return annotationPsiClasses.asSequence()
+            .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, scope) }
+            .filter { SpringCoreUtil.isSpringBeanCandidateClass(it) }
+            .filter { isActive(it) }
+            .map { PsiBean(it.resolveBeanName(module), it, it.getQualifierAnnotation(), it) }
+            .toSet()
     }
 
     private fun searchBeanPsiClassesByComponentAnnotationLibraryScopeCached(module: Module): Set<PsiBean> {
@@ -659,9 +648,6 @@ class SpringSearchService(private val project: Project) {
     }
 
     companion object {
-        // User message of com.intellij.psi.PsiConsistencyAssertions#assertNoFileTextMismatch.
-        private const val FILE_TEXT_MISMATCH_MESSAGE = "File text mismatch"
-
         fun getInstance(project: Project): SpringSearchService = project.service()
     }
 }
