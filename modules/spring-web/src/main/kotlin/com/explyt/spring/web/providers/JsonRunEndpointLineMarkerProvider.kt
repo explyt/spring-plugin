@@ -18,6 +18,7 @@ import com.intellij.psi.util.childrenOfType
 class JsonRunEndpointLineMarkerProvider : RunLineMarkerContributor() {
 
     override fun getInfo(element: PsiElement): Info? {
+        if (!OpenApiUtils.isPreviewEditorAvailable()) return null
         if (element !is LeafPsiElement) return null
         if (!SpringWebUtil.isSpringWebProject(element.project)) return null
         val jsonProperty = PsiTreeUtil.getParentOfType(

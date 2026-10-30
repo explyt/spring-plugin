@@ -8,6 +8,7 @@ package com.explyt.spring.web.providers
 import com.explyt.spring.core.util.SpringCoreUtil.isMapWithStringKey
 import com.explyt.spring.web.SpringWebBundle
 import com.explyt.spring.web.WebEeClasses
+import com.explyt.spring.web.editor.openapi.OpenApiUtils
 import com.explyt.spring.web.editor.openapi.OpenApiUtils.getServerFromPath
 import com.explyt.spring.web.editor.openapi.OpenApiUtils.isAbsolutePath
 import com.explyt.spring.web.service.SpringWebEndpointsSearcher
@@ -33,6 +34,7 @@ import org.jetbrains.uast.getUParentForIdentifier
 class JaxRsRunLineMarkerProvider : RunLineMarkerContributor() {
 
     override fun getInfo(psiElement: PsiElement): Info? {
+        if (!OpenApiUtils.isPreviewEditorAvailable()) return null
         val uParent = getUParentForIdentifier(psiElement) ?: return null
 
         return when (uParent) {
