@@ -20,12 +20,12 @@ import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettin
 import com.explyt.spring.core.service.PsiBean
 import com.explyt.spring.core.service.SpringSearchUtils
 import com.explyt.spring.core.settings.SpringPropertyFolderState
+import com.explyt.util.CacheKeyStore
 import com.explyt.util.ExplytAnnotationUtil
 import com.explyt.util.ExplytAnnotationUtil.getStringMemberValues
 import com.explyt.util.ExplytAnnotationUtil.getStringValue
 import com.explyt.util.ExplytPsiUtil.allSupers
 import com.explyt.util.ExplytPsiUtil.deepPsiClassType
-import com.explyt.util.ExplytPsiUtil.findChildrenOfType
 import com.explyt.util.ExplytPsiUtil.getMetaAnnotation
 import com.explyt.util.ExplytPsiUtil.isAbstract
 import com.explyt.util.ExplytPsiUtil.isCollection
@@ -44,7 +44,6 @@ import com.explyt.util.ExplytPsiUtil.psiClassType
 import com.explyt.util.ExplytPsiUtil.resolvedPsiClass
 import com.explyt.util.ExplytPsiUtil.returnPsiClass
 import com.explyt.util.ExplytPsiUtil.returnPsiType
-import com.explyt.util.CacheKeyStore
 import com.explyt.util.ModuleUtil
 import com.explyt.util.SpringBaseClasses.CORE_ENVIRONMENT
 import com.explyt.util.runReadNonBlocking
@@ -66,11 +65,7 @@ import com.intellij.psi.*
 import com.intellij.psi.impl.source.resolve.FileContextUtil
 import com.intellij.psi.search.PsiShortNamesCache
 import com.intellij.psi.search.searches.ClassInheritorsSearch
-import com.intellij.psi.util.CachedValueProvider
-import com.intellij.psi.util.CachedValuesManager
-import com.intellij.psi.util.InheritanceUtil
-import com.intellij.psi.util.PsiModificationTracker
-import com.intellij.psi.util.PsiUtil
+import com.intellij.psi.util.*
 import com.intellij.xdebugger.XDebuggerManager
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.uast.getContainingUClass
@@ -482,6 +477,7 @@ object SpringCoreUtil {
             return this.isEqualOrInheritor(beanPsiType)
                     && (beanPsiType.parameters.isEmpty() || this.equalParamsWithBound(beanPsiType)
                     || this.isAllParametersAssignable(beanPsiType))
+                    || beanPsiType.isAssignableFrom(this)
         }
         if (beanPsiType is PsiWildcardType) {
             return this.matchesWildcardType(beanPsiType)
@@ -538,45 +534,6 @@ object SpringCoreUtil {
             }
         }
         return false
-    }
-
-    fun Collection<PsiMethod>.filterByInheritedTypes(
-        sourcePsiType: PsiType,
-        beanPsiType: PsiType?
-    ): Sequence<PsiMethod> {
-        var sequence = this.asSequence()
-        if (this.isEmpty()) {
-            return sequence
-        }
-        val beanPsiClass = beanPsiType?.resolvedPsiClass
-        if (beanPsiClass != null && beanPsiType != sourcePsiType) {
-            val possibleCustomInheritors = SpringSearchUtils.searchClassInheritors(beanPsiClass)
-            if (possibleCustomInheritors.isNotEmpty()) {
-                sequence = sequence.filter {
-                    it.returnPsiClass?.let {
-                        it in possibleCustomInheritors || possibleCustomInheritors.any { inheritorClass ->
-                            inheritorClass.isEqualOrInheritor(
-                                it
-                            )
-                        }
-                    } == true
-                }
-            }
-        }
-
-        return sequence.filter { psiMethod ->//
-            val psiMethodReturnType = psiMethod.returnType
-            psiMethod.findChildrenOfType<PsiReturnStatement>().any {
-                it.returnValue?.type?.let {
-                    it != psiMethodReturnType && (
-                            it.isEqualOrInheritorBeanType(sourcePsiType)
-                                    || beanPsiType != null && beanPsiType != sourcePsiType && it.isEqualOrInheritorBeanType(
-                                beanPsiType
-                            )
-                            )
-                } == true
-            }
-        }
     }
 
     @Suppress("UnstableApiUsage")
@@ -662,8 +619,9 @@ object SpringCoreUtil {
 
         val resolvedSourcePsiClass = sourcePsiType.resolvedPsiClass
         return this.asSequence().filter {
-            it.returnType?.isEqualOrInheritorBeanType(sourcePsiType) ?: false ||
-                    it.returnType == sourcePsiType
+            val returnType = it.returnType
+            returnType?.isEqualOrInheritorBeanType(sourcePsiType) ?: false ||
+                    returnType == sourcePsiType
                     || it.returnPsiType?.isEqualOrInheritorBeanType(sourcePsiType) == true
                     || (!isSourcePsiTypeHasParameters || isSourcePsiTypeHasSingleUnboundedWildcardType)
                     && resolvedSourcePsiClass != null && it.returnPsiClass == resolvedSourcePsiClass
@@ -700,13 +658,9 @@ object SpringCoreUtil {
     }
 
     fun Collection<PsiMethod>.filterByBeanPsiType(beanPsiType: PsiType): Sequence<PsiMethod> {
-        val inheritedPsiMethods = this.asSequence().filter {
+        return this.asSequence().filter {
             it.returnPsiType?.isEqualOrInheritorBeanType(beanPsiType) == true
         }
-        // This function added a candidate to the beans, where returned other type.
-        // Example: @Bean E dBean() { return new D(); }
-        // val filterByInheritedTypes = this.filterByInheritedTypes(sourcePsiType, beanPsiType)
-        return inheritedPsiMethods // + filterByInheritedTypes
     }
 
     fun Collection<PsiBean>.filterByBeanPsiTypeRegistrar(beanPsiType: PsiType): Sequence<PsiMethod> {
@@ -762,8 +716,7 @@ object SpringCoreUtil {
         if (debugSession != null) {
             val debugProjectSettings = ExternalSystemApiUtil.getSettings(project, SYSTEM_ID)
                 .getLinkedProjectSettings(Constants.DEBUG_SESSION_NAME) as? NativeProjectSettings
-            return debugProjectSettings != null
-                    && debugProjectSettings.runConfigurationId != null
+            return debugProjectSettings?.runConfigurationId != null
                     && debugProjectSettings.runConfigurationId == debugSession.sessionName
         }
         return false

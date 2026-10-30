@@ -516,8 +516,8 @@ class SpringBeanLineMarkerProviderWildcardTest : ExplytJavaLightTestCase() {
 
     private fun getWildcardClasses(): String {
         return """
-            import org.springframework.stereotype.Component;
-            import org.springframework.context.annotation.Configuration;
+            import org.springframework.stereotype.Component
+            import org.springframework.context.annotation.Configuration
             import org.springframework.context.annotation.Bean
 
             interface I
