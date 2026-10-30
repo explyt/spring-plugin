@@ -29,6 +29,7 @@ import com.explyt.util.ExplytPsiUtil
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytPsiUtil.isOptional
 import com.explyt.util.ExplytUastUtil.getCommentText
+import com.explyt.util.lowercaseFirstChar
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.navigation.impl.PsiTargetPresentationRenderer
 import com.intellij.json.psi.JsonProperty
@@ -40,7 +41,6 @@ import com.intellij.openapi.project.Project
 import com.intellij.psi.*
 import com.intellij.psi.impl.source.PsiClassReferenceType
 import com.intellij.psi.util.parentsOfType
-import org.jetbrains.kotlin.lombok.utils.decapitalize
 import org.jetbrains.kotlin.psi.KtNullableType
 import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.uast.*
@@ -374,7 +374,7 @@ object SpringWebUtil {
             psiMethod,
             uMethod.name,
             controllerName.replace("controller", "", true)
-                .decapitalize(),
+                .lowercaseFirstChar(),
             description,
             returnTypeFqn,
             collectPathVariables(psiMethod),

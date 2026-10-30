@@ -13,13 +13,13 @@ import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.spring.web.util.SpringWebUtil.collectRetrofitArgumentInfos
 import com.explyt.spring.web.util.SpringWebUtil.getRetrofitHttpMethod
 import com.explyt.util.ExplytUastUtil.getCommentText
+import com.explyt.util.lowercaseFirstChar
 import com.intellij.codeInsight.daemon.LineMarkerInfo
 import com.intellij.codeInsight.daemon.LineMarkerProviderDescriptor
 import com.intellij.openapi.editor.markup.GutterIconRenderer
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiElement
-import org.jetbrains.kotlin.lombok.utils.decapitalize
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.getUParentForIdentifier
 
@@ -65,7 +65,7 @@ class RetrofitEndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor()
             requestMethods,
             psiElement,
             uMethod.name,
-            className.decapitalize(),
+            className.lowercaseFirstChar(),
             description,
             returnTypeFqn,
             argumentInfos.pathParameters,

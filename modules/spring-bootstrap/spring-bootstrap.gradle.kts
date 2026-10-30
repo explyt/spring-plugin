@@ -200,6 +200,7 @@ intellijPlatform {
                     FailureLevel.SCHEDULED_FOR_REMOVAL_API_USAGES,
                     FailureLevel.EXPERIMENTAL_API_USAGES,
                     FailureLevel.PLUGIN_STRUCTURE_WARNINGS,
+                    FailureLevel.MISSING_DEPENDENCIES,
                 )
             )
         )
