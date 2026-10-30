@@ -136,7 +136,7 @@ After you submit a pull request, the Explyt team will:
 - **Approve and merge** the PR once it is ready. Only maintainers have merge permissions.
 
 ## 9. Where to ask questions
-- 💬 **Discord:** [Explyt Spring server](https://discord.gg/NMThzdNB9) (English)
+- 💬 **Discord:** [Explyt Spring server](https://discord.gg/JMQu2Tq7Kx) (English)
 - 🗨️ **GitHub Discussions:** <https://github.com/explyt/spring-plugin/discussions> — Q&A, ideas, and show & tell.
 - 🐛 **Bugs / features:** [open an issue](https://github.com/explyt/spring-plugin/issues/new/choose).
 

@@ -112,7 +112,7 @@ Use **Generate (Alt+Insert / Command+N)**:
 
 ## Support & community
 - **Issues/feature requests**: https://github.com/explyt/spring-plugin/issues
-- **Discord**: https://discord.gg/NMThzdNB9
+- **Discord**: https://discord.gg/JMQu2Tq7Kx
 
 ## License
 - Licensed under the [Apache License 2.0](https://github.com/explyt/spring-plugin/blob/main/LICENSE.md).
