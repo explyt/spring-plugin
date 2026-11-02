@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.explyt.spring.ai.mcp
+package com.explyt.spring.web.contract
 
 /**
  * The property naming strategies Jackson ships in `PropertyNamingStrategies`, translating a property name exactly as

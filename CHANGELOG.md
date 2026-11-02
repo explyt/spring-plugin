@@ -7,6 +7,9 @@
 ### Spring Data
 - fix: An anonymous implementation of a Spring Data repository no longer breaks repository bean discovery in its module, and implementation classes are no longer listed as repository beans (#834)
 
+### Spring Core
+- fix: Typing in a Java `static final` field while the IDE indexes no longer throws `IndexNotReadyException` (#833)
+
 ### Spring Web
 - fix: Reformatting or replacing text in an OpenAPI file with the preview open no longer fails; the file is saved once after the change (#835)
 

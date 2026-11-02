@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.explyt.spring.ai.mcp
+package com.explyt.spring.web.contract
 
 import com.explyt.spring.core.JacksonClasses
 import com.explyt.spring.core.properties.FoldedPropertyValue
@@ -56,10 +56,10 @@ internal object ResponseSchemaReader {
      * The schema of [type]. [module] is the module of the handler; the naming strategy its configuration declares
      * applies to every class of the schema that does not declare its own `@JsonNaming`.
      */
-    fun schemaOf(type: PsiType, depth: Int, module: Module? = null): DtoSchemaJson? =
+    fun schemaOf(type: PsiType, depth: Int, module: Module? = null): ValueSchema? =
         schemaOf(type, depth, SchemaContext(module?.let(JacksonNaming::configuredFor), module))
 
-    private fun schemaOf(type: PsiType, depth: Int, context: SchemaContext): DtoSchemaJson? {
+    private fun schemaOf(type: PsiType, depth: Int, context: SchemaContext): ValueSchema? {
         if (depth <= 0) return null
         val resolved = (type as? PsiClassType)?.resolve() ?: return null
         val fqn = resolved.qualifiedName ?: return null
@@ -84,13 +84,13 @@ internal object ResponseSchemaReader {
         if (!ProjectSources.declares(resolved)) return librarySchemaOf(resolved, fqn, depth, names)
         val fields = projectFieldsOf(resolved, depth, names)
         val polymorphism = JacksonPolymorphism.of(resolved)
-        return DtoSchemaJson(
+        return ValueSchema(
             className = fqn,
             fields = fields,
             namingStrategy = naming?.name,
             namingStrategySource = naming?.source,
             polymorphic = polymorphism?.let { true },
-            discriminator = polymorphism?.typeInfo?.let { DiscriminatorJson(it.use, it.include, it.property) },
+            discriminator = polymorphism?.typeInfo?.let { SchemaDiscriminator(it.use, it.include, it.property) },
             variants = polymorphism?.variants?.takeIf { it.isNotEmpty() }
                 ?.mapNotNull { variantSchemaOf(it, depth - 1, context) },
         )
@@ -101,11 +101,11 @@ internal object ResponseSchemaReader {
      * `PageImpl` re-wrapped into `PagedModel` when the application asks for `VIA_DTO`. A declared `Page` or `Slice`
      * is taken for its Spring Data implementation, which a custom one is not.
      */
-    private fun chunkSchemaOf(type: PsiClassType, fqn: String, depth: Int, context: SchemaContext): DtoSchemaJson {
+    private fun chunkSchemaOf(type: PsiClassType, fqn: String, depth: Int, context: SchemaContext): ValueSchema {
         val element = type.parameters.firstOrNull()
         val assumed = true.takeIf { fqn == PAGE || fqn == SLICE }
         if (fqn == SLICE || fqn == SLICE_IMPL) {
-            return DtoSchemaJson(
+            return ValueSchema(
                 className = SLICE_IMPL,
                 fields = listOf(contentOf(element, depth, context)) + SpringDataChunkSchemas.sliceProperties(depth),
                 wireShape = PageWireShape.SLICE_DIRECT.name,
@@ -114,7 +114,7 @@ internal object ResponseSchemaReader {
         }
         val serialization = context.pageSerialization
         if (serialization.mode == PageSerializationMode.VIA_DTO) return pagedModelOf(element, depth, context, assumed)
-        return DtoSchemaJson(
+        return ValueSchema(
             className = PAGE_IMPL,
             fields = listOf(contentOf(element, depth, context)) + SpringDataChunkSchemas.pageProperties(depth),
             wireShape = PageWireShape.PAGE_DIRECT.name,
@@ -132,13 +132,13 @@ internal object ResponseSchemaReader {
      * subtype declare the same collection relation, is not guessed: `_embedded` is then described by its map type
      * alone, and the shape is assumed, as it is when HAL is not the default.
      */
-    private fun halSchemaOf(type: PsiClassType, fqn: String, depth: Int, context: SchemaContext): DtoSchemaJson {
+    private fun halSchemaOf(type: PsiClassType, fqn: String, depth: Int, context: SchemaContext): ValueSchema {
         val element = type.parameters.firstOrNull()
         val hal = context.halSerialization
         if (fqn == HateoasSchemas.ENTITY_MODEL) {
             val mapContent = element != null && MAPS.any { InheritanceUtil.isInheritor(element, it) }
             val content = element?.takeUnless { mapContent }?.let { halContentOf(it, depth, context) }
-                ?: DtoSchemaJson(className = fqn, fields = null, additionalProperties = true.takeIf { mapContent })
+                ?: ValueSchema(className = fqn, fields = null, additionalProperties = true.takeIf { mapContent })
             val contentFields = content.fields.orEmpty()
             val links = HateoasSchemas.links().takeIf { link -> contentFields.none { it.name == link.name } }
             return content.copy(
@@ -148,7 +148,7 @@ internal object ResponseSchemaReader {
             )
         }
         val relation = element?.let { HateoasSchemas.collectionRelationOf(it, hal.inflectsRelations) }?.let(hal::keyOf)
-        return DtoSchemaJson(
+        return ValueSchema(
             className = fqn,
             fields = listOfNotNull(
                 embeddedOf(element, relation, depth, context),
@@ -159,22 +159,22 @@ internal object ResponseSchemaReader {
         )
     }
 
-    private fun embeddedOf(element: PsiType?, relation: String?, depth: Int, context: SchemaContext): DtoFieldJson {
+    private fun embeddedOf(element: PsiType?, relation: String?, depth: Int, context: SchemaContext): SchemaField {
         val items = element?.let { "$LIST<${it.canonicalText}>" } ?: LIST
         val type = "${HateoasSchemas.MAP}<${HateoasSchemas.STRING},$items>"
-        val embedded = if (element == null || relation == null || depth <= 1) null else DtoSchemaJson(
+        val embedded = if (element == null || relation == null || depth <= 1) null else ValueSchema(
             className = HateoasSchemas.MAP,
             fields = listOf(HateoasSchemas.field(relation, items, halContentOf(element, depth - 2, context))),
         )
         return HateoasSchemas.field(HateoasSchemas.EMBEDDED, type, embedded).copy(nullable = null)
     }
 
-    private fun halContentOf(type: PsiType, depth: Int, context: SchemaContext): DtoSchemaJson? =
+    private fun halContentOf(type: PsiType, depth: Int, context: SchemaContext): ValueSchema? =
         schemaOf(type, depth, context)?.let { content ->
             content.copy(discriminator = null, variants = content.variants?.map { it.copy(typeId = null) })
         }
 
-    private fun projectFieldsOf(psiClass: PsiClass, depth: Int, names: Names): List<DtoFieldJson> =
+    private fun projectFieldsOf(psiClass: PsiClass, depth: Int, names: Names): List<SchemaField> =
         if (isJavaBean(psiClass)) {
             beanPropertiesOf(psiClass, depth, names).ifEmpty { fieldsOf(psiClass, depth, names) }
         } else {
@@ -190,7 +190,7 @@ internal object ResponseSchemaReader {
         fqn: String,
         depth: Int,
         context: SchemaContext,
-    ): DtoSchemaJson {
+    ): ValueSchema {
         val element = PsiUtil.substituteTypeParameter(type, PAGE_IMPL, 0, false)
         val serialization = context.pageSerialization
         if (serialization.mode == PageSerializationMode.VIA_DTO) return pagedModelOf(element, depth, context, null)
@@ -198,7 +198,7 @@ internal object ResponseSchemaReader {
         val pageKeys = pageFields.mapTo(HashSet()) { it.name }
         val names = Names(JacksonNaming.declaredOn(psiClass) ?: context.configured, context)
         val ownFields = projectFieldsOf(psiClass, depth, names).filter { it.name !in pageKeys }
-        return DtoSchemaJson(
+        return ValueSchema(
             className = fqn,
             fields = pageFields + ownFields,
             wireShape = PageWireShape.PAGE_DIRECT.name,
@@ -212,8 +212,8 @@ internal object ResponseSchemaReader {
         context: SchemaContext,
         assumed: Boolean?,
         source: String = context.pageSerialization.source,
-    ): DtoSchemaJson =
-        DtoSchemaJson(
+    ): ValueSchema =
+        ValueSchema(
             className = SpringDataChunkSchemas.PAGED_MODEL,
             fields = listOf(contentOf(element, depth, context), SpringDataChunkSchemas.pagedModelMetadata(depth)),
             wireShape = PageWireShape.PAGED_MODEL.name,
@@ -221,7 +221,7 @@ internal object ResponseSchemaReader {
             wireShapeAssumed = assumed,
         )
 
-    private fun contentOf(element: PsiType?, depth: Int, context: SchemaContext): DtoFieldJson = DtoFieldJson(
+    private fun contentOf(element: PsiType?, depth: Int, context: SchemaContext): SchemaField = SchemaField(
         name = "content",
         declaredName = null,
         type = element?.let { "$LIST<${it.canonicalText}>" } ?: LIST,
@@ -229,11 +229,11 @@ internal object ResponseSchemaReader {
         nested = element?.let { schemaOf(it, depth - 1, context) },
     )
 
-    private fun variantSchemaOf(variant: PolymorphicVariant, depth: Int, context: SchemaContext): DtoSchemaJson? {
+    private fun variantSchemaOf(variant: PolymorphicVariant, depth: Int, context: SchemaContext): ValueSchema? {
         val psiClass = variant.psiClass
         if (depth <= 0) {
             val className = psiClass.qualifiedName ?: return null
-            return DtoSchemaJson(
+            return ValueSchema(
                 className = className,
                 typeId = variant.typeId,
                 fields = null,
@@ -244,7 +244,7 @@ internal object ResponseSchemaReader {
         return schemaOf(type, depth, context)?.copy(typeId = variant.typeId)
     }
 
-    private fun librarySchemaOf(psiClass: PsiClass, fqn: String, depth: Int, names: Names): DtoSchemaJson {
+    private fun librarySchemaOf(psiClass: PsiClass, fqn: String, depth: Int, names: Names): ValueSchema {
         val omitted = omissionOf(psiClass)
         val anyGetter = ANY_GETTER_MIXINS[fqn]
         val fields = when {
@@ -253,7 +253,7 @@ internal object ResponseSchemaReader {
             else -> fieldsOf(psiClass, depth, names).ifEmpty { propertiesOf(psiClass, depth, names) }
         }.filter { it.name != anyGetter }
         val reason = omitted ?: SchemaOmitted.NO_VISIBLE_PROPERTIES.takeIf { fields.isEmpty() }
-        return DtoSchemaJson(
+        return ValueSchema(
             className = fqn,
             fields = fields.takeIf { reason == null },
             namingStrategy = names.own?.name,
@@ -309,7 +309,7 @@ internal object ResponseSchemaReader {
      * A class with no accessor at all is read by its fields, as before: its accessors are generated at compile time
      * by an annotation processor the IDE does not model, or its mapper is configured for field visibility.
      */
-    private fun beanPropertiesOf(psiClass: PsiClass, depth: Int, names: Names): List<DtoFieldJson> {
+    private fun beanPropertiesOf(psiClass: PsiClass, depth: Int, names: Names): List<SchemaField> {
         val getters = psiClass.allMethods.filter(::isWrittenGetter)
             .groupBy(::jacksonPropertyName)
             .mapValues { (_, overloads) -> overloads.first() }
@@ -376,10 +376,10 @@ internal object ResponseSchemaReader {
         return null
     }
 
-    private fun enumSchemaOf(enum: PsiClass, fqn: String): DtoSchemaJson {
+    private fun enumSchemaOf(enum: PsiClass, fqn: String): ValueSchema {
         val constants = enum.fields.filterIsInstance<PsiEnumConstant>()
         jsonValueOf(enum)?.let { (member, valueType) ->
-            return DtoSchemaJson(
+            return ValueSchema(
                 className = fqn,
                 fields = null,
                 jsonValue = member,
@@ -390,7 +390,7 @@ internal object ResponseSchemaReader {
         val values = constants.map { constant ->
             renamedTo(annotationOf(constant, JacksonClasses.JSON_PROPERTY)) ?: constant.name
         }
-        return DtoSchemaJson(className = fqn, fields = null, enumValues = values)
+        return ValueSchema(className = fqn, fields = null, enumValues = values)
     }
 
     /** The member whose value Jackson writes instead of the constant, and its type. */
@@ -410,7 +410,7 @@ internal object ResponseSchemaReader {
         return field.name to renderDtoType(field.type, kotlinOriginOf(field))
     }
 
-    private fun fieldsOf(psiClass: PsiClass, depth: Int, names: Names): List<DtoFieldJson> =
+    private fun fieldsOf(psiClass: PsiClass, depth: Int, names: Names): List<SchemaField> =
         psiClass.allFields.filter(::isWrittenField).mapNotNull { field ->
             if (isIgnored(field)) return@mapNotNull null
             val type = field.type
@@ -426,7 +426,7 @@ internal object ResponseSchemaReader {
         }
 
     /** Kotlin data class properties read through their getters, for a class that exposes no Java fields. */
-    private fun propertiesOf(psiClass: PsiClass, depth: Int, names: Names): List<DtoFieldJson> =
+    private fun propertiesOf(psiClass: PsiClass, depth: Int, names: Names): List<SchemaField> =
         psiClass.allMethods.mapNotNull { method ->
             if (method.hasModifierProperty(PsiModifier.STATIC)) return@mapNotNull null
             if (!method.name.startsWith("get") && !method.name.startsWith("is")) return@mapNotNull null
@@ -453,9 +453,9 @@ internal object ResponseSchemaReader {
         nullable: Boolean?,
         depth: Int,
         names: Names,
-    ): DtoFieldJson {
+    ): SchemaField {
         val written = wireName ?: names.own?.translate(declaredName) ?: declaredName
-        return DtoFieldJson(
+        return SchemaField(
             name = written,
             declaredName = declaredName.takeIf { written != declaredName },
             type = renderDtoType(type, origin),
