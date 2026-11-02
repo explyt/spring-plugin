@@ -5,7 +5,7 @@
 ## [Unreleased]
 
 ### Spring Data
-- fix: An anonymous, local or concrete implementation of a Spring Data repository no longer breaks repository bean discovery in its module, and implementation classes are no longer listed as repository beans (#834)
+- fix: An anonymous implementation of a Spring Data repository no longer breaks repository bean discovery in its module, and implementation classes are no longer listed as repository beans (#834)
 
 ## [262.35.123] - 2026-10-28
 
