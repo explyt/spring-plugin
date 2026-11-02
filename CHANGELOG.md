@@ -9,6 +9,7 @@
 
 ### Spring Core
 - fix: Typing in a Java `static final` field while the IDE indexes no longer throws `IndexNotReadyException` (#833)
+- fix: Attaching an Explyt Spring project from the file chooser no longer fails with "Read access is allowed from inside read-action only" (#844)
 
 ### Spring Web
 - fix: Reformatting or replacing text in an OpenAPI file with the preview open no longer fails; the file is saved once after the change (#835)
