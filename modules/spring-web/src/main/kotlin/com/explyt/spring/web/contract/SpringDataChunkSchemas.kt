@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.explyt.spring.ai.mcp
+package com.explyt.spring.web.contract
 
 internal object SpringDataChunkSchemas {
     const val PAGE = "org.springframework.data.domain.Page"
@@ -17,7 +17,7 @@ internal object SpringDataChunkSchemas {
 
     val CHUNKS = setOf(PAGE, PAGE_IMPL, SLICE, SLICE_IMPL)
 
-    fun sliceProperties(depth: Int): List<DtoFieldJson> = listOf(
+    fun sliceProperties(depth: Int): List<SchemaField> = listOf(
         field("pageable", PAGEABLE, pageable(depth - 1)),
         field("first", "boolean"),
         field("last", "boolean"),
@@ -28,18 +28,18 @@ internal object SpringDataChunkSchemas {
         field("empty", "boolean"),
     )
 
-    fun pageProperties(depth: Int): List<DtoFieldJson> =
+    fun pageProperties(depth: Int): List<SchemaField> =
         sliceProperties(depth) + field("totalElements", "long") + field("totalPages", "int")
 
-    fun pagedModelMetadata(depth: Int): DtoFieldJson = field(
+    fun pagedModelMetadata(depth: Int): SchemaField = field(
         "page", PAGE_METADATA,
         schema(depth - 1, PAGE_METADATA, listOf("size", "number", "totalElements", "totalPages").map { field(it, "long") }),
     )
 
-    private fun sort(depth: Int): DtoSchemaJson? =
+    private fun sort(depth: Int): ValueSchema? =
         schema(depth, SORT, listOf("empty", "sorted", "unsorted").map { field(it, "boolean") })
 
-    private fun pageable(depth: Int): DtoSchemaJson? = schema(
+    private fun pageable(depth: Int): ValueSchema? = schema(
         depth, PAGEABLE,
         listOf(
             field("pageNumber", "int"),
@@ -51,9 +51,9 @@ internal object SpringDataChunkSchemas {
         ),
     )?.copy(wireShapeAssumed = true)
 
-    private fun schema(depth: Int, className: String, fields: List<DtoFieldJson>): DtoSchemaJson? =
-        DtoSchemaJson(className = className, fields = fields).takeIf { depth > 0 }
+    private fun schema(depth: Int, className: String, fields: List<SchemaField>): ValueSchema? =
+        ValueSchema(className = className, fields = fields).takeIf { depth > 0 }
 
-    private fun field(name: String, type: String, nested: DtoSchemaJson? = null): DtoFieldJson =
-        DtoFieldJson(name = name, declaredName = null, type = type, nullable = false, nested = nested)
+    private fun field(name: String, type: String, nested: ValueSchema? = null): SchemaField =
+        SchemaField(name = name, declaredName = null, type = type, nullable = false, nested = nested)
 }

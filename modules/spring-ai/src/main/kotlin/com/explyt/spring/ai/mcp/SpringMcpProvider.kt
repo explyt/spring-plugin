@@ -26,6 +26,7 @@ import com.explyt.spring.core.source.SourceLocation
 import com.explyt.spring.core.source.SourcePositions
 import com.explyt.spring.core.util.SpringBootUtil
 import com.explyt.spring.web.SpringWebClasses
+import com.explyt.spring.web.contract.ResponseSchemaReader
 import com.explyt.spring.web.loader.EndpointElement
 import com.explyt.spring.web.loader.EndpointType
 import com.explyt.spring.web.service.SpringWebEndpointsSearcher
@@ -1364,7 +1365,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
             parameters = parametersOf(endpoint, handler),
             returnType = handler?.let(HandlerSignature::declaredReturnType)?.canonicalText,
             responseSchema = handler?.let(HandlerSignature::declaredReturnType)
-                ?.let { ResponseSchemaReader.schemaOf(it, depth = 3, module = module) },
+                ?.let { ResponseSchemaReader.schemaOf(it, depth = 3, module = module) }
+                ?.toJson(),
             produces = core.produces,
             producesSource = core.producesSource,
             consumes = core.consumes,
