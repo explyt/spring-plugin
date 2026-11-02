@@ -4,6 +4,9 @@
 
 ## [Unreleased]
 
+### Spring Core
+- fix: Kotlin Spring beans that the all-open compiler plugin opens (`kotlin("plugin.spring")`, also applied through a version-catalog alias) are no longer reported as final, and the "must be overridable" message reads correctly (#846)
+
 ### Spring Data
 - fix: An anonymous implementation of a Spring Data repository no longer breaks repository bean discovery in its module, and implementation classes are no longer listed as repository beans (#834)
 
