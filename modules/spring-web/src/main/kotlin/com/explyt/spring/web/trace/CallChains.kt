@@ -28,8 +28,10 @@ object CallChains {
     }
 
     fun startOf(endpoint: EndpointElement): CallChainStart? {
-        FunctionalRouteTarget.of(endpoint.psiElement)?.let { return CallChainStart(it.start, it) }
-        return EndpointContracts.declaringMethodOf(endpoint)?.let { CallChainStart(it, route = null) }
+        FunctionalRouteTarget.of(endpoint)?.let { return CallChainStart(it.start, it) }
+        return EndpointContracts.declaringMethodOf(endpoint)
+            ?.takeUnless { FunctionalRouteTarget.isRouterFactory(it) }
+            ?.let { CallChainStart(it, route = null) }
     }
 
     fun trace(start: CallChainStart, depth: Int = DEFAULT_DEPTH): CallChain =

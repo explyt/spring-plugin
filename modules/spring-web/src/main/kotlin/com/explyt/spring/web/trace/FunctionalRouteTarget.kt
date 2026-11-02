@@ -6,6 +6,9 @@
 package com.explyt.spring.web.trace
 
 import com.explyt.spring.web.SpringWebClasses
+import com.explyt.spring.web.loader.BuilderRoute
+import com.explyt.spring.web.loader.EndpointElement
+import com.explyt.spring.web.loader.EndpointVerbs
 import com.explyt.spring.web.loader.RouterBuilderRouteWalker
 import com.explyt.spring.web.route.RouterDslRoutes
 import com.explyt.spring.web.util.SpringWebUtil
@@ -47,7 +50,7 @@ sealed class FunctionalRouteTarget(val call: UCallExpression, val factory: PsiMe
         get() = RouterDslRoutes.requestMethodsOf(call)?.let { SpringWebUtil.getServedRequestMethods(call, it) }
 
     val paths: List<String>
-        get() = walkedBuilderPaths().ifEmpty { declaredPaths() }
+        get() = pathsAmong(::walkedRoutes)
 
     val route: String?
         get() {
@@ -60,9 +63,14 @@ sealed class FunctionalRouteTarget(val call: UCallExpression, val factory: PsiMe
         if (isNestedUnderUnresolvedPrefix()) emptyList()
         else SpringWebUtil.getPathsFromCallExpression(call).filter { it.isNotEmpty() }
 
-    private fun walkedBuilderPaths(): List<String> {
+    private fun walkedRoutes(): List<BuilderRoute> = RouterBuilderRouteWalker.walkOf(factory).routes
+
+    private fun pathsAmong(routes: () -> List<BuilderRoute>): List<String> =
+        walkedBuilderPaths(routes).ifEmpty { declaredPaths() }
+
+    private fun walkedBuilderPaths(routes: () -> List<BuilderRoute>): List<String> {
         val routeCall = call.sourcePsi as? PsiMethodCallExpression ?: return emptyList()
-        return RouterBuilderRouteWalker.walkOf(factory).routes.filter { it.call == routeCall }.map { it.path }
+        return routes().filter { it.call == routeCall }.map { it.path }
     }
 
     private fun isNestedUnderUnresolvedPrefix(): Boolean {
@@ -107,8 +115,27 @@ sealed class FunctionalRouteTarget(val call: UCallExpression, val factory: PsiMe
             return null
         }
 
+        fun of(endpoint: EndpointElement): FunctionalRouteTarget? {
+            of(endpoint.psiElement)?.let { return it }
+            val factory = endpoint.psiElement as? PsiMethod ?: return null
+            val routes = RouterBuilderRouteWalker.walkOf(factory).routes
+            return routes.asSequence()
+                .mapNotNull { it.call.toUElementOfType<UCallExpression>()?.let(::fromCall) }
+                .firstOrNull { target ->
+                    ProgressManager.checkCanceled()
+                    val methods = target.requestMethods ?: return@firstOrNull false
+                    endpoint.path in target.pathsAmong { if (target.factory == factory) routes else target.walkedRoutes() } &&
+                            methods.ifEmpty { listOf(EndpointVerbs.ALL) }.toSet() == EndpointVerbs.labelsOf(endpoint).toSet()
+                }
+        }
+
         fun of(routeElement: PsiElement): FunctionalRouteTarget? =
             routeElement.toUElement()?.getParentOfType<UCallExpression>(strict = false)?.let(::fromCall)
+
+        fun isRouterFactory(method: PsiMethod): Boolean {
+            val returnType = method.returnType ?: return false
+            return ROUTER_FUNCTIONS.any { returnType.isInheritorOf(it) }
+        }
 
         private fun registeredAround(leaf: PsiElement): FunctionalRouteTarget? =
             generateSequence(leaf) { it.parent }
@@ -125,9 +152,7 @@ sealed class FunctionalRouteTarget(val call: UCallExpression, val factory: PsiMe
 
         private fun fromCall(call: UCallExpression): FunctionalRouteTarget? {
             if (!isRoute(call)) return null
-            val factory = call.getParentOfType<UMethod>()?.javaPsi ?: return null
-            val returnType = factory.returnType ?: return null
-            if (ROUTER_FUNCTIONS.none { returnType.isInheritorOf(it) }) return null
+            val factory = call.getParentOfType<UMethod>()?.javaPsi?.takeIf(::isRouterFactory) ?: return null
             return when (val handler = call.valueArguments.lastOrNull()) {
                 is UCallableReferenceExpression -> (handler.resolve() as? PsiMethod)?.let { Handler(call, factory, it) }
                 is ULambdaExpression -> Lambda(call, factory, handler)
