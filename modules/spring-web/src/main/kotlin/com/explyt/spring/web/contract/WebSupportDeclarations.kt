@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.explyt.spring.ai.mcp
+package com.explyt.spring.web.contract
 
-import com.explyt.spring.ai.mcp.PageSerialization.Companion.ENABLE_WEB_SUPPORT
+import com.explyt.spring.web.contract.PageSerialization.Companion.ENABLE_WEB_SUPPORT
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.completion.properties.SpringConfigurationPropertiesSearch
 import com.explyt.spring.core.service.PackageScanService

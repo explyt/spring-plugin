@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.explyt.spring.ai.mcp
+package com.explyt.spring.web.contract
 
 import com.explyt.spring.core.service.conditional.ConditionPropertyValue
 import com.explyt.spring.core.service.conditional.PropertyConditionValues
@@ -32,11 +32,11 @@ internal object HateoasSchemas {
 
     val MODELS = setOf(ENTITY_MODEL, COLLECTION_MODEL, PAGED_MODEL)
 
-    fun links(): DtoFieldJson = field("_links", "$MAP<$STRING,$LINK>").copy(nullable = null)
+    fun links(): SchemaField = field("_links", "$MAP<$STRING,$LINK>").copy(nullable = null)
 
-    fun pageMetadata(depth: Int, keyOf: (String) -> String): DtoFieldJson = field(
+    fun pageMetadata(depth: Int, keyOf: (String) -> String): SchemaField = field(
         "page", PAGE_METADATA,
-        DtoSchemaJson(
+        ValueSchema(
             className = PAGE_METADATA,
             fields = listOf("size", "totalElements", "totalPages", "number").map { field(keyOf(it), "long") },
         ).takeIf { depth > 1 },
@@ -71,8 +71,8 @@ internal object HateoasSchemas {
             ?.let { AnnotationUtil.getStringAttributeValue(it, "collectionRelation") }
             ?.takeIf { it.isNotEmpty() }
 
-    fun field(name: String, type: String, nested: DtoSchemaJson? = null): DtoFieldJson =
-        DtoFieldJson(name = name, declaredName = null, type = type, nullable = false, nested = nested)
+    fun field(name: String, type: String, nested: ValueSchema? = null): SchemaField =
+        SchemaField(name = name, declaredName = null, type = type, nullable = false, nested = nested)
 }
 
 /**
