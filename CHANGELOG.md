@@ -7,6 +7,9 @@
 ### Spring Data
 - fix: An anonymous implementation of a Spring Data repository no longer breaks repository bean discovery in its module, and implementation classes are no longer listed as repository beans (#834)
 
+### Spring Core
+- fix: Typing in a Java `static final` field while the IDE indexes no longer throws `IndexNotReadyException` (#833)
+
 ### Spring Web
 - feat: The Endpoints tool window shows the selected endpoint's contract: parameters with their binding source, requiredness and defaults, media types and the response as Jackson writes it, each row navigating to its source (#486)
 
