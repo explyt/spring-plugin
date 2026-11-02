@@ -10,6 +10,9 @@
 ### Spring Core
 - fix: Typing in a Java `static final` field while the IDE indexes no longer throws `IndexNotReadyException` (#833)
 
+### Spring Web
+- fix: Reformatting or replacing text in an OpenAPI file with the preview open no longer fails; the file is saved once after the change (#835)
+
 ## [262.35.123] - 2026-10-28
 
 This release is the last one for IntelliJ IDEA 2024.2 and 2024.3. Later releases support IntelliJ IDEA 2025.1 and newer.

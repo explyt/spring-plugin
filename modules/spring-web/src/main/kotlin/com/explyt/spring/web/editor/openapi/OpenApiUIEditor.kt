@@ -8,8 +8,6 @@ package com.explyt.spring.web.editor.openapi
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
 import com.intellij.openapi.application.runWriteAction
-import com.intellij.openapi.editor.event.DocumentEvent
-import com.intellij.openapi.editor.event.DocumentListener
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.TextEditor
@@ -24,7 +22,12 @@ class OpenApiUIEditor(textEditor: TextEditor, preview: OpenApiCefBrowser) :
     init {
         textEditor.putUserData(PARENT_EDITOR_KEY, this)
         preview.putUserData(PARENT_EDITOR_KEY, this)
-        document.addDocumentListener(OpenApiDocumentListener(), textEditor)
+        document.saveOnChange(textEditor, ::reloadPreview)
+    }
+
+    private fun reloadPreview() {
+        val browser = previewEditor as? OpenApiCefBrowser ?: return
+        browser.loadHtml("&ts=" + System.currentTimeMillis())
     }
 
     fun showPreview(anchor: String = "", layout: Layout = DEFAULT_LAYOUT) {
@@ -56,15 +59,5 @@ class OpenApiUIEditor(textEditor: TextEditor, preview: OpenApiCefBrowser) :
         val PARENT_EDITOR_KEY = Key.create<OpenApiUIEditor>("parentEditorKey")
 
         private val DEFAULT_LAYOUT = Layout.SHOW_EDITOR_AND_PREVIEW
-    }
-
-    private inner class OpenApiDocumentListener : DocumentListener {
-        override fun documentChanged(event: DocumentEvent) {
-            runWriteAction {
-                FileDocumentManager.getInstance().saveDocument(document)
-            }
-            val browser = previewEditor as? OpenApiCefBrowser ?: return
-            browser.loadHtml("&ts=" + System.currentTimeMillis())
-        }
     }
 }
