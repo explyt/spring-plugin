@@ -50,7 +50,7 @@ import org.jetbrains.kotlin.psi.KtTypeReference
  * type argument. What counts as a container is decided by where the class is declared, never by its package alone:
  * a project class under `org.springframework.` is the project's own DTO.
  */
-object ResponseSchemaReader {
+internal object ResponseSchemaReader {
 
     /**
      * The schema of [type]. [module] is the module of the handler; the naming strategy its configuration declares

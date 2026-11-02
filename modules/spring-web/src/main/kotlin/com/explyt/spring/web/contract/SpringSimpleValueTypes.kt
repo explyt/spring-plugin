@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.explyt.spring.ai.mcp
+package com.explyt.spring.web.contract
 
 import com.intellij.psi.CommonClassNames
 import com.intellij.psi.PsiArrayType
