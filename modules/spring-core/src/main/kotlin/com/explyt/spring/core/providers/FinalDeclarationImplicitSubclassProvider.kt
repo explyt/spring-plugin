@@ -26,6 +26,7 @@ import com.intellij.codeInspection.inheritance.ImplicitSubclassProvider
 import com.intellij.lang.jvm.JvmModifier
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiMethod
+import com.intellij.psi.PsiModifier
 
 @Suppress("UnstableApiUsage")
 class FinalDeclarationImplicitSubclassProvider : ImplicitSubclassProvider() {
@@ -36,7 +37,6 @@ class FinalDeclarationImplicitSubclassProvider : ImplicitSubclassProvider() {
     private val overrideClasses = listOf(ASYNC, CONFIGURATION) + transactionalAnnotations + cacheableAnnotations
 
     override fun getSubclassingInfo(psiClass: PsiClass): SubclassingInfo? {
-        if (KotlinAllOpen.opens(psiClass)) return null
         val methods = psiClass.methods
 
         val methodsInfo = mutableMapOf<PsiMethod, OverridingInfo>()
@@ -45,6 +45,16 @@ class FinalDeclarationImplicitSubclassProvider : ImplicitSubclassProvider() {
             if (overridingInfo != null) {
                 methodsInfo[method] = overridingInfo
             }
+        }
+
+        if (psiClass.hasModifierProperty(PsiModifier.FINAL) && KotlinAllOpen.opens(psiClass)) {
+            val keptFinal = methodsInfo.filterKeys(KotlinAllOpen::keepsFinal).ifEmpty { return null }
+            val className = psiClass.name ?: return null
+            return SubclassingInfo(
+                SpringCoreBundle.message("explyt.implicit.inspection.subclass.display.forClass", className),
+                keptFinal,
+                psiClass.isAbstract
+            )
         }
 
         val existAnnotation = psiClass.modifierList?.annotations?.isNotEmpty() ?: false

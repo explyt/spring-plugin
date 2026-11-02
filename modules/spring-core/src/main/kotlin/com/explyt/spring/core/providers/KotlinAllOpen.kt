@@ -9,11 +9,13 @@ import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiMethod
 import com.intellij.psi.util.InheritanceUtil
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.idea.compiler.configuration.KotlinCommonCompilerArgumentsHolder
 import org.jetbrains.kotlin.idea.facet.getInstance
 import org.jetbrains.kotlin.lexer.KtTokens
+import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtClassOrObject
 
 internal object KotlinAllOpen {
@@ -41,6 +43,11 @@ internal object KotlinAllOpen {
         val annotations = annotationsOpenedIn(KotlinCommonCompilerArgumentsHolder.getInstance(module).pluginOptions)
         if (annotations.isEmpty()) return false
         return !InheritanceUtil.processSupers(psiClass, true) { !it.isMetaAnnotatedBy(annotations) }
+    }
+
+    fun keepsFinal(method: PsiMethod): Boolean {
+        val declaration = method.navigationElement as? KtNamedFunction ?: return false
+        return declaration.hasModifier(KtTokens.FINAL_KEYWORD) || declaration.hasModifier(KtTokens.PRIVATE_KEYWORD)
     }
 
     private fun annotationsOpenedIn(pluginOptions: Array<String>?): List<String> =
