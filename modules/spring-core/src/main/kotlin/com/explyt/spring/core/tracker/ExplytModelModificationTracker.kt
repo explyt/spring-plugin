@@ -18,6 +18,8 @@ import com.intellij.openapi.vfs.*
 import com.intellij.psi.*
 import com.intellij.psi.impl.PsiTreeChangeEventImpl
 import com.intellij.psi.impl.PsiTreeChangeEventImpl.PsiEventType.*
+import com.intellij.psi.impl.source.PsiClassReferenceType
+import com.intellij.psi.impl.source.PsiImmediateClassType
 import com.intellij.psi.impl.source.tree.LazyParseablePsiElement
 import com.intellij.psi.util.CachedValue
 import com.intellij.psi.util.CachedValueProvider
@@ -396,7 +398,9 @@ internal class MyUastPsiTreeChangeAdapter(
 
     private fun PsiField.canFeedAnAnnotationValue(): Boolean = when (val fieldType = type) {
         is PsiPrimitiveType -> true
-        is PsiClassType -> fieldType.className == CommonClassNames.JAVA_LANG_STRING_SHORT
+        is PsiClassReferenceType, is PsiImmediateClassType ->
+            fieldType.className == CommonClassNames.JAVA_LANG_STRING_SHORT
+        is PsiClassType -> true
         else -> false
     }
 
