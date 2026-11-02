@@ -7,6 +7,7 @@ package com.explyt.spring.core.tracker.java
 
 import com.explyt.spring.core.action.UastModelTrackerInvalidateAction
 import com.explyt.spring.core.tracker.ModificationTrackerManager
+import com.explyt.spring.test.util.computeInDumbModeWithColdLibraryCaches
 import com.intellij.psi.PsiClassType
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiJavaFile
@@ -233,6 +234,48 @@ class ExplytModelModificationTrackerTest : LightJavaCodeInsightFixtureTestCase()
         )
         assertFieldTypeResolvesTo("java.lang.String")
         runModificationTriggeredTest()
+    }
+
+    fun testJavaEditStringConstantInitializerInDumbMode() {
+        myFixture.configureByText(
+            "MyPaths.java",
+            """
+                public final class MyPaths {
+                    public static final String PATH = "/a<caret>";
+                }
+            """.trimIndent()
+        )
+        assertFieldTypeResolvesTo("java.lang.String")
+        runModificationTriggeredInDumbModeTest()
+    }
+
+    fun testJavaEditPrimitiveConstantInitializerInDumbMode() {
+        myFixture.configureByText(
+            "MyLimits.java",
+            """
+                public final class MyLimits {
+                    public static final int MAX = 1<caret>;
+                }
+            """.trimIndent()
+        )
+        runModificationTriggeredInDumbModeTest { myFixture.type('0') }
+    }
+
+    fun testJavaEditLoggerConstantInitializerInDumbMode() {
+        myFixture.configureByText(
+            "MyService.java",
+            """
+                public class MyService {
+                    private static final Logger LOG = Logger.getLogger("my<caret>");
+                }
+
+                class Logger {
+                    static Logger getLogger(String name) { return new Logger(); }
+                }
+            """.trimIndent()
+        )
+        assertFieldTypeResolvesTo("Logger")
+        runIsNotModifiedInDumbModeTest()
     }
 
     fun testJavaEditPrimitiveConstantInitializer() {
@@ -691,6 +734,16 @@ class ExplytModelModificationTrackerTest : LightJavaCodeInsightFixtureTestCase()
     private fun typeBackspaces(count: Int) {
         for (i in 0 until count) {
             LightPlatformCodeInsightTestCase.backspace(editor, project)
+        }
+    }
+
+    private fun runModificationTriggeredInDumbModeTest(r: Runnable = Runnable { myFixture.type('A') }) {
+        project.computeInDumbModeWithColdLibraryCaches { runOuterModelModificationTrackerTest(true, r) }
+    }
+
+    private fun runIsNotModifiedInDumbModeTest() {
+        project.computeInDumbModeWithColdLibraryCaches {
+            runOuterModelModificationTrackerTest(false) { myFixture.type('A') }
         }
     }
 

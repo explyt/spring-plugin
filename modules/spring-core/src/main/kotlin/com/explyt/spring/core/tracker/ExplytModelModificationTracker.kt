@@ -18,6 +18,8 @@ import com.intellij.openapi.vfs.*
 import com.intellij.psi.*
 import com.intellij.psi.impl.PsiTreeChangeEventImpl
 import com.intellij.psi.impl.PsiTreeChangeEventImpl.PsiEventType.*
+import com.intellij.psi.impl.source.PsiClassReferenceType
+import com.intellij.psi.impl.source.PsiImmediateClassType
 import com.intellij.psi.impl.source.tree.LazyParseablePsiElement
 import com.intellij.psi.util.CachedValue
 import com.intellij.psi.util.CachedValueProvider
@@ -394,8 +396,13 @@ internal class MyUastPsiTreeChangeAdapter(
         return !property.isLocal && property.hasModifier(KtTokens.CONST_KEYWORD)
     }
 
-    private fun PsiField.canFeedAnAnnotationValue(): Boolean =
-        type is PsiPrimitiveType || type.equalsToText(CommonClassNames.JAVA_LANG_STRING)
+    private fun PsiField.canFeedAnAnnotationValue(): Boolean = when (val fieldType = type) {
+        is PsiPrimitiveType -> true
+        is PsiClassReferenceType, is PsiImmediateClassType ->
+            fieldType.className == CommonClassNames.JAVA_LANG_STRING_SHORT
+        is PsiClassType -> true
+        else -> false
+    }
 
     private fun isClassOrMethodCommented(event: PsiTreeChangeEvent): Boolean {
         val newChild = event.newChild ?: return false
