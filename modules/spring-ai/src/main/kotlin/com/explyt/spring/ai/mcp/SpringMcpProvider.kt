@@ -6,7 +6,6 @@
 package com.explyt.spring.ai.mcp
 
 import com.explyt.jpa.JpaClasses
-import com.explyt.spring.core.SpringCoreClasses
 
 import com.explyt.spring.core.service.PackageScanService
 import com.explyt.spring.ai.mcp.beans.BeanConditionJson
@@ -24,13 +23,13 @@ import com.explyt.spring.core.source.SourceLocation
 import com.explyt.spring.core.source.SourcePosition
 import com.explyt.spring.core.source.SourcePositions
 import com.explyt.spring.core.util.SpringBootUtil
-import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.contract.EndpointContracts
 import com.explyt.spring.web.loader.EndpointElement
 import com.explyt.spring.web.loader.EndpointType
 import com.explyt.spring.web.service.SpringWebEndpointsSearcher
 import com.explyt.spring.web.trace.CallChain
 import com.explyt.spring.web.trace.CallChainTestReferences
+import com.explyt.spring.web.trace.CallChains
 import com.explyt.spring.web.trace.CallChainTracer
 import com.explyt.spring.web.trace.FunctionalRouteTarget
 import com.explyt.spring.web.trace.ProxyAnnotations
@@ -38,6 +37,7 @@ import com.explyt.spring.web.trace.SourceNames
 import com.explyt.spring.web.trace.TestReference
 import com.explyt.spring.web.trace.TracedMethod
 import com.explyt.spring.web.trace.UrlTestReference
+import com.explyt.spring.web.trace.layerOf
 import com.explyt.spring.web.util.ApplicationBasePath
 import com.explyt.spring.web.util.EndpointPathPatterns
 import com.intellij.psi.PsiAnnotation
@@ -48,7 +48,6 @@ import com.explyt.util.ExplytAnnotationUtil.getBooleanAttribute
 import com.explyt.util.ExplytAnnotationUtil.getBooleanValue
 import com.explyt.util.ExplytAnnotationUtil.getMemberValues
 import com.explyt.util.ExplytAnnotationUtil.getStringAttribute
-import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.MultiVendorClass
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -83,7 +82,6 @@ import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.UResolvable
 import org.jetbrains.uast.visitor.AbstractUastVisitor
 
-import org.jetbrains.uast.getUastParentOfType
 import org.jetbrains.uast.toUElement
 
 /**
@@ -1068,7 +1066,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "writes a field, a Kotlin property's default accessor, or one generated from the field as Lombok " +
                 "does - carries 'accessor': true: it is listed, not followed, and not counted against the limit. " +
                 "'chainLimitReached' is true when reachable methods were left out " +
-                "because the chain hit its size limit of $MAX_TRACED_METHODS methods. " +
+                "because the chain hit its size limit of ${CallChains.MAX_TRACED_METHODS} methods. " +
                 "With includeTests, every node carries 'testReferences': the test files referring to the method, " +
                 "or to the interface method named in 'via' - the tests a signature change will break - and the " +
                 "starting method, when it handles an endpoint, also carries 'testUrlReferences': the test requests " +
@@ -1136,13 +1134,12 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 val document = PsiDocumentManager.getInstance(project).getDocument(psiFile)
                     ?: mcpFail("cannot get document for: $filePath")
 
-                val route = FunctionalRouteTarget.atLine(psiFile, document, line)
-                val psiMethod = route?.start
-                    ?: methodAtLine(psiFile, document, line)
+                val start = CallChains.startOf(psiFile, document, line)
                     ?: mcpFail(noMethodAtLineMessage(psiFile, document, filePath, line))
+                val route = start.route
 
-                val module = ModuleUtilCore.findModuleForPsiElement(psiMethod)
-                val chain = CallChainTracer(project, MAX_TRACED_METHODS).trace(psiMethod, effectiveDepth, route?.startBody)
+                val module = ModuleUtilCore.findModuleForPsiElement(start.method)
+                val chain = CallChains.trace(start, effectiveDepth)
                 val tests = module?.takeIf { includeTests }?.let { CallChainTestReferences(it, project) }
                 val envelope = mapper.createObjectNode().put(FIELD_CHAIN_LIMIT_REACHED, chain.truncated)
                 val answer = WholeAnswer.project(envelope, chain.methods.size, { id ->
@@ -1169,32 +1166,6 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 )
             }
         }
-    }
-
-    /**
-     * The method declared on [line], whether that line carries its signature, its body or its annotations.
-     *
-     * Only the line's *first* offset used to be examined, and that offset is the indentation whitespace. Inside a
-     * body that whitespace is a child of the method, so a body line resolved; on a declaration line it is a
-     * sibling of the method under the class body, so the search reached the class and reported that no method
-     * exists. The declaration line is the one every other tool hands out - `explyt_find_spring_endpoint` reports
-     * a handler at its declaration - so the two tools disagreed about the same method.
-     *
-     * Scanning the line leaf by leaf rather than widening the parent search keeps a blank line between two methods
-     * unresolved, which is a genuine miss and must not silently trace a neighbour.
-     */
-    private fun methodAtLine(psiFile: PsiFile, document: Document, line: Int): PsiMethod? {
-        val lineIndex = (line - 1).coerceIn(0, document.lineCount - 1)
-        val lineEnd = document.getLineEndOffset(lineIndex)
-        var offset = document.getLineStartOffset(lineIndex)
-
-        while (offset <= lineEnd) {
-            ProgressManager.checkCanceled()
-            val leaf = psiFile.findElementAt(offset) ?: return null
-            leaf.getUastParentOfType<UMethod>()?.javaPsi?.let { return it }
-            offset = maxOf(leaf.textRange.endOffset, offset + 1)
-        }
-        return null
     }
 
     /**
@@ -1246,7 +1217,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         )
         return CallChainNodeJson(
             id = id,
-            layer = containingClass?.let { detectSpringLayer(it) },
+            layer = containingClass?.let(::layerOf)?.name,
             reachedBy = traced.reachedBy?.name,
             className = SourceNames.qualifiedOwnerNameOf(method) ?: containingClass?.name,
             methodName = SourceNames.sourceNameOf(method),
@@ -1586,15 +1557,6 @@ class SpringBootApplicationMcpToolset : McpToolset {
     private fun PsiAnnotation?.getDeclaredBooleanAttribute(attributeName: String): Boolean? =
         this?.findDeclaredAttributeValue(attributeName)?.getBooleanValue()
 
-    private fun detectSpringLayer(psiClass: PsiClass): String? = when {
-        psiClass.isMetaAnnotatedBy(SpringWebClasses.REST_CONTROLLER) -> "CONTROLLER"
-        psiClass.isMetaAnnotatedBy(SpringCoreClasses.CONTROLLER) -> "CONTROLLER"
-        psiClass.isMetaAnnotatedBy(SpringCoreClasses.SERVICE) -> "SERVICE"
-        psiClass.isMetaAnnotatedBy(SpringCoreClasses.REPOSITORY) -> "REPOSITORY"
-        psiClass.isMetaAnnotatedBy(SpringCoreClasses.CONFIGURATION) -> "CONFIGURATION"
-        psiClass.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT) -> "COMPONENT"
-        else -> null
-    }
 
     /** 1-based line of [element], or `null` when it has no physical declaration to point at. */
     @VisibleForTesting
@@ -1632,9 +1594,6 @@ class SpringBootApplicationMcpToolset : McpToolset {
         // Enough to show the caller which line convention the file uses; the whole method list would bury it.
         private const val MAX_SUGGESTED_METHODS = 5
 
-        // Guard cap for one trace: the project methods reachable from a handler within ten layers can be the whole
-        // application, and a chain that long no longer tells the caller which path a change travels.
-        private const val MAX_TRACED_METHODS = 50
 
         private const val TRACE_PAGE_LIMIT = 20
         private const val TRACE_PAGE_CHARS = 8000

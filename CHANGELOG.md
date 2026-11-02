@@ -17,12 +17,9 @@
 
 ### Spring Web
 - fix: Reformatting or replacing text in an OpenAPI file with the preview open no longer fails; the file is saved once after the change (#835)
-
-### Spring Web
 - fix: An `.http` file opened from a jar no longer fails; the run gutter and runner panel are offered only for files on disk (#836)
-
-### Spring Web
 - feat: The Endpoints tool window shows the selected endpoint's contract: parameters with their binding source, requiredness and defaults, media types and the response as Jackson writes it, each row navigating to its source (#486)
+- feat: The Endpoints tool window shows the selected endpoint's call chain: the methods it reaches by layer, external calls and proxy annotations with the self-invocation rule, each row navigating to its source (#486)
 
 ## [262.35.123] - 2026-10-28
 

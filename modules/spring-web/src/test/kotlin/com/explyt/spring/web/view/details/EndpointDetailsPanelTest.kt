@@ -98,6 +98,30 @@ class EndpointDetailsPanelTest : ExplytJavaLightTestCase() {
         )
     }
 
+    fun testSwitchingToCallChainTabLoadsTheSelectedEndpointAndClearsOnDeselection() {
+        panel.show(rowOf(project, "/ping", "GET"))
+        PlatformTestUtil.waitWithEventsDispatching("The contract must be rendered", { panel.contractTree.rowCount > 0 }, 20)
+        val contract = lines(panel.contractTree)
+        assertEquals(0, panel.callChainTree.rowCount)
+
+        panel.selectedIndex = 1
+
+        PlatformTestUtil.waitWithEventsDispatching("The call chain must be rendered", { panel.callChainTree.rowCount > 0 }, 20)
+        assertEquals(listOf("PingController.ping(name)  CONTROLLER"), lines(panel.callChainTree))
+        assertEquals(contract, lines(panel.contractTree))
+        panel.selectedIndex = 0
+        assertEquals(contract, lines(panel.contractTree))
+        panel.selectedIndex = 1
+        assertEquals(listOf("PingController.ping(name)  CONTROLLER"), lines(panel.callChainTree))
+
+        panel.show(null)
+
+        assertEquals(0, panel.callChainTree.rowCount)
+        assertEquals(SpringWebBundle.message("explyt.web.endpoints.details.empty"), panel.callChainTree.emptyText.text)
+        panel.selectedIndex = 0
+        assertEquals(0, panel.contractTree.rowCount)
+    }
+
     fun testClearingTheSelectionEmptiesThePane() {
         panel.show(rowOf(project, "/ping", "GET"))
         PlatformTestUtil.waitWithEventsDispatching("The contract must be rendered", { panel.contractTree.rowCount > 0 }, 20)

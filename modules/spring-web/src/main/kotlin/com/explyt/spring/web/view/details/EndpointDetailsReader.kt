@@ -9,6 +9,7 @@ import com.explyt.spring.web.contract.EndpointContracts
 import com.explyt.spring.web.loader.EndpointElement
 import com.explyt.spring.web.loader.EndpointVerbs
 import com.explyt.spring.web.service.SpringWebEndpointsSearcher
+import com.explyt.spring.web.trace.CallChains
 import com.explyt.spring.web.view.EndpointElementViewData
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiManager
@@ -20,6 +21,13 @@ object EndpointDetailsReader {
         if (!endpoint.type.isWeb) return EndpointDetails.NoHttpContract(endpoint.type.readable)
         val contract = EndpointContracts.contractOf(endpoint, project)
         return EndpointDetails.Contract(ContractRows.of(contract, endpoint.psiElement))
+    }
+
+    fun callChainOf(row: EndpointElementViewData, project: Project): EndpointDetails {
+        val endpoint = endpointOf(row, project) ?: return EndpointDetails.NotFound
+        if (!endpoint.type.isWeb) return EndpointDetails.NoHttpContract(endpoint.type.readable)
+        val start = CallChains.startOf(endpoint) ?: return EndpointDetails.Contract(emptyList())
+        return EndpointDetails.Contract(CallChainRows.of(CallChains.trace(start)))
     }
 
     fun endpointOf(row: EndpointElementViewData, project: Project): EndpointElement? {

@@ -37,7 +37,17 @@ import javax.swing.tree.TreePath
 
 class EndpointDetailsPanel(private val project: Project, parentDisposable: Disposable) : JBTabbedPane(), Disposable {
 
-    internal val contractTree = Tree(DefaultTreeModel(DefaultMutableTreeNode()))
+    internal val contractTree = detailsTree()
+    internal val callChainTree = detailsTree()
+
+    private val callChainPane = JBScrollPane(callChainTree)
+
+    private val contractTab = DetailsTab(contractTree, message("explyt.web.endpoints.details.empty")) {
+        EndpointDetailsReader.detailsOf(it, project)
+    }
+    private val callChainTab = DetailsTab(callChainTree, message("explyt.web.endpoints.details.chain.none")) {
+        EndpointDetailsReader.callChainOf(it, project)
+    }
 
     internal var shownRow: EndpointElementViewData? = null
         private set
@@ -46,39 +56,64 @@ class EndpointDetailsPanel(private val project: Project, parentDisposable: Dispo
 
     init {
         Disposer.register(parentDisposable, this)
-        contractTree.isRootVisible = false
-        contractTree.showsRootHandles = true
-        contractTree.cellRenderer = ContractRowRenderer()
-        contractTree.emptyText.text = message("explyt.web.endpoints.details.empty")
         addTab(message("explyt.web.endpoints.details.tab.contract"), JBScrollPane(contractTree))
-        installNavigation()
+        addTab(message("explyt.web.endpoints.details.tab.call.chain"), callChainPane)
+        installNavigation(contractTree)
+        installNavigation(callChainTree)
+        addChangeListener { selectedTab().show(shownRow) }
     }
 
     fun show(row: EndpointElementViewData?) {
         if (row === shownRow) return
         shownRow = row
-        if (row == null) {
-            render(emptyList(), message("explyt.web.endpoints.details.empty"))
-            return
-        }
-        render(emptyList(), message("explyt.web.endpoints.details.loading"))
-        ReadAction.nonBlocking(Callable { EndpointDetailsReader.detailsOf(row, project) })
-            .inSmartMode(project)
-            .coalesceBy(this)
-            .expireWith(this)
-            .finishOnUiThread(ModalityState.any()) { details -> if (row === shownRow) present(row, details) }
-            .submit(AppExecutorUtil.getAppExecutorService())
-            .onError { error -> showFailure(row, error) }
+        selectedTab().show(row)
     }
 
-    private fun present(row: EndpointElementViewData, details: EndpointDetails) = when (details) {
-        is EndpointDetails.Contract -> {
-            render(details.rows, message("explyt.web.endpoints.details.empty"))
-            reportShown(row.key)
+    private fun selectedTab(): DetailsTab = if (selectedComponent === callChainPane) callChainTab else contractTab
+
+    private inner class DetailsTab(
+        private val tree: Tree,
+        private val noRowsText: String,
+        private val compute: (EndpointElementViewData) -> EndpointDetails,
+    ) {
+        private var computedRow: EndpointElementViewData? = null
+
+        fun show(row: EndpointElementViewData?) {
+            if (row === computedRow) return
+            computedRow = row
+            if (row == null) {
+                render(tree, emptyList(), message("explyt.web.endpoints.details.empty"))
+                return
+            }
+            render(tree, emptyList(), message("explyt.web.endpoints.details.loading"))
+            ReadAction.nonBlocking(Callable { compute(row) })
+                .inSmartMode(project)
+                .coalesceBy(this)
+                .expireWith(this@EndpointDetailsPanel)
+                .finishOnUiThread(ModalityState.any()) { details -> if (row === computedRow) present(row, details) }
+                .submit(AppExecutorUtil.getAppExecutorService())
+                .onError { error -> showFailure(row, error) }
         }
-        is EndpointDetails.NoHttpContract ->
-            render(emptyList(), message("explyt.web.endpoints.details.no.contract", details.endpointType))
-        EndpointDetails.NotFound -> render(emptyList(), message("explyt.web.endpoints.details.not.found"))
+
+        private fun present(row: EndpointElementViewData, details: EndpointDetails) = when (details) {
+            is EndpointDetails.Contract -> {
+                render(tree, details.rows, noRowsText)
+                reportShown(row.key)
+            }
+            is EndpointDetails.NoHttpContract ->
+                render(tree, emptyList(), message("explyt.web.endpoints.details.no.contract", details.endpointType))
+            EndpointDetails.NotFound -> render(tree, emptyList(), message("explyt.web.endpoints.details.not.found"))
+        }
+
+        private fun showFailure(row: EndpointElementViewData, error: Throwable) {
+            if (error is ControlFlowException || error is CancellationException) return
+            val reason = error.message ?: error.javaClass.name
+            ApplicationManager.getApplication().invokeLater(
+                { if (row === computedRow) render(tree, emptyList(), message("explyt.web.endpoints.details.failed", reason)) },
+                ModalityState.any(),
+                Condition<Any> { Disposer.isDisposed(this@EndpointDetailsPanel) },
+            )
+        }
     }
 
     private fun reportShown(endpoint: EndpointRowKey) {
@@ -87,39 +122,29 @@ class EndpointDetailsPanel(private val project: Project, parentDisposable: Dispo
         StatisticService.getInstance().addActionUsage(ENDPOINTS_TOOLWINDOW_DETAILS_SHOWN)
     }
 
-    private fun showFailure(row: EndpointElementViewData, error: Throwable) {
-        if (error is ControlFlowException || error is CancellationException) return
-        val reason = error.message ?: error.javaClass.name
-        ApplicationManager.getApplication().invokeLater(
-            { if (row === shownRow) render(emptyList(), message("explyt.web.endpoints.details.failed", reason)) },
-            ModalityState.any(),
-            Condition<Any> { Disposer.isDisposed(this) },
-        )
-    }
-
-    private fun render(rows: List<ContractRow>, emptyText: String) {
+    private fun render(tree: Tree, rows: List<ContractRow>, emptyText: String) {
         val root = DefaultMutableTreeNode()
         rows.forEach { root.add(nodeOf(it)) }
-        contractTree.emptyText.text = emptyText
-        contractTree.model = DefaultTreeModel(root)
-        TreeUtil.expandAll(contractTree)
+        tree.emptyText.text = emptyText
+        tree.model = DefaultTreeModel(root)
+        TreeUtil.expandAll(tree)
     }
 
     private fun nodeOf(row: ContractRow): DefaultMutableTreeNode =
         DefaultMutableTreeNode(row).apply { row.children.forEach { add(nodeOf(it)) } }
 
-    private fun installNavigation() {
-        contractTree.addKeyListener(object : KeyAdapter() {
+    private fun installNavigation(tree: Tree) {
+        tree.addKeyListener(object : KeyAdapter() {
             override fun keyPressed(e: KeyEvent) {
-                if (e.keyCode == KeyEvent.VK_ENTER) navigate(contractTree.selectionPath)
+                if (e.keyCode == KeyEvent.VK_ENTER) navigate(tree.selectionPath)
             }
         })
         object : DoubleClickListener() {
             override fun onDoubleClick(event: MouseEvent): Boolean {
-                navigate(contractTree.getClosestPathForLocation(event.x, event.y))
+                navigate(tree.getClosestPathForLocation(event.x, event.y))
                 return true
             }
-        }.installOn(contractTree)
+        }.installOn(tree)
     }
 
     private fun navigate(path: TreePath?) {
@@ -131,4 +156,13 @@ class EndpointDetailsPanel(private val project: Project, parentDisposable: Dispo
     }
 
     override fun dispose() = Unit
+
+    private companion object {
+        fun detailsTree() = Tree(DefaultTreeModel(DefaultMutableTreeNode())).apply {
+            isRootVisible = false
+            showsRootHandles = true
+            cellRenderer = ContractRowRenderer()
+            emptyText.text = message("explyt.web.endpoints.details.empty")
+        }
+    }
 }
