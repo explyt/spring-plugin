@@ -13,7 +13,9 @@ import com.explyt.spring.web.loader.EndpointAccess
 import com.explyt.spring.web.loader.EndpointExposure
 import com.explyt.spring.web.loader.EndpointType
 import com.explyt.spring.web.service.SpringWebEndpointsSearcher
+import com.explyt.spring.web.view.details.EndpointDetailsPanel
 import com.explyt.spring.web.view.nodes.EndpointNavigable
+import com.explyt.spring.web.view.nodes.HttpMethodNode
 import com.explyt.spring.web.view.nodes.RootEndpointNode
 
 import com.intellij.icons.AllIcons
@@ -30,12 +32,14 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPsiElementPointer
 import com.intellij.ui.DoubleClickListener
 import com.intellij.ui.JBColor
+import com.intellij.ui.OnePixelSplitter
 import com.intellij.ui.SearchTextField
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.filterField.FilterField
 import com.intellij.ui.filterField.FilterFieldAction
 import com.intellij.ui.tree.AsyncTreeModel
 import com.intellij.ui.tree.StructureTreeModel
+import com.intellij.ui.tree.TreeVisitor
 import com.intellij.ui.treeStructure.Tree
 import com.intellij.util.concurrency.AppExecutorUtil
 import com.intellij.util.ui.JBUI
@@ -68,6 +72,7 @@ class EndpointsToolWindow(private val project: Project) :
 
     //private val treeModel: StructureTreeModel<AbstractTreeStructure>
     private val endpointTree: Tree
+    private val detailsPanel = EndpointDetailsPanel(project, this)
 
     @Volatile
     private var endpoints: SoftReference<List<EndpointElementViewData>>? = null
@@ -90,7 +95,11 @@ class EndpointsToolWindow(private val project: Project) :
         treeModel.invalidateAsync()
 
         val scrollPane = JBScrollPane(endpointTree)
-        borderPanel.add(scrollPane)
+        borderPanel.add(OnePixelSplitter(false, DETAILS_PROPORTION_KEY, 0.6f).apply {
+            firstComponent = scrollPane
+            secondComponent = detailsPanel
+        })
+        endpointTree.addTreeSelectionListener { detailsPanel.show(selectedEndpoint()) }
 
         setContent(borderPanel)
         val toolBarPanel = JPanel(BorderLayout())
@@ -133,6 +142,16 @@ class EndpointsToolWindow(private val project: Project) :
                 return false
             }
         }.installOn(endpointTree)
+    }
+
+    private fun selectedEndpoint(): EndpointElementViewData? =
+        (TreeUtil.getLastUserObject(endpointTree.selectionPath) as? HttpMethodNode)?.httpElement
+
+    private fun reselect(endpoint: EndpointRowKey) {
+        TreeUtil.promiseSelect(endpointTree, TreeVisitor { path ->
+            val node = TreeUtil.getLastUserObject(HttpMethodNode::class.java, path)
+            if (node?.httpElement?.key == endpoint) TreeVisitor.Action.INTERRUPT else TreeVisitor.Action.CONTINUE
+        })
     }
 
     private fun navigation(closestPathForLocation: TreePath?) {
@@ -314,6 +333,7 @@ class EndpointsToolWindow(private val project: Project) :
         ReadAction.nonBlocking(Callable { getViewData() })
             .inSmartMode(project)
             .finishOnUiThread(ModalityState.current()) {
+                val shownEndpoint = detailsPanel.shownRow?.key
                 endpointTree.emptyText.text = "Nothing to show"
                 val endpointTreeStructure = EndpointTreeStructure(RootEndpointNode(it))
                 val treeModel = StructureTreeModel<AbstractTreeStructure>(endpointTreeStructure, this)
@@ -327,6 +347,7 @@ class EndpointsToolWindow(private val project: Project) :
                 refreshButtonPresentation.isEnabled = true
 
                 TreeUtil.expandAll(endpointTree)
+                shownEndpoint?.let(::reselect)
             }
             .expireWith(this)
             .submit(AppExecutorUtil.getAppExecutorService())
@@ -352,6 +373,8 @@ class EndpointsToolWindow(private val project: Project) :
     }
 }
 
+private const val DETAILS_PROPORTION_KEY = "explyt.endpoints.details.proportion"
+
 data class EndpointElementViewData(
     val type: EndpointType,
     val psiPointer: SmartPsiElementPointer<PsiElement>,
@@ -360,6 +383,17 @@ data class EndpointElementViewData(
     val path: String,
     val exposure: EndpointExposure? = null,
     val access: EndpointAccess? = null,
+    val application: String? = null,
+) {
+    val key: EndpointRowKey get() = EndpointRowKey(type, classOrFileName, method, path, application)
+}
+
+data class EndpointRowKey(
+    val type: EndpointType,
+    val classOrFileName: String,
+    val method: String,
+    val path: String,
+    val application: String?,
 )
 
 data class EndpointViewWithContainerName(val classOrFileName: String, val list: List<EndpointElementViewData>)

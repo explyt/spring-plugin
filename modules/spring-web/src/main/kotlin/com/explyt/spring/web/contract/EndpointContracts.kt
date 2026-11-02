@@ -175,7 +175,7 @@ object EndpointContracts {
                 else -> argumentSource
             }
             val required = if (source == "FRAMEWORK") null else !isNullableArgument(param)
-            EndpointParameter(param.name, source, param.type.canonicalText, required)
+            EndpointParameter(param.name, source, param.type.canonicalText, required, declaration = param)
         }
     }
 
@@ -219,7 +219,9 @@ object EndpointContracts {
         val result = mutableListOf<EndpointParameter>()
 
         for (info in SpringWebUtil.collectPathVariables(psiMethod)) {
-            result += EndpointParameter(info.name, "PATH", declaredTypeOf(info), info.isRequired)
+            result += EndpointParameter(
+                info.name, "PATH", declaredTypeOf(info), info.isRequired, declaration = info.psiElement
+            )
         }
         val multipartRequestNames = HandlerSignature.requestParameters(psiMethod).asSequence()
             .filter { inherited(it, SpringWebClasses.REQUEST_PARAM) != null && isMultipartPart(it.type) }
@@ -229,7 +231,9 @@ object EndpointContracts {
         val servletApplication = stack == WebApplicationStack.SERVLET
         for (info in SpringWebUtil.collectRequestParameters(psiMethod)) {
             val source = if (servletApplication && info.name in multipartRequestNames) "PART" else "QUERY"
-            result += EndpointParameter(info.name, source, declaredTypeOf(info), info.isRequired, info.defaultValue)
+            result += EndpointParameter(
+                info.name, source, declaredTypeOf(info), info.isRequired, info.defaultValue, info.psiElement
+            )
         }
         for (param in HandlerSignature.requestParameters(psiMethod)) {
             val part = inherited(param, SpringWebClasses.REQUEST_PART) ?: continue
@@ -238,15 +242,18 @@ object EndpointContracts {
                 source = "PART",
                 type = param.type.canonicalText,
                 required = part.getBooleanAttribute("required") ?: true,
+                declaration = param,
             )
         }
         val body = SpringWebUtil.getRequestBodyInfo(psiMethod)
         if (body != null) {
-            result += EndpointParameter(body.name, "BODY", declaredTypeOf(body), body.isRequired)
+            result += EndpointParameter(
+                body.name, "BODY", declaredTypeOf(body), body.isRequired, declaration = body.psiElement
+            )
         }
         for (info in SpringWebUtil.collectRequestHeaders(psiMethod)) {
             result += EndpointParameter(
-                info.name, "HEADER", declaredTypeOf(info), info.isRequired, info.defaultValue
+                info.name, "HEADER", declaredTypeOf(info), info.isRequired, info.defaultValue, info.psiElement
             )
         }
 
@@ -310,6 +317,7 @@ object EndpointContracts {
                     // resolver's contract is private to the resolver. Defaulting to `true` or `false` here would
                     // invent a fact about the wire format, which is the failure this method exists to avoid.
                     required = null,
+                    declaration = param,
                 )
             }
 
@@ -431,7 +439,7 @@ object EndpointContracts {
             ?: return null
         val position = SourcePosition.of(callee, project)
         val target = SourceNames.qualifiedNameOf(callee) ?: return null
-        return ServiceCall(target = target, position = position)
+        return ServiceCall(target = target, position = position, callee = callee)
     }
 
     /**
@@ -552,7 +560,9 @@ object EndpointContracts {
             else -> return null
         }
         val target = SourceNames.qualifiedNameOf(callee, namedAfter) ?: return null
-        return ServiceCall(target = target, position = SourcePosition.of(callee, project), callLine = site.line)
+        return ServiceCall(
+            target = target, position = SourcePosition.of(callee, project), callLine = site.line, callee = callee
+        )
     }
 
     private val PLATFORM_PACKAGES = listOf("java.", "kotlin.")

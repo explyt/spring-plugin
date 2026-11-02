@@ -15,6 +15,7 @@ import com.intellij.psi.PsiClassObjectAccessExpression
 import com.intellij.psi.PsiAnnotation
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiClassType
+import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiEnumConstant
 import com.intellij.psi.PsiField
 import com.intellij.psi.PsiMember
@@ -77,11 +78,11 @@ internal object ResponseSchemaReader {
         if (isContainer(resolved, fqn)) {
             return type.parameters.firstOrNull()?.let { schemaOf(it, depth, context) }
         }
-        if (resolved.isEnum) return enumSchemaOf(resolved, fqn)
+        if (resolved.isEnum) return enumSchemaOf(resolved, fqn).copy(declaration = resolved)
 
         val naming = JacksonNaming.declaredOn(resolved) ?: context.configured
         val names = Names(naming, context)
-        if (!ProjectSources.declares(resolved)) return librarySchemaOf(resolved, fqn, depth, names)
+        if (!ProjectSources.declares(resolved)) return librarySchemaOf(resolved, fqn, depth, names).copy(declaration = resolved)
         val fields = projectFieldsOf(resolved, depth, names)
         val polymorphism = JacksonPolymorphism.of(resolved)
         return ValueSchema(
@@ -93,6 +94,7 @@ internal object ResponseSchemaReader {
             discriminator = polymorphism?.typeInfo?.let { SchemaDiscriminator(it.use, it.include, it.property) },
             variants = polymorphism?.variants?.takeIf { it.isNotEmpty() }
                 ?.mapNotNull { variantSchemaOf(it, depth - 1, context) },
+            declaration = resolved,
         )
     }
 
@@ -238,6 +240,7 @@ internal object ResponseSchemaReader {
                 typeId = variant.typeId,
                 fields = null,
                 schemaOmitted = SchemaOmitted.DEPTH_LIMIT.name,
+                declaration = psiClass,
             )
         }
         val type = JavaPsiFacade.getElementFactory(psiClass.project).createType(psiClass)
@@ -326,6 +329,7 @@ internal object ResponseSchemaReader {
                 nullable = nullabilityOf(type, carriers, null),
                 depth = depth,
                 names = names,
+                declaration = field ?: getter,
             )
         }
         val publicFields = psiClass.allFields
@@ -340,6 +344,7 @@ internal object ResponseSchemaReader {
                     nullable = nullabilityOf(field.type, listOf(field), null),
                     depth = depth,
                     names = names,
+                    declaration = field,
                 )
             }
         return properties + publicFields
@@ -422,6 +427,7 @@ internal object ResponseSchemaReader {
                 nullable = nullabilityOf(type, carriersOf(field).toList(), kotlinOriginOf(field)),
                 depth = depth,
                 names = names,
+                declaration = field,
             )
         }
 
@@ -442,6 +448,7 @@ internal object ResponseSchemaReader {
                 nullable = nullabilityOf(type, listOf(method), kotlinOriginOf(method)),
                 depth = depth,
                 names = names,
+                declaration = method,
             )
         }
 
@@ -453,6 +460,7 @@ internal object ResponseSchemaReader {
         nullable: Boolean?,
         depth: Int,
         names: Names,
+        declaration: PsiElement,
     ): SchemaField {
         val written = wireName ?: names.own?.translate(declaredName) ?: declaredName
         return SchemaField(
@@ -461,6 +469,7 @@ internal object ResponseSchemaReader {
             type = renderDtoType(type, origin),
             nullable = nullable,
             nested = schemaOf(type, depth - 1, names.context),
+            declaration = declaration,
         )
     }
 
