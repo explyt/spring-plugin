@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.explyt.spring.ai.mcp
+package com.explyt.spring.web.trace
 
 import com.explyt.spring.core.providers.SpringBeanLineMarkerProvider
 import com.intellij.psi.PsiAssignmentExpression
@@ -30,7 +30,7 @@ import org.jetbrains.uast.UExpression
  * constructor fills it from one of its parameters - the constructor injection Spring performs for a single
  * constructor, including a Kotlin primary-constructor property.
  */
-internal object InjectedDependencies {
+object InjectedDependencies {
 
     fun isInjected(field: PsiField): Boolean {
         if (SpringBeanLineMarkerProvider.isAutowiredFieldExpression(field)) return true

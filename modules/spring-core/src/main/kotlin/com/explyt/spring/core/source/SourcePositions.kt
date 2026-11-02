@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.explyt.spring.ai.mcp
+package com.explyt.spring.core.source
 
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiMember
@@ -18,7 +18,7 @@ import org.jetbrains.kotlin.idea.base.psi.getLineNumber
  * through its declaring class, and through nothing at all when that class is synthetic too. A method Lombok generates
  * reports an empty range at the start of the file instead; it is reported through the field it was generated from.
  */
-object McpSourcePositions {
+object SourcePositions {
 
     /** The physical element a position may be reported for, or `null` when there is none. */
     fun sourceAnchorOf(element: PsiElement): PsiElement? =

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.explyt.spring.ai.mcp
+package com.explyt.spring.web.trace
 
 import com.intellij.psi.PsiCodeBlock
 import com.intellij.psi.PsiElement

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.explyt.spring.ai.mcp
+package com.explyt.spring.web.trace
 
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.loader.RouterBuilderRouteWalker
@@ -26,7 +26,7 @@ import org.jetbrains.uast.getParentOfType
 import org.jetbrains.uast.toUElement
 import org.jetbrains.uast.toUElementOfType
 
-internal sealed class FunctionalRouteTarget(val call: UCallExpression, val factory: PsiMethod) {
+sealed class FunctionalRouteTarget(val call: UCallExpression, val factory: PsiMethod) {
 
     class Handler(call: UCallExpression, factory: PsiMethod, val method: PsiMethod) :
         FunctionalRouteTarget(call, factory)
@@ -51,7 +51,7 @@ internal sealed class FunctionalRouteTarget(val call: UCallExpression, val facto
 
     val route: String?
         get() {
-            val method = requestMethods?.let(McpHttpMethods::routeVerb) ?: return null
+            val method = requestMethods?.let(HttpMethods::routeVerb) ?: return null
             val path = paths.firstOrNull() ?: return null
             return "$method $path"
         }

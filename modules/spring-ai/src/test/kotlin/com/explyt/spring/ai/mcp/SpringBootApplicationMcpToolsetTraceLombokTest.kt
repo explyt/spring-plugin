@@ -5,9 +5,11 @@
 
 package com.explyt.spring.ai.mcp
 
+import com.explyt.spring.core.source.SourcePositions
 import com.explyt.spring.test.TestLibrary
 import com.explyt.spring.test.addFromMaven
 import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
+import com.explyt.spring.web.trace.TrivialAccessors
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.openapi.application.WriteAction
@@ -97,8 +99,8 @@ class SpringBootApplicationMcpToolsetTraceLombokTest : JavaCodeInsightFixtureTes
             .findClass("com.example.topics.LazyDto", GlobalSearchScope.projectScope(project))!!
         val getter: PsiMethod = lazy.findMethodsByName("getCached", false).single()
         assertTrue("Precondition: a generated method has an empty range", getter.textRange?.isEmpty != false)
-        val anchor = McpSourcePositions.sourceAnchorOf(getter)!!
-        assertEquals(lineOf(LAZY_DTO_SOURCE, "cached ="), McpSourcePositions.lineOfAnchor(anchor))
+        val anchor = SourcePositions.sourceAnchorOf(getter)!!
+        assertEquals(lineOf(LAZY_DTO_SOURCE, "cached ="), SourcePositions.lineOfAnchor(anchor))
     }
 
     private inner class Trace(val root: JsonNode) {

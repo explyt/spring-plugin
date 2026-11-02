@@ -3,8 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.explyt.spring.ai.mcp
+package com.explyt.spring.web.trace
 
+import com.explyt.spring.core.source.SourcePositions
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.util.PsiUtil
@@ -33,7 +34,7 @@ import org.jetbrains.uast.UThisExpression
  * @property receiverClass the class of [receiver], or of the qualifying type of a type-qualified reference.
  * @property line the 1-based line of the method's name at the call site.
  */
-internal class MethodCallSite private constructor(
+class MethodCallSite private constructor(
     val callee: PsiMethod,
     val receiver: UExpression?,
     val receiverClass: PsiClass?,
@@ -48,7 +49,7 @@ internal class MethodCallSite private constructor(
         fun of(call: UCallExpression): MethodCallSite? = call.resolve()?.let { resolvedTo(call, it) }
 
         fun resolvedTo(call: UCallExpression, callee: PsiMethod): MethodCallSite {
-            val line = (call.methodIdentifier?.sourcePsi ?: call.sourcePsi)?.let(McpSourcePositions::lineOfAnchor)
+            val line = (call.methodIdentifier?.sourcePsi ?: call.sourcePsi)?.let(SourcePositions::lineOfAnchor)
             return MethodCallSite(callee, call.receiver, PsiUtil.resolveClassInClassTypeOnly(call.receiverType), line)
         }
 
@@ -72,7 +73,7 @@ internal class MethodCallSite private constructor(
             val receiver = qualifier.takeUnless { qualifiedByType }
             val receiverClass = PsiUtil.resolveClassInClassTypeOnly(receiver?.getExpressionType() ?: reference.qualifierType)
                 ?: (qualifier as? UResolvable)?.resolve() as? PsiClass
-            val line = reference.sourcePsi?.let(McpSourcePositions::lineOfAnchor)
+            val line = reference.sourcePsi?.let(SourcePositions::lineOfAnchor)
             return MethodCallSite(callee, receiver, receiverClass, line)
         }
 

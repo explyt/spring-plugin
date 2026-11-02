@@ -3,8 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.explyt.spring.ai.mcp
+package com.explyt.spring.web.trace
 
+import com.explyt.spring.core.source.ProjectSources
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiClass
@@ -61,7 +62,7 @@ import org.jetbrains.uast.visitor.AbstractUastVisitor
  * returns a field has nothing to trace, and sixty of them in a response builder used up the method limit before the
  * repository call was reached.
  */
-internal class CallChainTracer(project: Project, private val maxMethods: Int) {
+class CallChainTracer(project: Project, private val maxMethods: Int) {
 
     private val projectScope = GlobalSearchScope.projectScope(project)
 
@@ -236,7 +237,7 @@ internal class CallChainTracer(project: Project, private val maxMethods: Int) {
 }
 
 /** What a call made by a traced method reaches. */
-internal enum class CallKind {
+enum class CallKind {
     /** A project method of the caller's own unit of code - a helper - traced without spending depth. */
     INTERNAL,
 
@@ -252,7 +253,7 @@ internal enum class CallKind {
  *
  * @property truncated whether reachable methods were left out because the trace hit its size limit.
  */
-internal class CallChain(val methods: List<TracedMethod>, val truncated: Boolean) {
+class CallChain(val methods: List<TracedMethod>, val truncated: Boolean) {
 
     private val ids = methods.withIndex().associate { (index, traced) -> methodKey(traced.method) to index }
 
@@ -276,7 +277,7 @@ internal class CallChain(val methods: List<TracedMethod>, val truncated: Boolean
  * @property reachedBy the kind of call the method was first reached through, or `null` for the method the trace
  *   started from.
  */
-internal class TracedMethod(val method: PsiMethod, val reachedBy: CallKind?, val calls: List<TracedCall>)
+class TracedMethod(val method: PsiMethod, val reachedBy: CallKind?, val calls: List<TracedCall>)
 
 /**
  * One call a traced method makes.
@@ -289,7 +290,7 @@ internal class TracedMethod(val method: PsiMethod, val reachedBy: CallKind?, val
  * @property accessor whether [reached] is a trivial accessor of a project class ([TrivialAccessors]), which the
  *   trace lists without following.
  */
-internal data class TracedCall(
+data class TracedCall(
     val target: String,
     val line: Int?,
     val reached: PsiMethod?,
@@ -305,6 +306,6 @@ internal data class TracedCall(
  * Identity of a method across the PSI instances resolving to it: a Kotlin light method is re-created by every
  * resolve, so neither identity nor `equals` recognises a method already traced.
  */
-internal fun methodKey(method: PsiMethod): String =
+fun methodKey(method: PsiMethod): String =
     "${method.containingClass?.qualifiedName}#${method.name}" +
             method.parameterList.parameters.joinToString(prefix = "(", postfix = ")") { it.type.canonicalText }

@@ -6,6 +6,7 @@
 package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.ai.mcp.beans.SpringBeanMcpToolset
+import com.explyt.spring.core.source.SourceLocation
 import com.explyt.spring.test.TestLibrary
 import com.explyt.spring.test.addFromMaven
 import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
@@ -128,7 +129,7 @@ class SpringBootApplicationMcpToolsetOutsideProjectRootTest : JavaCodeInsightFix
         }?.let { root -> root.children.firstOrNull() ?: root } ?: error("precondition: the copied jar is readable")
         assertTrue("precondition: the jar lies under the project directory", entry.path.startsWith(project.basePath!!))
 
-        assertEquals(McpSourceLocation(filePath = null, library = libraryJar.name), McpSourceLocation.of(entry, project))
+        assertEquals(SourceLocation(filePath = null, library = libraryJar.name), SourceLocation.of(entry, project))
     }
 
     fun testFileUnderTheProjectDirectoryOutsideEveryModuleIsRelativeToTheProjectRoot() {
@@ -141,7 +142,7 @@ class SpringBootApplicationMcpToolsetOutsideProjectRootTest : JavaCodeInsightFix
         } ?: error("precondition: the file is visible in the VFS")
         assertFalse("precondition: the file belongs to no module", ProjectFileIndex.getInstance(project).isInContent(file))
 
-        assertEquals(McpSourceLocation(filePath = "notes/README.md", library = null), McpSourceLocation.of(file, project))
+        assertEquals(SourceLocation(filePath = "notes/README.md", library = null), SourceLocation.of(file, project))
     }
 
     private suspend fun findBeanAt(filePath: String, line: Int, column: Int): JsonNode = mapper.readTree(

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.explyt.spring.ai.mcp
+package com.explyt.spring.core.source
 
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.JdkOrderEntry
@@ -20,30 +20,30 @@ import com.intellij.psi.PsiElement
  * Where an element lives, in terms that leave the machine.
  *
  * A project file has a [filePath] relative to the project root, which may start with `../` for a module kept outside
- * the project directory; [McpSourceLocation.resolveInputPath] reads such a path back. An element inside a jar, in a
+ * the project directory; [SourceLocation.resolveInputPath] reads such a path back. An element inside a jar, in a
  * library or in the JDK has no path an agent can open and is named by its [library] instead: the jar's file name,
  * else the library's or the JDK's name. Both are `null` for a file the project can relate to neither, since the only
  * remaining description is an absolute path of this machine.
  */
-data class McpSourceLocation(val filePath: String?, val library: String?) {
+data class SourceLocation(val filePath: String?, val library: String?) {
 
     companion object {
-        val UNKNOWN = McpSourceLocation(null, null)
+        val UNKNOWN = SourceLocation(null, null)
 
-        fun of(element: PsiElement, project: Project): McpSourceLocation =
+        fun of(element: PsiElement, project: Project): SourceLocation =
             element.containingFile?.virtualFile?.let { of(it, project) } ?: UNKNOWN
 
-        fun of(file: VirtualFile, project: Project): McpSourceLocation {
-            JarFileSystem.getInstance().getVirtualFileForJar(file)?.let { return McpSourceLocation(null, it.name) }
+        fun of(file: VirtualFile, project: Project): SourceLocation {
+            JarFileSystem.getInstance().getVirtualFileForJar(file)?.let { return SourceLocation(null, it.name) }
             val basePath = project.basePath?.let { "$it/" }
             if (basePath != null && file.path.startsWith(basePath)) {
-                return McpSourceLocation(file.path.removePrefix(basePath), null)
+                return SourceLocation(file.path.removePrefix(basePath), null)
             }
             val fileIndex = ProjectFileIndex.getInstance(project)
             if (fileIndex.isInContent(file)) {
-                return McpSourceLocation(contentRelativePathOf(file, project.basePath, fileIndex), null)
+                return SourceLocation(contentRelativePathOf(file, project.basePath, fileIndex), null)
             }
-            return McpSourceLocation(null, libraryNameOf(file, fileIndex))
+            return SourceLocation(null, libraryNameOf(file, fileIndex))
         }
 
         /** The local file a project-relative [filePath] names, `../` segments included; `null` when there is none. */

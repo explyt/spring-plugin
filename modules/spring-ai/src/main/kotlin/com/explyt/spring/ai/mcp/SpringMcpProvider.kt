@@ -21,11 +21,29 @@ import com.explyt.spring.core.service.beans.ApplicationClassName
 import com.explyt.spring.core.service.beans.BeanQueryException
 import com.explyt.spring.core.service.beans.BeanSourcePreference
 import com.explyt.spring.core.service.conditional.ConditionVerdict
+import com.explyt.spring.core.source.ProjectSources
+import com.explyt.spring.core.source.SourceLocation
+import com.explyt.spring.core.source.SourcePositions
 import com.explyt.spring.core.util.SpringBootUtil
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.loader.EndpointElement
 import com.explyt.spring.web.loader.EndpointType
 import com.explyt.spring.web.service.SpringWebEndpointsSearcher
+import com.explyt.spring.web.trace.CallChain
+import com.explyt.spring.web.trace.CallChainTestReferences
+import com.explyt.spring.web.trace.CallChainTracer
+import com.explyt.spring.web.trace.CallSite
+import com.explyt.spring.web.trace.FunctionalRouteTarget
+import com.explyt.spring.web.trace.HttpMethods
+import com.explyt.spring.web.trace.InjectedDependencies
+import com.explyt.spring.web.trace.MethodCallSite
+import com.explyt.spring.web.trace.ProxyAnnotations
+import com.explyt.spring.web.trace.SourceNames
+import com.explyt.spring.web.trace.TestReference
+import com.explyt.spring.web.trace.TracedMethod
+import com.explyt.spring.web.trace.UnresolvedCallSite
+import com.explyt.spring.web.trace.UrlTestReference
+import com.explyt.spring.web.trace.methodKey
 import com.explyt.spring.web.util.ApplicationBasePath
 import com.explyt.spring.web.util.EndpointPathPatterns
 import com.explyt.spring.web.util.HandlerMethods
@@ -703,9 +721,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
         val controllerClass = endpoint.containingClass ?: declaringMethod?.containingClass
         val position = sourcePositionOf(endpoint.psiElement, project)
         // A loader may know the declaring file of an endpoint whose element has no source position of its own.
-        val location = position.location.takeIf { it != McpSourceLocation.UNKNOWN }
-            ?: endpoint.containingFile?.let { McpSourceLocation.of(it, project) }
-            ?: McpSourceLocation.UNKNOWN
+        val location = position.location.takeIf { it != SourceLocation.UNKNOWN }
+            ?: endpoint.containingFile?.let { SourceLocation.of(it, project) }
+            ?: SourceLocation.UNKNOWN
         val mediaTypes = mediaTypesOf(
             requestHandlerOf(endpoint)?.toUElement() as? UMethod,
             ModuleUtilCore.findModuleForPsiElement(endpoint.psiElement),
@@ -713,7 +731,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         )
 
         return CompactEndpointJson(
-            httpMethods = McpHttpMethods.listed(endpoint.requestMethods),
+            httpMethods = HttpMethods.listed(endpoint.requestMethods),
             fullPath = endpoint.path,
             pathTemplate = endpoint.pathTemplate.takeIf { it != endpoint.path },
             controllerClass = controllerClass?.qualifiedName,
@@ -1647,7 +1665,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         return withContext(Dispatchers.IO) {
             smartReadAction(project) {
                 val basePath = project.basePath ?: mcpFail("project base path not found")
-                val absolutePath = McpSourceLocation.resolveInputPath(filePath, basePath)
+                val absolutePath = SourceLocation.resolveInputPath(filePath, basePath)
                 val virtualFile = LocalFileSystem.getInstance().findFileByPath(absolutePath)
                     ?: mcpFail("file not found: $filePath")
                 val psiFile = PsiManager.getInstance(project).findFile(virtualFile)
@@ -1786,11 +1804,16 @@ class SpringBootApplicationMcpToolset : McpToolset {
                     accessor = true.takeIf { call.accessor },
                 )
             },
-            testReferences = nodeTests?.references,
-            testUrlReferences = nodeTests?.urlReferences,
+            testReferences = nodeTests?.references?.map { it.toJson() },
+            testUrlReferences = nodeTests?.urlReferences?.map { it.toJson() },
             route = startRoute?.route,
         )
     }
+
+    private fun TestReference.toJson() = NodeTestReferenceJson(location.filePath, location.library, lines, via)
+
+    private fun UrlTestReference.toJson() =
+        UrlTestReferenceJson(location.filePath, location.library, lines, endpointPath)
 
     // ---- explyt_get_spring_data_entities ----
 
@@ -2114,20 +2137,20 @@ class SpringBootApplicationMcpToolset : McpToolset {
      * Location and line of a single source anchor. All of them are `null` when the reported element has no
      * physical declaration to point at, so a caller never gets a path and a line taken from different files.
      */
-    private data class SourcePosition(val location: McpSourceLocation, val line: Int?) {
+    private data class SourcePosition(val location: SourceLocation, val line: Int?) {
         val filePath: String? get() = location.filePath
         val library: String? get() = location.library
     }
 
     private fun sourcePositionOf(element: PsiElement, project: Project): SourcePosition {
-        val anchor = McpSourcePositions.sourceAnchorOf(element) ?: return SourcePosition(McpSourceLocation.UNKNOWN, null)
-        return SourcePosition(McpSourceLocation.of(anchor, project), McpSourcePositions.lineOfAnchor(anchor))
+        val anchor = SourcePositions.sourceAnchorOf(element) ?: return SourcePosition(SourceLocation.UNKNOWN, null)
+        return SourcePosition(SourceLocation.of(anchor, project), SourcePositions.lineOfAnchor(anchor))
     }
 
     /** 1-based line of [element], or `null` when it has no physical declaration to point at. */
     @VisibleForTesting
     internal fun lineOf(element: PsiElement): Int? =
-        McpSourcePositions.sourceAnchorOf(element)?.let(McpSourcePositions::lineOfAnchor)
+        SourcePositions.sourceAnchorOf(element)?.let(SourcePositions::lineOfAnchor)
 
     companion object {
         // Guard cap for single-target lookups (find / contract): a URL pattern is not

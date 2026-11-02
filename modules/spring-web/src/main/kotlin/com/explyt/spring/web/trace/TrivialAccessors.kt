@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.explyt.spring.ai.mcp
+package com.explyt.spring.web.trace
 
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.psi.PsiField
@@ -28,7 +28,7 @@ import org.jetbrains.kotlin.psi.KtPropertyAccessor
  * multiplies two fields, the Kotlin property with a `get()` body or a delegate, the member a class delegates to another
  * object with `by`, and the Lombok getter that computes lazily all share that signature and are traced as any method.
  */
-internal object TrivialAccessors {
+object TrivialAccessors {
 
     fun isTrivial(method: PsiMethod): Boolean = when {
         method.hasModifierProperty(PsiModifier.ABSTRACT) -> false
