@@ -11,6 +11,8 @@ import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettin
 import com.explyt.spring.web.SpringWebBundle.message
 import com.explyt.spring.web.httpclient.HttpFileState
 import com.explyt.spring.web.httpclient.HttpFileStateService
+import com.explyt.spring.web.httpclient.hasNioPath
+import com.explyt.spring.web.httpclient.hasNioPath
 import com.intellij.execution.ExecutionManager
 import com.intellij.execution.RunManager
 import com.intellij.execution.configurations.ParametersList
@@ -67,6 +69,7 @@ class HttpRunFileAction : AnAction(AllIcons.Actions.Execute) {
          */
         @RequiresEdt
         fun runHttpCommand(project: Project, file: VirtualFile, lineNumber: Int? = null) {
+            if (!file.hasNioPath) return
             val httpClipPath = SpringToolRunConfigurationsSettingsState.getInstance().httpCliPath
             val httpFileState = HttpFileStateService.getInstance().getOrCreateState(file.toNioPath())
             if (httpClipPath.isNullOrEmpty()) {
