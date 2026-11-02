@@ -4,6 +4,9 @@
 
 ## [Unreleased]
 
+### Spring Data
+- fix: An anonymous implementation of a Spring Data repository no longer breaks repository bean discovery in its module, and implementation classes are no longer listed as repository beans (#834)
+
 ## [262.35.123] - 2026-10-28
 
 This release is the last one for IntelliJ IDEA 2024.2 and 2024.3. Later releases support IntelliJ IDEA 2025.1 and newer.
