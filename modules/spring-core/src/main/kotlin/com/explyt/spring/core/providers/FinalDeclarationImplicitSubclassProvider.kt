@@ -36,6 +36,7 @@ class FinalDeclarationImplicitSubclassProvider : ImplicitSubclassProvider() {
     private val overrideClasses = listOf(ASYNC, CONFIGURATION) + transactionalAnnotations + cacheableAnnotations
 
     override fun getSubclassingInfo(psiClass: PsiClass): SubclassingInfo? {
+        if (KotlinAllOpen.opens(psiClass)) return null
         val methods = psiClass.methods
 
         val methodsInfo = mutableMapOf<PsiMethod, OverridingInfo>()

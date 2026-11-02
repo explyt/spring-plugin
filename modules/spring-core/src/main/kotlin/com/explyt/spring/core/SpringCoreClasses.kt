@@ -120,6 +120,7 @@ object SpringCoreClasses {
     const val FUTURE = "java.util.concurrent.Future"
 
     const val SPRING_BOOT_TEST = "org.springframework.boot.test.context.SpringBootTest"
+    const val VALIDATED = "org.springframework.validation.annotation.Validated"
     const val TEST_PROPERTY_SOURCE = "org.springframework.test.context.TestPropertySource"
     const val TEST_PROPERTY_VALUES = "org.springframework.boot.test.util.TestPropertyValues"
 
