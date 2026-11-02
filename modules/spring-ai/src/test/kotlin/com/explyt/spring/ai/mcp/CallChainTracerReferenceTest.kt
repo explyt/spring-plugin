@@ -7,6 +7,10 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.web.trace.CallChain
+import com.explyt.spring.web.trace.CallChainTracer
+import com.explyt.spring.web.trace.CallKind
+import com.explyt.spring.web.trace.TracedCall
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.search.GlobalSearchScope
 

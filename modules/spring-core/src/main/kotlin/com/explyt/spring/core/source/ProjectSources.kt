@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.explyt.spring.ai.mcp
+package com.explyt.spring.core.source
 
 import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.vfs.VirtualFile
@@ -16,7 +16,7 @@ import com.intellij.psi.PsiElement
  * `org.springframework.`, and a library can use any package at all. A declaration in a source root of the project -
  * production or test - is project code; one in a library or in the JDK is not.
  */
-internal object ProjectSources {
+object ProjectSources {
 
     fun declares(element: PsiElement): Boolean {
         val file = element.declaredFile() ?: return false

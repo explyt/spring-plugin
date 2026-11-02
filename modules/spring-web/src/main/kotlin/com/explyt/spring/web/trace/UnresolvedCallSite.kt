@@ -3,8 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.explyt.spring.ai.mcp
+package com.explyt.spring.web.trace
 
+import com.explyt.spring.core.source.SourcePositions
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UCallableReferenceExpression
@@ -21,7 +22,7 @@ import org.jetbrains.uast.UExpression
  *
  * @property receiver the instance the method is invoked on, or `null` when the call names none.
  */
-internal class UnresolvedCallSite private constructor(
+class UnresolvedCallSite private constructor(
     val methodName: String,
     val receiver: UExpression?,
     override val line: Int?,
@@ -33,12 +34,12 @@ internal class UnresolvedCallSite private constructor(
             val name = call.methodIdentifier?.name
                 ?: (call.sourcePsi as? KtCallExpression)?.calleeExpression?.text
                 ?: return null
-            val line = (call.methodIdentifier?.sourcePsi ?: call.sourcePsi)?.let(McpSourcePositions::lineOfAnchor)
+            val line = (call.methodIdentifier?.sourcePsi ?: call.sourcePsi)?.let(SourcePositions::lineOfAnchor)
             return UnresolvedCallSite(name, call.receiver, line)
         }
 
         fun of(reference: UCallableReferenceExpression): UnresolvedCallSite {
-            val line = reference.sourcePsi?.let(McpSourcePositions::lineOfAnchor)
+            val line = reference.sourcePsi?.let(SourcePositions::lineOfAnchor)
             return UnresolvedCallSite(reference.callableName, reference.qualifierExpression, line)
         }
     }

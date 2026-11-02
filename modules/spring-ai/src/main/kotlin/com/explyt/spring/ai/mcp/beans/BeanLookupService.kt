@@ -16,7 +16,7 @@ import com.explyt.spring.core.service.beans.SpringInjectionPoint
 import com.explyt.spring.core.service.beans.SpringInjectionPointResolver
 import com.explyt.spring.ai.mcp.McpProjectChoice
 import com.explyt.spring.ai.mcp.McpProjectResolver
-import com.explyt.spring.ai.mcp.McpSourceLocation
+import com.explyt.spring.core.source.SourceLocation
 import com.intellij.openapi.application.ReadConstraint
 import com.intellij.openapi.application.constrainedReadAction
 import com.intellij.openapi.project.Project
@@ -112,7 +112,7 @@ class BeanLookupService(private val project: Project) {
 
     private fun projectFileRelativeToBasePath(filePath: String): VirtualFile? {
         val basePath = project.basePath ?: return null
-        val file = LocalFileSystem.getInstance().findFileByPath(McpSourceLocation.resolveInputPath(filePath, basePath))
+        val file = LocalFileSystem.getInstance().findFileByPath(SourceLocation.resolveInputPath(filePath, basePath))
         return file?.takeIf { ProjectFileIndex.getInstance(project).isInContent(it) }
     }
 

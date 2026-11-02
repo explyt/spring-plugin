@@ -5,7 +5,7 @@
 
 package com.explyt.spring.ai.mcp.beans
 
-import com.explyt.spring.ai.mcp.McpSourceLocation
+import com.explyt.spring.core.source.SourceLocation
 import com.explyt.spring.test.ExplytMultiModuleTestCase
 import com.explyt.spring.test.TestLibrary
 import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
@@ -96,7 +96,7 @@ class TestSourceInjectionPointBeanToolsTest : ExplytMultiModuleTestCase() {
     }
 
     private suspend fun injectionPoint(file: PsiFile, marker: String, application: String): JsonNode {
-        val filePath = McpSourceLocation.of(file.virtualFile, project).filePath
+        val filePath = SourceLocation.of(file.virtualFile, project).filePath
         assertNotNull("Precondition: the file has a project path", filePath)
         return mapper.readTree(
             toolset().findSpringBean(

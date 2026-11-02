@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.explyt.spring.ai.mcp
+package com.explyt.spring.web.trace
 
 import com.intellij.psi.PsiMethod
 import org.jetbrains.uast.UCallExpression
@@ -14,7 +14,7 @@ import org.jetbrains.uast.UCallableReferenceExpression
  * knows the callee, an [UnresolvedCallSite] when it does not, `null` when the expression is not a call at all - a
  * reference to a property or a field.
  */
-internal sealed interface CallSite {
+sealed interface CallSite {
 
     /** The 1-based line of the call site. */
     val line: Int?

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.explyt.spring.ai.mcp
+package com.explyt.spring.web.trace
 
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiMethod
@@ -14,7 +14,7 @@ import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtObjectDeclaration
 
-internal object SourceNames {
+object SourceNames {
 
     fun shortNameOf(method: PsiMethod): String {
         val owner = if (isCompanionMember(method)) {

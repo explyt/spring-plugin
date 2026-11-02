@@ -7,6 +7,7 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.core.JacksonClasses
 import com.explyt.spring.core.properties.FoldedPropertyValue
+import com.explyt.spring.core.source.ProjectSources
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.openapi.module.Module
 import com.intellij.psi.JavaPsiFacade

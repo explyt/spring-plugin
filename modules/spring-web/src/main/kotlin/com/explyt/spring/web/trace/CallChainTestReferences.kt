@@ -3,8 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.explyt.spring.ai.mcp
+package com.explyt.spring.web.trace
 
+import com.explyt.spring.core.source.SourceLocation
+import com.explyt.spring.core.source.SourcePositions
 import com.explyt.spring.web.providers.EndpointUsageSearcher
 import com.explyt.spring.web.service.SpringWebEndpointsSearcher
 import com.intellij.openapi.module.Module
@@ -27,13 +29,10 @@ import com.intellij.psi.util.PsiTreeUtil
  * `TestRestTemplate` and `RestClient` to this machine. A URL match is weaker evidence than a resolved reference and is
  * kept apart from it.
  */
-internal class CallChainTestReferences(private val module: Module, private val project: Project) {
+class CallChainTestReferences(private val module: Module, private val project: Project) {
 
     private val testScope = module.moduleTestsWithDependentsScope
     private val fileIndex = ProjectFileIndex.getInstance(project)
-
-    /** The tests of one traced method: the references to it, and - on a handler - the requests to its URL. */
-    data class NodeTests(val references: List<NodeTestReferenceJson>, val urlReferences: List<UrlTestReferenceJson>?)
 
     /**
      * The tests of [method], with the requests to its URL when [withUrlReferences] is set.
@@ -50,7 +49,7 @@ internal class CallChainTestReferences(private val module: Module, private val p
         viaDeclarations: List<PsiMethod>,
         withUrlReferences: Boolean,
         route: FunctionalRouteTarget? = null,
-    ): NodeTests {
+    ): TestReferences {
         val requests = when {
             !withUrlReferences -> null
             route != null -> requestsTo(route)
@@ -69,21 +68,21 @@ internal class CallChainTestReferences(private val module: Module, private val p
             }
         }
         val references = (direct.map { (location, lines) -> nodeReference(location, lines, via = null) } + throughInterfaces)
-            .sortedWith(compareBy({ it.filePath }, { it.via }))
+            .sortedWith(compareBy({ it.location.filePath }, { it.via }))
 
         val urlReferences = requests
             ?.flatMap { (path, usages) ->
                 linesByFile(usages).map { (location, lines) ->
-                    UrlTestReferenceJson(location.filePath, location.library, lines, path)
+                    UrlTestReference(location, lines, path)
                 }
             }
             ?.distinct()
-            ?.sortedBy { it.filePath }
-        return NodeTests(references, urlReferences)
+            ?.sortedBy { it.location.filePath }
+        return TestReferences(references, urlReferences)
     }
 
-    private fun nodeReference(location: McpSourceLocation, lines: List<Int>, via: String?) =
-        NodeTestReferenceJson(location.filePath, location.library, lines, via)
+    private fun nodeReference(location: SourceLocation, lines: List<Int>, via: String?) =
+        TestReference(location, lines, via)
 
     /** The requests tests send to the endpoints [handler] serves, by the endpoint's mapping path. */
     private fun requestsTo(handler: PsiMethod): List<Pair<String, List<PsiElement>>> {
@@ -109,14 +108,20 @@ internal class CallChainTestReferences(private val module: Module, private val p
     private fun referencesOf(method: PsiMethod): List<PsiElement> =
         MethodReferencesSearch.search(method, testScope, true).findAll().map { it.element }
 
-    private fun linesByFile(elements: List<PsiElement>): List<Pair<McpSourceLocation, List<Int>>> =
+    private fun linesByFile(elements: List<PsiElement>): List<Pair<SourceLocation, List<Int>>> =
         elements.mapNotNull { element ->
             ProgressManager.checkCanceled()
             val file = element.containingFile?.virtualFile?.takeIf(fileIndex::isInTestSourceContent) ?: return@mapNotNull null
-            val line = McpSourcePositions.sourceAnchorOf(element)?.let(McpSourcePositions::lineOfAnchor) ?: return@mapNotNull null
-            McpSourceLocation.of(file, project) to line
+            val line = SourcePositions.sourceAnchorOf(element)?.let(SourcePositions::lineOfAnchor) ?: return@mapNotNull null
+            SourceLocation.of(file, project) to line
         }
             .groupBy({ it.first }, { it.second })
             .map { (location, lines) -> location to lines.distinct().sorted() }
             .sortedBy { (location, _) -> location.filePath ?: location.library }
 }
+
+data class TestReferences(val references: List<TestReference>, val urlReferences: List<UrlTestReference>?)
+
+data class TestReference(val location: SourceLocation, val lines: List<Int>, val via: String?)
+
+data class UrlTestReference(val location: SourceLocation, val lines: List<Int>, val endpointPath: String)

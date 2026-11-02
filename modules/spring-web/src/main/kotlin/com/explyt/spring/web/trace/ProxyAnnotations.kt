@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.explyt.spring.ai.mcp
+package com.explyt.spring.web.trace
 
 import com.explyt.spring.core.JavaEeClasses
 import com.explyt.spring.core.SpringCoreClasses
@@ -18,7 +18,7 @@ import com.intellij.psi.PsiModifierListOwner
  * project annotation carrying one of them as a meta-annotation - a `@ReadOnlyTransaction` shortcut - is reported as
  * the annotation it stands for, since that is the behaviour a caller has to reason about.
  */
-internal object ProxyAnnotations {
+object ProxyAnnotations {
 
     enum class DeclaredOn { METHOD, CLASS }
 
