@@ -9,6 +9,7 @@ import com.explyt.spring.core.externalsystem.model.SpringBeanData
 import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
 import com.explyt.spring.core.service.beans.NativeBeanContext
 import com.explyt.spring.core.service.beans.NativeBeanSnapshotReader
+import com.intellij.ide.trustedProjects.TrustedProjects
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.externalSystem.importing.ImportSpecBuilder
@@ -34,6 +35,7 @@ sealed interface NativeSyncOutcome {
     data object AlreadyRunning : NativeSyncOutcome
     data class TimedOut(val previousImportedAt: Long?, val stillRunning: Boolean) : NativeSyncOutcome
     data class EndedWithoutResult(val previousImportedAt: Long?) : NativeSyncOutcome
+    data object NotTrusted : NativeSyncOutcome
 }
 
 sealed interface RefreshResult {
@@ -69,8 +71,14 @@ class NativeContextSync(private val project: Project) {
     @set:TestOnly
     var refresher: NativeContextRefresher = ExternalSystemNativeContextRefresher
 
+    @set:TestOnly
+    var trust: (Project) -> Boolean = TrustedProjects::isProjectTrusted
+
+    fun isProjectTrusted(): Boolean = trust(project)
+
     suspend fun sync(context: NativeBeanContext, timeout: Duration): NativeSyncOutcome {
         val previousImportedAt = context.importedAt
+        if (!isProjectTrusted()) return NativeSyncOutcome.NotTrusted
         if (isRunning(context.linkedPath)) return NativeSyncOutcome.AlreadyRunning
         val refreshed = try {
             withTimeoutOrNull(timeout) { refresher.refresh(project, context.linkedPath) }

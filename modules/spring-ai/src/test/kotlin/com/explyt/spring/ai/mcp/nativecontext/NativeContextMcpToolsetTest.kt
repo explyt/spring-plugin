@@ -21,6 +21,7 @@ import com.explyt.spring.test.TestLibrary
 import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.intellij.ide.trustedProjects.TrustedProjects
 import com.intellij.openapi.components.service
 import com.intellij.openapi.externalSystem.model.DataNode
 import com.intellij.openapi.externalSystem.model.ProjectKeys
@@ -44,6 +45,7 @@ class NativeContextMcpToolsetTest : ExplytJavaLightTestCase() {
     override fun tearDown() {
         try {
             sync.refresher = ExternalSystemNativeContextRefresher
+            sync.trust = TrustedProjects::isProjectTrusted
             val settings = ExternalSystemApiUtil.getSettings(project, SYSTEM_ID)
             linkedPaths.forEach { settings.unlinkExternalProject(it) }
             linkedPaths.clear()
@@ -148,17 +150,47 @@ class NativeContextMcpToolsetTest : ExplytJavaLightTestCase() {
         assertEquals(emptyList<String>(), refreshedPaths)
     }
 
+    fun testAnUntrustedProjectIsNeverSynced() = runBlockingReleasingWriteIntent<Unit> {
+        link(application())
+        sync.refresher = recordingRefresher()
+        sync.trust = { false }
+
+        val root = call()
+
+        assertEquals("NOT_TRUSTED", root["status"].asText())
+        assertEquals(APPLICATION, root["context"]["applicationClassName"].asText())
+        assertEquals(Instant.ofEpochMilli(IMPORTED_AT).toString(), root["previousImportedAt"].asText())
+        assertEquals(emptyList<String>(), refreshedPaths)
+    }
+
+    fun testAMistypedApplicationIsNotFoundEvenWithoutALinkedContext() = runBlockingReleasingWriteIntent<Unit> {
+        application()
+        sync.refresher = recordingRefresher()
+
+        val root = call(applicationClassName = "demo.DemoAplication")
+
+        assertTrue("A mistyped application must answer APPLICATION_NOT_FOUND, got $root",
+            root.toString().contains("APPLICATION_NOT_FOUND"))
+        assertFalse("A mistyped application must not answer NOT_LINKED, got $root", root.toString().contains("NOT_LINKED"))
+        assertEquals(emptyList<String>(), refreshedPaths)
+    }
+
     private fun recordingRefresher() = NativeContextRefresher { _, linkedPath ->
         refreshedPaths += linkedPath
         RefreshResult.Completed
     }
 
-    private suspend fun call(confirmed: Boolean = true, contextId: String? = null, timeoutSeconds: Int = 30): JsonNode {
+    private suspend fun call(
+        confirmed: Boolean = true,
+        contextId: String? = null,
+        timeoutSeconds: Int = 30,
+        applicationClassName: String = APPLICATION,
+    ): JsonNode {
         val toolset = NativeContextMcpToolset().apply { confirmation = NativeSyncConfirmation { _, _, _ -> confirmed } }
         return mapper.readTree(
             toolset.syncSpringNativeContext(
                 projectPath = project.basePath!!,
-                applicationClassName = APPLICATION.takeIf { contextId == null },
+                applicationClassName = applicationClassName.takeIf { contextId == null },
                 contextId = contextId,
                 timeoutSeconds = timeoutSeconds
             )

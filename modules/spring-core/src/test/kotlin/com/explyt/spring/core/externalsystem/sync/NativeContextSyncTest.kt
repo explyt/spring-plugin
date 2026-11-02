@@ -95,6 +95,15 @@ class NativeContextSyncTest : ExplytJavaLightTestCase() {
         }
     }
 
+    fun testUntrustedProjectIsNeverRefreshed() = syncTest {
+        val sync = service {
+            fail("An untrusted project must not be refreshed")
+            RefreshResult.Completed
+        }
+        sync.trust = { false }
+        assertEquals(NativeSyncOutcome.NotTrusted, sync.sync(context(), 2.seconds))
+    }
+
     private fun service(refresh: suspend () -> RefreshResult) = NativeContextSync(project).apply {
         refresher = NativeContextRefresher { actualProject, actualPath ->
             assertSame(project, actualProject)

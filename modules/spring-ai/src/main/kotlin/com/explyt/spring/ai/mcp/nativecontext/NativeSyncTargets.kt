@@ -38,17 +38,21 @@ internal data class NativeSyncTarget(
 internal class NativeSyncTargets(private val project: Project) {
 
     fun select(applicationClassName: String?, contextId: String?): NativeSyncTarget {
+        val namedApplication = applicationClassName?.let(::resolveApplication)
         val contexts = NativeBeanSnapshotReader(project).contexts()
         if (contexts.isEmpty()) throw notLinked("No Native Context is linked in the project.")
-        val context = if (applicationClassName == null && contextId != null) {
+        val context = if (namedApplication == null && contextId != null) {
             contexts.find { it.id == contextId } ?: throw notLinked("The requested context is not loaded.")
         } else {
-            val application = BeanApplicationResolver(project).resolve(applicationClassName, null)
+            val application = namedApplication ?: resolveApplication(null)
             BeanContextSelector.select(identityOf(application), contexts, BeanSourcePreference.NATIVE, contextId)
                 .nativeContext ?: throw notLinked("No loaded context is linked to the application.")
         }
         return NativeSyncTarget(context, runConfigurationOf(context.linkedPath), projectRelative(context.linkedPath))
     }
+
+    private fun resolveApplication(applicationClassName: String?): PsiClass =
+        BeanApplicationResolver(project).resolve(applicationClassName, null)
 
     private fun identityOf(application: PsiClass) = BeanApplicationIdentity(
         className = application.qualifiedName ?: error("An application without a qualified name cannot be scoped"),

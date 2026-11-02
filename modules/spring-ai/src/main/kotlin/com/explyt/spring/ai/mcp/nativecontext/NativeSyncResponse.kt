@@ -13,7 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import java.time.Instant
 
 enum class NativeSyncStatus {
-    SYNCED, FAILED, ALREADY_RUNNING, TIMED_OUT, ENDED_WITHOUT_RESULT, NOT_LINKED, CONTEXT_REQUIRED, DECLINED
+    SYNCED, FAILED, ALREADY_RUNNING, TIMED_OUT, ENDED_WITHOUT_RESULT, NOT_LINKED, CONTEXT_REQUIRED, DECLINED, NOT_TRUSTED
 }
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -82,6 +82,10 @@ internal object NativeSyncResponses {
 
         is NativeSyncOutcome.EndedWithoutResult -> NativeSyncResponse(
             NativeSyncStatus.ENDED_WITHOUT_RESULT, target.json, previousImportedAt = outcome.previousImportedAt.iso()
+        )
+
+        NativeSyncOutcome.NotTrusted -> NativeSyncResponse(
+            NativeSyncStatus.NOT_TRUSTED, target.json, previousImportedAt = target.context.importedAt.iso()
         )
     }
 
