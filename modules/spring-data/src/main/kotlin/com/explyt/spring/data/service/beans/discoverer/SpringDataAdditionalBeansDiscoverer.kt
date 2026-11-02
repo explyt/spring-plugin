@@ -28,6 +28,7 @@ class SpringDataAdditionalBeansDiscoverer : AdditionalBeansDiscoverer() {
         val repositoryPsiClass = LibraryClassCache.searchForLibraryClass(module, REPOSITORY) ?: return emptySet()
         val scope = module.moduleWithDependenciesScope
         return ClassInheritorsSearch.search(repositoryPsiClass, scope, true)
+            .filter { it.isInterface }
             .map { PsiBean(it.resolveBeanName(module), it, it.getQualifierAnnotation(), it) }
     }
 

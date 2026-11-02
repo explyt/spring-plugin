@@ -5,7 +5,7 @@
 
 package com.explyt.spring.ai.mcp.beans
 
-import com.explyt.spring.ai.mcp.ProjectSources
+import com.explyt.spring.core.source.ProjectSources
 import com.intellij.psi.PsiMember
 
 enum class BeanOrigin {

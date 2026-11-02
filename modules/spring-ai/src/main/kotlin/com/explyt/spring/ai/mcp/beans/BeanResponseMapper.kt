@@ -5,8 +5,6 @@
 
 package com.explyt.spring.ai.mcp.beans
 
-import com.explyt.spring.ai.mcp.McpSourceLocation
-import com.explyt.spring.ai.mcp.McpSourcePositions
 import com.explyt.spring.core.service.beans.BeanAnnotationEvidence
 import com.explyt.spring.core.service.beans.BeanConditionRecord
 import com.explyt.spring.core.service.beans.BeanDetailsReader
@@ -16,6 +14,8 @@ import com.explyt.spring.core.service.beans.BeanSelection
 import com.explyt.spring.core.service.beans.ScopedBeanRecord
 import com.explyt.spring.core.service.beans.ScopedBeanSnapshot
 import com.explyt.spring.core.service.beans.SpringInjectionPoint
+import com.explyt.spring.core.source.SourceLocation
+import com.explyt.spring.core.source.SourcePositions
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.intellij.openapi.project.Project
@@ -122,14 +122,14 @@ class BeanResponseMapper(private val project: Project) {
      * project and an absolute one would name a directory of this machine.
      */
     private fun declaration(member: PsiMember?): ObjectNode? {
-        val anchor = member?.takeIf { it.isValid }?.let(McpSourcePositions::sourceAnchorOf) ?: return null
+        val anchor = member?.takeIf { it.isValid }?.let(SourcePositions::sourceAnchorOf) ?: return null
         val file = anchor.containingFile?.virtualFile ?: return null
         val node = mapper.createObjectNode()
 
-        val location = McpSourceLocation.of(file, project)
+        val location = SourceLocation.of(file, project)
         node.put("filePath", location.filePath)
         location.library?.let { node.put("library", it) }
-        McpSourcePositions.lineOfAnchor(anchor)?.let { node.put("line", it) }
+        SourcePositions.lineOfAnchor(anchor)?.let { node.put("line", it) }
         return node
     }
 
