@@ -7,6 +7,7 @@ package com.explyt.spring.core.tracker.kotlin
 
 import com.explyt.spring.core.action.UastModelTrackerInvalidateAction
 import com.explyt.spring.core.tracker.ModificationTrackerManager
+import com.explyt.spring.test.util.computeInDumbModeWithColdLibraryCaches
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.LightPlatformCodeInsightTestCase
 import com.intellij.testFramework.fixtures.LightJavaCodeInsightFixtureTestCase
@@ -176,6 +177,20 @@ class ExplytModelModificationTrackerTest : LightJavaCodeInsightFixtureTestCase()
             """.trimIndent()
         )
         runModificationTriggeredTest()
+    }
+
+    fun testEditConstValInitializerInDumbMode() {
+        myFixture.configureByText(
+            "KotlinPaths.kt",
+            """
+                class KotlinPaths {
+                    companion object {
+                        const val PATH = "/a<caret>"
+                    }
+                }
+            """.trimIndent()
+        )
+        project.computeInDumbModeWithColdLibraryCaches { runModificationTriggeredTest() }
     }
 
     fun testEditNonConstCompanionValInitializer() {

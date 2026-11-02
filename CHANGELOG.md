@@ -8,6 +8,7 @@
 - fix: An anonymous implementation of a Spring Data repository no longer breaks repository bean discovery in its module, and implementation classes are no longer listed as repository beans (#834)
 
 ### Spring Core
+- fix: Typing in a Java `static final` field while the IDE indexes no longer throws `IndexNotReadyException` (#833)
 - feat: Report an empty `@Profile` array, which fails Spring startup with "Must specify at least one profile expression" (#845)
 
 ## [262.35.123] - 2026-10-28
