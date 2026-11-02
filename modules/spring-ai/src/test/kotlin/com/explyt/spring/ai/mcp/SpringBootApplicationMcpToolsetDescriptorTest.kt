@@ -6,6 +6,7 @@
 package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.ai.mcp.beans.SpringBeanMcpToolset
+import com.explyt.spring.ai.mcp.nativecontext.NativeContextMcpToolset
 import com.intellij.mcpserver.annotations.McpDescription
 import com.intellij.mcpserver.annotations.McpTool
 import com.intellij.mcpserver.annotations.McpToolHintValue
@@ -32,8 +33,10 @@ class SpringBootApplicationMcpToolsetDescriptorTest {
      * exactly as broken while this test stayed green.
      */
     private val tools: List<KFunction<*>> =
-        listOf(SpringBootApplicationMcpToolset::class, SpringBeanMcpToolset::class)
+        listOf(SpringBootApplicationMcpToolset::class, SpringBeanMcpToolset::class, NativeContextMcpToolset::class)
             .flatMap { toolset -> toolset.functions.filter { it.hasAnnotation<McpTool>() } }
+
+    private val actionTools = setOf("explyt_sync_spring_native_context")
 
     private val KFunction<*>.toolName: String get() = findAnnotation<McpTool>()!!.name
 
@@ -51,6 +54,7 @@ class SpringBootApplicationMcpToolsetDescriptorTest {
                 "explyt_trace_spring_call_chain",
                 "explyt_get_spring_data_entities",
                 "explyt_find_spring_bean",
+                "explyt_sync_spring_native_context",
             ),
             tools.map { it.toolName }.toSet()
         )
@@ -63,12 +67,21 @@ class SpringBootApplicationMcpToolsetDescriptorTest {
      */
     @Test
     fun `every tool declares itself read-only and idempotent`() {
-        for (tool in tools) {
+        for (tool in tools.filter { it.toolName !in actionTools }) {
             val hints = tool.findAnnotation<McpToolHints>()
             assertTrue("${tool.toolName} has no @McpToolHints", hints != null)
             assertEquals("${tool.toolName} readOnlyHint", McpToolHintValue.TRUE, hints!!.readOnlyHint)
             assertEquals("${tool.toolName} idempotentHint", McpToolHintValue.TRUE, hints.idempotentHint)
         }
+    }
+
+    @Test
+    fun `the native context sync declares a repeatable action on the open world`() {
+        val hints = toolNamed(actionTools.single()).findAnnotation<McpToolHints>()!!
+        assertEquals(McpToolHintValue.FALSE, hints.readOnlyHint)
+        assertEquals(McpToolHintValue.FALSE, hints.destructiveHint)
+        assertEquals(McpToolHintValue.FALSE, hints.idempotentHint)
+        assertEquals(McpToolHintValue.TRUE, hints.openWorldHint)
     }
 
     /**
@@ -189,10 +202,7 @@ class SpringBootApplicationMcpToolsetDescriptorTest {
         }
     }
 
-    private fun toolNamed(name: String): KFunction<*> =
-        SpringBootApplicationMcpToolset::class.functions.single {
-            it.findAnnotation<McpTool>()?.name == name
-        }
+    private fun toolNamed(name: String): KFunction<*> = tools.single { it.toolName == name }
 
     private companion object {
         val ENDPOINT_TOOL_NAMES = setOf(

@@ -6,14 +6,12 @@
 
 ### Spring Core
 - fix: Kotlin Spring beans that the all-open compiler plugin opens (`kotlin("plugin.spring")`, also applied through a version-catalog alias) are no longer reported as final, and the "must be overridable" message reads correctly (#846)
-
-### Spring Data
-- fix: An anonymous implementation of a Spring Data repository no longer breaks repository bean discovery in its module, and implementation classes are no longer listed as repository beans (#834)
-
-### Spring Core
 - fix: Typing in a Java `static final` field while the IDE indexes no longer throws `IndexNotReadyException` (#833)
 - fix: Attaching an Explyt Spring project from the file chooser no longer fails with "Read access is allowed from inside read-action only" (#844)
 - feat: Report an empty `@Profile` array, which fails Spring startup with "Must specify at least one profile expression" (#845)
+
+### Spring Data
+- fix: An anonymous implementation of a Spring Data repository no longer breaks repository bean discovery in its module, and implementation classes are no longer listed as repository beans (#834)
 
 ### Spring Web
 - fix: Reformatting or replacing text in an OpenAPI file with the preview open no longer fails; the file is saved once after the change (#835)
@@ -23,6 +21,9 @@
 
 ### Spring Web
 - feat: The Endpoints tool window shows the selected endpoint's contract: parameters with their binding source, requiredness and defaults, media types and the response as Jackson writes it, each row navigating to its source (#486)
+
+### MCP tools for AI agents
+- feat: New MCP tool `explyt_sync_spring_native_context` refreshes the Native Context snapshot that the bean tools read and reports when it was captured (#852)
 
 ## [262.35.123] - 2026-10-28
 
