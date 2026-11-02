@@ -6,6 +6,8 @@
 package com.explyt.spring.web.providers
 
 import com.explyt.spring.web.httpclient.action.HttpRunFileAction
+import com.explyt.spring.web.httpclient.hasNioPath
+import com.explyt.spring.web.httpclient.hasNioPath
 import com.explyt.spring.web.language.http.psi.HttpRequest
 import com.explyt.spring.web.language.http.psi.HttpRequestLine
 import com.explyt.spring.web.language.http.psi.HttpRequestTarget
@@ -36,7 +38,7 @@ class HttpRunLineMarkerProvider : RunLineMarkerContributor() {
 
         val httpRequestLineElement = httpRequestTargetElement.parentOfType<HttpRequestLine>() ?: return null
         val httpRequest = httpRequestLineElement.parent as? HttpRequest ?: return null
-        val file = leafElement.containingFile.virtualFile ?: return null
+        val file = leafElement.containingFile.virtualFile?.takeIf { it.hasNioPath } ?: return null
 
         val line = httpRequest.getLineNumber(true)
 

@@ -14,6 +14,9 @@
 ### Spring Web
 - fix: Reformatting or replacing text in an OpenAPI file with the preview open no longer fails; the file is saved once after the change (#835)
 
+### Spring Web
+- fix: An `.http` file opened from a jar no longer fails; the run gutter and runner panel are offered only for files on disk (#836)
+
 ## [262.35.123] - 2026-10-28
 
 This release is the last one for IntelliJ IDEA 2024.2 and 2024.3. Later releases support IntelliJ IDEA 2025.1 and newer.
