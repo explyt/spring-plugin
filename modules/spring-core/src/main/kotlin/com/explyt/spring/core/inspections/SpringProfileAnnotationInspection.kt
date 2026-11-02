@@ -42,10 +42,13 @@ class SpringProfileAnnotationInspection : SpringBaseUastLocalInspectionTool() {
     private fun problemDescriptors(
         annotation: UAnnotation, manager: InspectionManager, isOnTheFly: Boolean
     ): Array<ProblemDescriptor>? {
-        val attributeValue = annotation.findAttributeValue(SpringProperties.VALUE) ?: return null
+        val attributeValue = annotation.findAttributeValue(SpringProperties.VALUE)
+            ?: return noProfileProblem(annotation.sourcePsi, manager, isOnTheFly)
         return when (attributeValue) {
             is UCallExpression -> {
-                attributeValue.valueArguments
+                val profiles = attributeValue.valueArguments
+                if (profiles.isEmpty()) return noProfileProblem(attributeValue.sourcePsi, manager, isOnTheFly)
+                profiles
                     .filterIsInstance<ULiteralExpression>()
                     .flatMap { collectProblems(it, manager, isOnTheFly) }
                     .toTypedArray()
@@ -56,6 +59,17 @@ class SpringProfileAnnotationInspection : SpringBaseUastLocalInspectionTool() {
             else -> emptyArray()
 
         }
+    }
+
+    private fun noProfileProblem(
+        sourcePsi: PsiElement?, manager: InspectionManager, isOnTheFly: Boolean
+    ): Array<ProblemDescriptor>? = sourcePsi?.let {
+        arrayOf(
+            manager.createProblemDescriptor(
+                it, SpringCoreBundle.message("explyt.spring.inspection.profile.noProfile"),
+                isOnTheFly, emptyArray(), ProblemHighlightType.GENERIC_ERROR
+            )
+        )
     }
 
     private fun collectProblems(
