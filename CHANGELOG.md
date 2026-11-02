@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [262.35.123] - 2026-10-28
+
 This release is the last one for IntelliJ IDEA 2024.2 and 2024.3. Later releases support IntelliJ IDEA 2025.1 and newer.
 
 ### Bean model that matches the running application
@@ -69,7 +71,7 @@ This release is the last one for IntelliJ IDEA 2024.2 and 2024.3. Later releases
 - Gradle `gradlew` and `mvnw` are executable in projects generated through Spring Initializr (#60)
 - Compatible with IntelliJ IDEA 2026.3: endpoint actions and the configuration metadata intention no longer depend on classes that 2026.3 removes
 
-## [262.34.101] - 2026-08-19
+## 262.34.101 - 2026-08-19
 
 ### Spring Core
 - fix: Keep renamed Spring Boot run configurations linked without ambiguous fallback (#229) (#279)
