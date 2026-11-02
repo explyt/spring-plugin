@@ -30,6 +30,7 @@ class HttpRunnerEditorPanelProvider : EditorNotificationProvider {
     override fun collectNotificationData(
         project: Project, file: VirtualFile
     ): Function<FileEditor, HttpRunnerEditorPanel>? {
+        if (!file.hasNioPath) return null
         return if (file.name.endsWith(".http") || file.name.endsWith(".rest")) {
             if (ScratchUtil.isScratch(file) && PluginIds.HTTP_CLIENT_JB.isEnabled()) return null
             Function { fileEditor: FileEditor -> HttpRunnerEditorPanel(fileEditor, project) }

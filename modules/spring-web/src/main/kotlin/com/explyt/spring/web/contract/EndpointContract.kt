@@ -11,6 +11,8 @@ import com.explyt.spring.web.loader.EndpointAccess
 import com.explyt.spring.web.loader.EndpointExposure
 import com.explyt.spring.web.loader.EndpointType
 import com.explyt.spring.web.loader.ProducesSource
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiMethod
 
 data class EndpointSummary(
     val httpMethods: List<String>,
@@ -36,6 +38,7 @@ data class EndpointParameter(
     val type: String,
     val required: Boolean?,
     val defaultValue: String? = null,
+    val declaration: PsiElement? = null,
 )
 
 data class ServiceCall(
@@ -43,6 +46,7 @@ data class ServiceCall(
     val position: SourcePosition,
     val callLine: Int? = null,
     val resolved: Boolean = true,
+    val callee: PsiMethod? = null,
 )
 
 enum class ContractStatus { COMPLETE, PARTIAL }

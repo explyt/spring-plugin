@@ -15,8 +15,10 @@ import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.execution.RunManager
 import com.intellij.execution.configurations.RunConfiguration
 import com.intellij.execution.wsl.WslPath
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.externalSystem.dependency.analyzer.DAArtifact
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.Computable
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.openapi.util.registry.Registry
 import com.intellij.openapi.vfs.LocalFileSystem
@@ -66,7 +68,10 @@ object NativeBootUtils {
             ?: throw RuntimeException("Virtual file not found $filePath")
     }
 
-    fun getMainRootFiles(project: Project): Set<VirtualFile> {
+    fun getMainRootFiles(project: Project): Set<VirtualFile> =
+        ApplicationManager.getApplication().runReadAction(Computable { mainRootFilesOf(project) })
+
+    private fun mainRootFilesOf(project: Project): Set<VirtualFile> {
         val allConfigurationsList = RunManager.getInstance(project).allConfigurationsList
         val result = mutableSetOf<VirtualFile>()
         for (runConfiguration in allConfigurationsList) {

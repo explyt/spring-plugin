@@ -5,6 +5,9 @@
 
 package com.explyt.spring.web.contract
 
+import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiElement
+
 data class ValueSchema(
     val className: String,
     val typeId: String? = null,
@@ -23,6 +26,7 @@ data class ValueSchema(
     val wireShape: String? = null,
     val wireShapeSource: String? = null,
     val wireShapeAssumed: Boolean? = null,
+    val declaration: PsiClass? = null,
 )
 
 data class SchemaDiscriminator(
@@ -37,4 +41,5 @@ data class SchemaField(
     val type: String,
     val nullable: Boolean?,
     val nested: ValueSchema?,
+    val declaration: PsiElement? = null,
 )

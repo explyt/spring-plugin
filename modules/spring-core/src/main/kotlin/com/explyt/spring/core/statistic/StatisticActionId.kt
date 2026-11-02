@@ -24,6 +24,8 @@ enum class StatisticActionId(description: String) {
     ENDPOINTS_TOOLWINDOW_HTTP_TYPE_FILTER("Endpoints toolwindow - changed HttpType filter"),
     ENDPOINTS_TOOLWINDOW_SEARCH_TEXT("Endpoints toolwindow - changed text filter"),
     ENDPOINTS_TOOLWINDOW_ENDPOINT_TYPE_FILTER("Endpoints toolwindow - changed EndpointType filter"),
+    ENDPOINTS_TOOLWINDOW_DETAILS_SHOWN("Endpoints toolwindow - showed the details of a selected endpoint"),
+    ENDPOINTS_TOOLWINDOW_DETAILS_NAVIGATE("Endpoints toolwindow - navigated from an endpoint details row"),
 
     GUTTER_BEAN_USAGE("Gutter line marker for Spring bean go to usage"),
     GUTTER_BEAN_DECLARATION("Gutter line marker for Spring bean go to declaration"),
