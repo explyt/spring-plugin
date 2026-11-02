@@ -107,6 +107,20 @@ class KotlinAllOpenImplicitSubclassTest : ExplytKotlinLightTestCase() {
         )
     }
 
+    fun testSpringPresetKeepsReportingExplicitlyFinalTransactionalMethod() {
+        applyAllOpen("preset=spring")
+        myFixture.configureByText("VoucherService.kt", FINAL_TRANSACTIONAL_METHOD_SERVICE)
+
+        assertContainsElements(implicitSubclassProblems(), "Methods annotated with '@Transactional' must be overridable")
+    }
+
+    fun testSpringPresetWithoutCompilerPluginJarKeepsReportingExplicitlyFinalTransactionalMethod() {
+        applyAllOpen("preset=spring", withPluginJar = false)
+        myFixture.configureByText("VoucherService.kt", FINAL_TRANSACTIONAL_METHOD_SERVICE)
+
+        assertContainsElements(implicitSubclassProblems(), "Methods annotated with '@Transactional' must be overridable")
+    }
+
     fun testMethodMessageNamesTheAnnotation() {
         myFixture.configureByText("VoucherService.kt", TRANSACTIONAL_SERVICE)
 
@@ -169,6 +183,19 @@ class KotlinAllOpenImplicitSubclassTest : ExplytKotlinLightTestCase() {
 
     companion object {
         private const val IMPLICIT_SUBCLASS_ID = "ImplicitSubclassInspection"
+
+        private val FINAL_TRANSACTIONAL_METHOD_SERVICE = """
+            package com.example
+
+            import org.springframework.stereotype.Service
+            import org.springframework.transaction.annotation.Transactional
+
+            @Service
+            class VoucherService {
+                @Transactional
+                final fun redeem() {}
+            }
+        """.trimIndent()
 
         private val TRANSACTIONAL_SERVICE = """
             package com.example
