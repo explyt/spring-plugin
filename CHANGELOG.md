@@ -7,6 +7,9 @@
 ### Spring Data
 - fix: An anonymous implementation of a Spring Data repository no longer breaks repository bean discovery in its module, and implementation classes are no longer listed as repository beans (#834)
 
+### Spring Web
+- feat: The Endpoints tool window shows the selected endpoint's contract: parameters with their binding source, requiredness and defaults, media types and the response as Jackson writes it, each row navigating to its source (#486)
+
 ## [262.35.123] - 2026-10-28
 
 This release is the last one for IntelliJ IDEA 2024.2 and 2024.3. Later releases support IntelliJ IDEA 2025.1 and newer.
