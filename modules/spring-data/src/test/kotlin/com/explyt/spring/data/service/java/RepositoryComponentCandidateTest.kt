@@ -8,13 +8,16 @@ package com.explyt.spring.data.service.java
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.service.PsiBean
 import com.explyt.spring.core.service.SpringSearchServiceFacade
+import com.explyt.spring.data.SpringDataClasses
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.openapi.util.registry.Registry
 import com.intellij.psi.JavaPsiFacade
+import com.intellij.psi.PsiAnonymousClass
 import com.intellij.psi.PsiClass
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.search.searches.ClassInheritorsSearch
 
 class RepositoryComponentCandidateTest : ExplytJavaLightTestCase() {
     override val libraries: Array<TestLibrary> = arrayOf(
@@ -52,6 +55,51 @@ class RepositoryComponentCandidateTest : ExplytJavaLightTestCase() {
         val annotated = findClass("repos.AnnotatedRepo", GlobalSearchScope.projectScope(project))
         assertTrue(annotated.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT))
         assertSingleBean("repos.AnnotatedRepo", "annotatedRepo")
+    }
+
+    fun testAnonymousRepositoryImplementationKeepsRepositoryBeans() {
+        configureRepositories()
+        myFixture.addFileToProject(
+            "repos/RepositoryStubs.java", """
+            package repos;
+            import org.springframework.data.repository.Repository;
+            public class RepositoryStubs {
+                Repository<Person, Long> stub = new Repository<Person, Long>() {};
+            }
+            """.trimIndent()
+        )
+        assertTrue(
+            "precondition: the inheritor search finds the anonymous implementation",
+            repositoryInheritors().any { it is PsiAnonymousClass }
+        )
+        assertSingleBean("repos.PlainRepo", "plainRepo")
+        assertSingleBean("repos.AnnotatedRepo", "annotatedRepo")
+    }
+
+    fun testRepositoryImplementationClassesAreNotBeans() {
+        configureRepositories()
+        myFixture.addFileToProject(
+            "repos/RepositoryImplementations.java", """
+            package repos;
+            import org.springframework.data.repository.Repository;
+            abstract class BaseRepo implements Repository<Person, Long> {}
+            class PlainRepoStub extends BaseRepo implements PlainRepo {}
+            class RepositoryFactory {
+                void create() {
+                    class LocalRepo implements Repository<Person, Long> {}
+                }
+            }
+            """.trimIndent()
+        )
+        val implementations = setOf("BaseRepo", "PlainRepoStub", "LocalRepo")
+        assertEquals(
+            "precondition: the inheritor search finds every implementation class",
+            implementations,
+            repositoryInheritors().mapNotNullTo(mutableSetOf()) { it.name }.intersect(implementations)
+        )
+        assertSingleBean("repos.PlainRepo", "plainRepo")
+        val beans = activeBeans().filter { it.psiClass.name in implementations }
+        assertEquals("implementation classes must not be beans", emptyList<String>(), beans.map { it.name })
     }
 
     private fun configureRepositories() {
@@ -96,6 +144,11 @@ class RepositoryComponentCandidateTest : ExplytJavaLightTestCase() {
         val psiClass = JavaPsiFacade.getInstance(project).findClass(qualifiedName, scope)
         assertNotNull("$qualifiedName must exist", psiClass)
         return psiClass!!
+    }
+
+    private fun repositoryInheritors(): Collection<PsiClass> {
+        val repository = findClass(SpringDataClasses.REPOSITORY, GlobalSearchScope.allScope(project))
+        return ClassInheritorsSearch.search(repository, module.moduleWithDependenciesScope, true).findAll()
     }
 
     private fun activeBeans(): Set<PsiBean> = SpringSearchServiceFacade.getInstance(project).getAllActiveBeans(module)
