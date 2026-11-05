@@ -61,9 +61,23 @@ class ScalarMapKeyHighlightingTest : ExplytJavaLightTestCase() {
         assertEquals(listOf("my-registration"), highlightedText(text))
     }
 
+    fun testYamlNestedScalarMapKeyHighlightsEverySegment() {
+        val text = """
+            spring:
+              jpa:
+                properties:
+                  hibernate:
+                    show_sql: true
+        """.trimIndent()
+        myFixture.configureByText("application.yaml", text)
+
+        assertMapType("spring.jpa.properties.hibernate.show_sql", PropertyType.MAP)
+        assertEquals(listOf("hibernate", "show_sql"), highlightedText(text))
+    }
+
     fun testEnumMapKeyIsNotHighlighted() {
         myFixture.copyFileToProject("WeekEnum.java")
-        myFixture.copyFileToProject("EnumMapProperties.java")
+
         myFixture.copyFileToProject("LabelsProperties.java")
         myFixture.copyFileToProject("META-INF/additional-spring-configuration-metadata.json")
         val text = "app.labels.team.name=x\napp.values.MONDAY=x"

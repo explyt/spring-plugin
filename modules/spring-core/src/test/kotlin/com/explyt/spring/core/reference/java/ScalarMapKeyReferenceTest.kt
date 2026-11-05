@@ -217,6 +217,21 @@ class ScalarMapKeyReferenceTest : ScalarMapKeyReferenceFixture() {
         assertSingleMapKeyRange("team.name")
         assertMapMember("src.LabelsProperties", "labels", "setLabels")
     }
+
+    fun testYamlPojoMemberUnderMapKeyResolves() {
+        myFixture.copyFileToProject("BracketMapProperties.java")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+                app:
+                  publishers:
+                    my-registration:
+                      owner-<caret>application: my-app
+            """.trimIndent()
+        )
+
+        assertMapMember("src.BracketMapProperties.PublisherProperties", "setOwnerApplication")
+    }
 }
 
 class ScalarMapKeyReferenceWithoutHibernateTest : ScalarMapKeyReferenceFixture() {

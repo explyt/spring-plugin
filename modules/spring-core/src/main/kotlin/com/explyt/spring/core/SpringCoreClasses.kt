@@ -170,6 +170,8 @@ object SpringCoreClasses {
     const val MOCKITO_SPY_BEAN = "org.springframework.test.context.bean.override.mockito.MockitoSpyBean"
 
     const val HIBERNATE_CFG_AVAILABLE_SETTING = "org.hibernate.cfg.AvailableSettings"
+    const val HIBERNATE_JPA_BOOT_SETTINGS = "org.hibernate.jpa.boot.spi.JpaSettings"
+    const val HIBERNATE_JPA_AVAILABLE_SETTINGS = "org.hibernate.jpa.AvailableSettings"
 
     const val ASPECT = "org.aspectj.lang.annotation.Aspect"
 

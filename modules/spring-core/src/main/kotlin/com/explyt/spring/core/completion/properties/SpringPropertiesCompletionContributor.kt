@@ -194,6 +194,7 @@ class SpringPropertiesCompletionContributor : CompletionContributor() {
                 if (foundProperty.propertyType == PropertyType.ENUM_MAP) {
                     resultOfMapProp += PropertyUtil.getEnumProperties(module.project, foundProperty)
                 }
+                if (PropertyUtil.isScalarMap(foundProperty)) return resultOfMapProp
                 val keyValuePair = PropertyUtil.getKeyValuePair(propertyKey, foundProperty)
                 if (keyValuePair.first.isEmpty()) return resultOfMapProp
 

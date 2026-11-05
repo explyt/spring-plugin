@@ -12,6 +12,7 @@ import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiElementResolveResult
 import com.intellij.psi.PsiMember
 import com.intellij.psi.PsiReferenceBase
 import com.intellij.psi.ResolveResult
@@ -26,13 +27,26 @@ class PropertiesKeyMapValueReference(
     rangeInElement: TextRange?,
     private val baseMapRef: Boolean = false,
     private val enumMapKeyRef: Boolean = false,
-) : PsiReferenceBase.Poly<PsiElement>(element, rangeInElement, true) {
+    private val mapKeyRef: Boolean = false,
+) : PsiReferenceBase.Poly<PsiElement>(element, rangeInElement, true), MapKeyReference {
+
+    override val isMapKeyReference: Boolean = mapKeyRef
 
     override fun multiResolve(incompleteCode: Boolean): Array<ResolveResult> {
         return handleMapProperty(element.project)
     }
 
     private fun handleMapProperty(project: Project): Array<ResolveResult> {
+        if (mapKeyRef) {
+            if (PropertyUtil.isScalarMap(property)) {
+                val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyArray()
+                val targets = ConfigurationMapKeyTargets.findTargets(
+                    module, property, PropertyUtil.getMapKeyForLookup(propertyKey, property)
+                )
+                if (targets.isNotEmpty()) return targets.map(::PsiElementResolveResult).toTypedArray()
+            }
+            return baseMapResolve(project)
+        }
         if (baseMapRef) {
             return baseMapResolve(project)
         }

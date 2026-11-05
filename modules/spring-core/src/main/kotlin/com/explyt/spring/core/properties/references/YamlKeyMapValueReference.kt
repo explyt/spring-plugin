@@ -12,23 +12,36 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiElementResolveResult
 import com.intellij.psi.PsiMember
 import com.intellij.psi.PsiReferenceBase
 import com.intellij.psi.ResolveResult
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UEnumConstant
 import org.jetbrains.uast.toUElement
+import org.jetbrains.yaml.psi.YAMLKeyValue
+import org.jetbrains.yaml.psi.YAMLMapping
 
 class YamlKeyMapValueReference(
     element: PsiElement,
     private val module: Module,
     private val propertyKey: String,
-    val range: TextRange? = null
-) : PsiReferenceBase.Poly<PsiElement>(element, range, false) {
+    val range: TextRange? = null,
+    private val mapKeyRef: Boolean = false
+) : PsiReferenceBase.Poly<PsiElement>(element, range, false), MapKeyReference {
+
+    override val isMapKeyReference: Boolean = mapKeyRef
 
     override fun multiResolve(incompleteCode: Boolean): Array<ResolveResult> {
         val property = PropertyUtil.configurationProperty(module, propertyKey) ?: return emptyArray()
         if (!property.isMap()) return emptyArray()
+
+        if (mapKeyRef && PropertyUtil.isScalarMap(property) && (element as? YAMLKeyValue)?.value !is YAMLMapping) {
+            val targets = ConfigurationMapKeyTargets.findTargets(
+                module, property, PropertyUtil.getMapKeyForLookup(propertyKey, property)
+            )
+            if (targets.isNotEmpty()) return targets.map(::PsiElementResolveResult).toTypedArray()
+        }
 
         val keyValuePair = PropertyUtil.getKeyValuePair(propertyKey, property)
         if (property.name == propertyKey || (keyValuePair.first.isNotEmpty() && keyValuePair.second.isEmpty()

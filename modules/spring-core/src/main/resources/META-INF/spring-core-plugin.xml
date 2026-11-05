@@ -30,6 +30,9 @@
         <extensionPoint qualifiedName="com.explyt.spring.core.additionalBeansDiscoverer" dynamic="true"
                         interface="com.explyt.spring.core.service.beans.discoverer.AdditionalBeansDiscoverer"
                         area="IDEA_PROJECT"/>
+
+        <extensionPoint qualifiedName="com.explyt.spring.core.configurationMapKeyTargets" dynamic="true"
+                        interface="com.explyt.spring.core.properties.references.ConfigurationMapKeyTargets"/>
     </extensionPoints>
 
     <extensions defaultExtensionNs="com.explyt.spring.core">
@@ -55,6 +58,8 @@
                 implementation="com.explyt.spring.core.service.beans.discoverer.SpringBootAdditionalBeansDiscoverer"/>
         <additionalBeansDiscoverer
                 implementation="com.explyt.spring.core.service.beans.discoverer.SpringBeanRegistrarAdditionalBeansDiscoverer"/>
+        <configurationMapKeyTargets
+                implementation="com.explyt.spring.core.properties.references.HibernateSettingsMapKeyTargets"/>
     </extensions>
 
     <extensions defaultExtensionNs="com.intellij">

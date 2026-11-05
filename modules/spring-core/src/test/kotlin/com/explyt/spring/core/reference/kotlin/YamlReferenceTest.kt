@@ -157,13 +157,7 @@ app:
             """.trimIndent()
         )
 
-        val ref = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
-            ?.references?.asSequence()
-            ?.mapNotNull { it as? YamlKeyMapValueReference }
-            ?.firstOrNull()
-
-        assertNotNull(ref)
-        val multiResolve = ref!!.multiResolve(true)
+        val multiResolve = mapValueReference().multiResolve(true)
         assertEquals(1, multiResolve.size)
         val name = (multiResolve[0].element as? ConfigKeyPsiElement)?.name
         assertEquals(name, "setOwnerApplication")
@@ -181,13 +175,7 @@ app:
             """.trimIndent()
         )
 
-        val ref = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
-            ?.references?.asSequence()
-            ?.mapNotNull { it as? YamlKeyMapValueReference }
-            ?.firstOrNull()
-
-        assertNotNull(ref)
-        val multiResolve = ref!!.multiResolve(true)
+        val multiResolve = mapValueReference().multiResolve(true)
         assertEquals(1, multiResolve.size)
         val name = (multiResolve[0].element as? ConfigKeyPsiElement)?.name
         assertEquals(name, "setOwnerApplication")
@@ -288,14 +276,7 @@ app:
             """.trimIndent()
         )
 
-        val ref = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
-            ?.references?.asSequence()
-            ?.mapNotNull {
-                it as? YamlKeyMapValueReference
-            }?.firstOrNull()
-
-        assertNotNull(ref)
-        val multiResolve = ref!!.multiResolve(true)
+        val multiResolve = mapValueReference().multiResolve(true)
         assertEquals(1, multiResolve.size)
         val name = (multiResolve[0].element as? ConfigKeyPsiElement)?.name
         assertEquals("ownerApplication", name)
