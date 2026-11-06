@@ -58,7 +58,7 @@ class ScalarMapKeyHighlightingTest : ExplytJavaLightTestCase() {
         myFixture.configureByText("application.properties", text)
 
         assertMapType("app.publishers.my-registration.owner-application", PropertyType.MAP)
-        assertEquals(listOf("my-registration"), highlightedText(text))
+        assertEquals(emptyList<String>(), highlightedText(text))
     }
 
     fun testYamlNestedScalarMapKeyHighlightsEverySegment() {
@@ -73,6 +73,29 @@ class ScalarMapKeyHighlightingTest : ExplytJavaLightTestCase() {
 
         assertMapType("spring.jpa.properties.hibernate.show_sql", PropertyType.MAP)
         assertEquals(listOf("hibernate", "show_sql"), highlightedText(text))
+    }
+
+    fun testYamlObjectMapPathsAreNotHighlightedAlongsideScalarMap() {
+        myFixture.copyFileToProject("BracketMapProperties.java")
+        assertNotNull(myFixture.findClass("src.BracketMapProperties.PublisherProperties"))
+        val text = """
+            app:
+              publishers:
+                nested-registration:
+                  owner-application: nested
+            app.publishers.flat-registration.owner-application: flat
+            spring:
+              jpa:
+                properties:
+                  hibernate.show_sql: true
+        """.trimIndent()
+        myFixture.configureByText("application.yaml", text)
+
+        assertMapType("app.publishers.nested-registration.owner-application", PropertyType.MAP)
+        assertMapType("app.publishers.flat-registration.owner-application", PropertyType.MAP)
+        assertMapType("spring.jpa.properties.hibernate.show_sql", PropertyType.MAP)
+        assertFalse(PropertyUtil.isScalarMap(PropertyUtil.configurationProperty(module, "app.publishers")!!))
+        assertEquals(listOf("hibernate.show_sql"), highlightedText(text))
     }
 
     fun testEnumMapKeyIsNotHighlighted() {

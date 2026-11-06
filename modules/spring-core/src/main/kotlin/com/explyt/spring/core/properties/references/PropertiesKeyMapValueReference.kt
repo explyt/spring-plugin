@@ -12,7 +12,6 @@ import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiElementResolveResult
 import com.intellij.psi.PsiMember
 import com.intellij.psi.PsiReferenceBase
 import com.intellij.psi.ResolveResult
@@ -40,10 +39,8 @@ class PropertiesKeyMapValueReference(
         if (mapKeyRef) {
             if (PropertyUtil.isScalarMap(property)) {
                 val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyArray()
-                val targets = ConfigurationMapKeyTargets.findTargets(
-                    module, property, PropertyUtil.getMapKeyForLookup(propertyKey, property)
-                )
-                if (targets.isNotEmpty()) return targets.map(::PsiElementResolveResult).toTypedArray()
+                val targets = ConfigurationMapKeyTargets.resolveTargets(module, property, propertyKey)
+                if (targets.isNotEmpty()) return targets
             }
             return baseMapResolve(project)
         }

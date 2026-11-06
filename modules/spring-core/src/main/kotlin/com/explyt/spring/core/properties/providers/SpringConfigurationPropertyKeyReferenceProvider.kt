@@ -116,7 +116,7 @@ class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
         foundProperty: ConfigurationProperty
     ): Array<PsiReference> {
         return when (element.language) {
-            YAMLLanguage.INSTANCE -> getMapValueReferencesForYaml(module, element, propertyKey, foundProperty.name)
+            YAMLLanguage.INSTANCE -> getMapValueReferencesForYaml(module, element, propertyKey, foundProperty)
             PropertiesLanguage.INSTANCE -> getMapValueReferencesForProperties(element, propertyKey, foundProperty)
             else -> emptyArray()
         }
@@ -126,10 +126,10 @@ class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
         module: Module,
         element: PsiElement,
         propertyKey: String,
-        propertyName: String
+        property: ConfigurationProperty
     ): Array<PsiReference> {
+        val propertyName = property.name
         val keyValue = element as? YAMLKeyValue ?: return emptyArray()
-        val property = PropertyUtil.configurationProperty(module, propertyKey) ?: return emptyArray()
         val keyRange = keyValue.key?.textRange?.shiftLeft(element.textRange.startOffset) ?: return emptyArray()
         if (PropertyUtil.isScalarMap(property) && propertyKey != property.name && keyValue.value !is YAMLMapping) {
             return arrayOf(YamlKeyMapValueReference(element, module, propertyKey, keyRange, mapKeyRef = true))
@@ -153,8 +153,7 @@ class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
                         module,
                         propertyKey,
                         textRange,
-                        mapKeyRef = property.propertyType == PropertyType.MAP && propertyKey != property.name &&
-                                (PropertyUtil.isScalarMap(property) || key == propertyKeyPath.first())
+                        mapKeyRef = PropertyUtil.isScalarMap(property) && propertyKey != property.name
                     )
                 )
 
@@ -190,7 +189,8 @@ class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
                     PropertiesKeyMapValueReference(
                         element, propertyKey, foundProperty,
                         TextRange.from(mapKeyOffset, keyValuePair.first.length),
-                        mapKeyRef = true
+                        mapKeyRef = PropertyUtil.isScalarMap(foundProperty),
+                        baseMapRef = !PropertyUtil.isScalarMap(foundProperty)
                     )
                 )
             }

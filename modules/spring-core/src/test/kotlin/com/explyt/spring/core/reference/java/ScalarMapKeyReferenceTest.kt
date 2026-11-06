@@ -6,10 +6,15 @@
 package com.explyt.spring.core.reference.java
 
 import com.explyt.spring.core.properties.providers.ConfigKeyPsiElement
+import com.explyt.spring.core.properties.references.HibernateSettingsMapKeyTargets
 import com.explyt.spring.core.properties.references.PropertiesKeyMapValueReference
 import com.explyt.spring.core.properties.references.YamlKeyMapValueReference
+import com.explyt.spring.core.util.PropertyUtil
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.impl.NonBlockingReadActionImpl
+import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiField
@@ -17,6 +22,7 @@ import com.intellij.psi.PsiMember
 import com.intellij.psi.PsiPolyVariantReference
 import com.intellij.psi.impl.source.resolve.reference.impl.PsiMultiReference
 import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.testFramework.DumbModeTestUtils
 import org.jetbrains.yaml.psi.YAMLKeyValue
 
 abstract class ScalarMapKeyReferenceFixture : ExplytJavaLightTestCase() {
@@ -53,6 +59,8 @@ abstract class ScalarMapKeyReferenceFixture : ExplytJavaLightTestCase() {
         val expected = myFixture.findClass(owner).findFieldByName(name, false)
         assertNotNull("fixture must contain $owner.$name", expected)
         assertEquals("fixture constant value", key, expected!!.computeConstantValue())
+        mapReferenceAtCaret().multiResolve(false)
+        NonBlockingReadActionImpl.waitForAsyncTaskCompletion()
         val target = resolvedTarget()
         val member = if (target is ConfigKeyPsiElement) target.parent else target
         assertTrue("map key must resolve to PsiField $owner.$name, got $member", member is PsiField)
@@ -117,6 +125,64 @@ class ScalarMapKeyReferenceTest : ScalarMapKeyReferenceFixture() {
     fun testUnknownPropertiesHibernateKeyFallsBackToJpaPropertiesMember() {
         configureProperties("spring.jpa.properties.hibernate.no_such_<caret>setting=true")
         assertJpaPropertiesMember()
+    }
+
+    fun testColdHibernateSettingsLookupOnEdtDefersResolution() {
+        configureProperties("spring.jpa.properties.hibernate.sh<caret>ow_sql=true")
+        val property = PropertyUtil.configurationProperty(module, "spring.jpa.properties.hibernate.show_sql")!!
+        val settings = myFixture.findClass("org.hibernate.cfg.JdbcSettings")
+        assertNotNull("fixture must contain Hibernate JdbcSettings", settings)
+        assertNotNull("fixture must contain SHOW_SQL", settings.findFieldByName("SHOW_SQL", false))
+        assertTrue("cold lookup must run on EDT", ApplicationManager.getApplication().isDispatchThread)
+
+        val provider = HibernateSettingsMapKeyTargets()
+        val targets = provider.findTargets(module, property, "hibernate.show_sql")
+
+        assertEquals("cold EDT lookup must defer the settings scan", emptyList<PsiElement>(), targets)
+        NonBlockingReadActionImpl.waitForAsyncTaskCompletion()
+
+        assertTrue("warmed lookup must still run on EDT", ApplicationManager.getApplication().isDispatchThread)
+        val expected = settings.findFieldByName("SHOW_SQL", false)!!
+        assertEquals("hibernate.show_sql", expected.computeConstantValue())
+        assertEquals(listOf(expected), provider.findTargets(module, property, "hibernate.show_sql"))
+    }
+
+    fun testHibernateSettingsTargetsAreEmptyInDumbMode() {
+        configureProperties("spring.jpa.properties.hibernate.sh<caret>ow_sql=true")
+        val property = PropertyUtil.configurationProperty(module, "spring.jpa.properties.hibernate.show_sql")
+        assertNotNull("fixture must register spring.jpa.properties", property)
+        val expected = myFixture.findClass("org.hibernate.cfg.JdbcSettings").findFieldByName("SHOW_SQL", false)
+        assertNotNull("fixture must contain Hibernate SHOW_SQL", expected)
+        val provider = HibernateSettingsMapKeyTargets()
+
+        DumbModeTestUtils.runInDumbModeSynchronously(project) {
+            val targets = provider.findTargets(module, property!!, "hibernate.show_sql")
+            assertTrue("Hibernate targets must not be resolved in dumb mode", targets.isEmpty())
+        }
+
+        provider.findTargets(module, property!!, "hibernate.show_sql")
+        NonBlockingReadActionImpl.waitForAsyncTaskCompletion()
+        assertEquals(listOf(expected), provider.findTargets(module, property, "hibernate.show_sql"))
+    }
+
+    fun testUnrelatedEditDoesNotRebuildHibernateTargets() {
+        configureProperties("spring.jpa.properties.hibernate.sh<caret>ow_sql=true")
+        val property = PropertyUtil.configurationProperty(module, "spring.jpa.properties.hibernate.show_sql")!!
+        val provider = HibernateSettingsMapKeyTargets()
+        provider.findTargets(module, property, "hibernate.show_sql")
+        NonBlockingReadActionImpl.waitForAsyncTaskCompletion()
+        val targets = provider.findTargets(module, property, "hibernate.show_sql")
+        assertEquals(1, targets.size)
+        val unrelated = myFixture.addFileToProject("Unrelated.java", "class Unrelated { int count; }")
+        val beforeEdit = provider.findTargets(module, property, "hibernate.show_sql")
+        WriteCommandAction.runWriteCommandAction(project) {
+            val document = com.intellij.psi.PsiDocumentManager.getInstance(project).getDocument(unrelated)!!
+            document.setText("class Unrelated { int total; }")
+            com.intellij.psi.PsiDocumentManager.getInstance(project).commitDocument(document)
+        }
+        val afterEdit = provider.findTargets(module, property, "hibernate.show_sql")
+        assertEquals(1, afterEdit.size)
+        assertSame("unrelated edits must preserve the settings index", beforeEdit, afterEdit)
     }
 
     fun testPropertiesCaretInMapPrefixResolvesToJpaPropertiesMember() {

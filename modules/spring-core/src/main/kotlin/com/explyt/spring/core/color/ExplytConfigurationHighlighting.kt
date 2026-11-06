@@ -27,20 +27,18 @@ object ExplytConfigurationHighlighting {
 
     val MAP_KEY_HIGHLIGHTER_KEY: TextAttributesKey = TextAttributesKey.createTextAttributesKey(
         "EXPLYT_MAP_KEY_HIGHLIGHTER",
-        DefaultLanguageHighlighterColors.IDENTIFIER
+        TextAttributes(null, null, null, null, Font.ITALIC)
     )
 
     init {
         val beanTextAttributes =
             TextAttributes(Color(0x63be78), null, Color(0x63be78), EffectType.LINE_UNDERSCORE, Font.ITALIC)
         val profileTextAttributes = TextAttributes(Color(0xFF9800), null, null, null, Font.ITALIC)
-        val mapKeyTextAttributes = TextAttributes(null, null, null, null, Font.ITALIC)
 
         val colorsManager = EditorColorsManager.getInstance()
         colorsManager.allSchemes.forEach {
             it.setAttributes(BEAN_HIGHLIGHTER_KEY, beanTextAttributes)
             it.setAttributes(PROFILE_HIGHLIGHTER_KEY, profileTextAttributes)
-            it.setAttributes(MAP_KEY_HIGHLIGHTER_KEY, mapKeyTextAttributes)
         }
     }
 }
