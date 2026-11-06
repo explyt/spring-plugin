@@ -74,6 +74,27 @@ Resolve before starting:
    - PR body: summary, rationale, covered mappings, tests; note any expected conflicts with sibling PRs. No internal links (e.g. sentry) in public PRs/issues.
    - If review comments arrive: apply fixes per branch, re-run that branch's tests, force-push, and reply to each review thread via `gh api .../replies` stating what changed.
 
+## Native settings inside configuration maps
+
+For a diagnostic on a passthrough map such as `spring.jpa.properties`, verify two separate boundaries before implementing:
+
+1. Bind real properties/YAML through Boot `Binder` into the declared map type, then pass the result to the library's actual setting consumer. Do not replace this with an isolated `Map.get` test. Record exact artifact versions and observed output; keep credentials and project values out of the evidence.
+2. Distinguish the map prefix's relaxed binding from the native map-key spelling. With Boot 4.1.1/Hibernate 7.4.5 and Boot 3.5.8/Hibernate 6.6.36, `hibernate.show_sql=true` enables `SqlStatementLogger` stdout, while `hibernate.show_SQL=true` and `hibernate.show-sql=true` do not. Hibernate reads `JdbcSettings.SHOW_SQL` through exact `ConfigurationHelper.getBoolean` lookup.
+3. Test simultaneous case variants separately. Unbracketed Spring configuration names can alias source values even while the bound map retains both original spellings; bracket keys keep their identities independent. Do not infer collision precedence for every source/version from one probe. Test environment-variable name adaptation independently: underscores can become dots in the native key. A correctly spelled file key with an environment-backed value avoids that ambiguity.
+4. Inspect catalogue completeness. Hibernate `StandardServiceRegistryBuilder` retains arbitrary settings, and extension services can read the complete map. An absent `AvailableSettings` constant does not prove a setting is invalid. Never reject every unknown map key; a unique case-only match to a known native setting can justify a targeted warning and an exact-spelling quick fix. Keep ordinary navigation exact so it does not conceal the typo.
+5. Check the existing inspection's map exemption before diagnosing a missing reference. `SpringBasePropertyInspection.getMapKeys` deliberately accepts arbitrary entries, and `PropertyUtil.isKebabCaseInMapKey` skips their canonical-form check. Native-key spelling diagnostics need a provider-aware path, not removal of the general map exemption.
+6. Distinguish an unavailable/loading catalogue from a ready catalogue with no match. `ConfigurationMapKeyTargets` currently returns an empty list in both cases, including cold asynchronous Hibernate lookup. Do not report an unknown-key diagnostic solely from that empty list; require established catalogue readiness/completeness.
+7. For a key quick fix, preserve the map prefix, the value and surrounding structure. Test properties, nested/flat YAML and bracket syntax; a native setting key must not be rewritten by the generic kebab-case fix.
+
+### Choose the native configuration consumer before its catalogue
+
+- Verify the Boot wrapper and forwarding code, then the actual library version/consumer. A guessed `.properties` suffix is not a supported integration. Measure key-only occurrences separately in main/shared config and tests before ranking features; exclude generated files and report parse failures.
+- For Kafka, include Spring serializer/deserializer extension holders, not only Apache client `ConfigDef`/constants: real `spring.kafka.properties.spring.json.*` keys are consumed by Spring Kafka and can be absent from Apache's catalogue. Route common/producer/consumer/admin/streams maps to the relevant consumer set, preserve aliases and security/prefixed namespaces, and do not classify every static String or documentation constant as a key. Inspect PSI/metadata instead of executing arbitrary project classes in the plugin JVM.
+- For Mail, verify the selected provider/protocol. Standard property tables and concatenated reads such as `mail.` + protocol + suffix do not form a Hibernate-like constant holder; prefer documented completion/value hints and honest consumer targets.
+- For Hikari/UCP driver properties, recognize `java.util.Properties` wrappers and establish driver/DataSource identity before using PostgreSQL `PGProperty`, MySQL `PropertyKey` or implementation setters. Tomcat `connection-properties` is a serialized String rather than a map in verified Boot metadata. Do not copy Hibernate case semantics to every JDBC driver.
+- For Quartz, combine fixed core keys with the configured job-store/thread-pool/plugin class's reflective bean properties. Dynamic extension namespaces make a closed allowlist unsafe.
+- Treat Flyway placeholders and Liquibase parameters as application-defined names: link their SQL/changelog usages rather than inventing library-key catalogues. Verify a real wrapper before proposing generic JCache/Netty/Redis/Rabbit passthrough maps; typed Boot options or Java customizers are different entry points.
+
 ## Output format
 
 Report at the end:

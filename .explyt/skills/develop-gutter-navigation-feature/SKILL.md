@@ -70,6 +70,22 @@ Resolve before starting:
    - Run tests sequentially via `run_command` with `./gradlew --no-configuration-cache <module>:test --rerun --tests "..."`. Add `--offline` from the second run onwards; the first run of a test that declares a new `TestLibrary` must fetch it from Maven Central and fails offline. Believe only the exit code and the `N tests completed, M failed` line; verify the XML mtime is newer than the run start. Fix-and-rerun loop: max 4 iterations, then stop and report.
    - One logical change per PR; stage explicit paths; add one `[Unreleased]` CHANGELOG line citing the issue.
 
+## Reverse navigation from native setting constants
+
+When a passthrough config key navigates into a library settings holder, check the inverse search contract before proposing another gutter:
+
+1. Identify the actual target kind. Hibernate `JdbcSettings.SHOW_SQL` is a static final String field with constant value `hibernate.show_sql`, not an enum value or a bound `@ConfigurationProperties` member. Keep the raw field target; do not wrap it as `ConfigKeyPsiElement` just to imitate a binding declaration or inherit its rename semantics.
+2. Check existing providers and registrations. `ConfigurationPropertyLineMarkerProvider` requires a binding prefix/concrete class, and `FieldConfigurationPropertyDataRetriever` rejects interface fields. `PropertyLineMarkerProvider` operates from config to metadata hints. Neither automatically supplies native constant-to-config navigation.
+3. Verify `Find Usages` and `Show Usages` independently of forward `multiResolve`. Default Java field search seeds the identifier (`SHOW_SQL`), while the config spells the constant value (`show_sql`). A typed reference can answer `isReferenceTo(field)` yet remain undiscovered by indexed text search. `PropertyStringUsagesSearcher` currently accepts config declarations, not `PsiField`. Do not treat zero usages in a workspace without the target library attached as an end-to-end reproduction.
+4. Prefer a narrow `ReferencesSearch` executor for adapter-recognized native setting fields: inverse descriptor = map prefix + exact native key + declaration identity. Search indexed candidate words in the effective scope, then verify configuration-file eligibility, full key/prefix, the candidate file's module and PSI equivalence. Reuse the existing native-map adapter boundary rather than hardcoding each setting or scanning every String constant.
+5. Preserve source-jar and binary/decompiled field equivalence. A library constant has no unique owning application/module; do not pick the first module or simulate bean registration/profiles to find config occurrences. Show declared uses in the requested scope; do not claim they are all runtime-active.
+6. Handle cold asynchronous target lookup deliberately. `HibernateSettingsMapKeyTargets` can initially return the map-member fallback for a known key. A reverse search must prepare the catalogue in background/smart context or verify an exact inverse descriptor without discarding cold references. Never wait for background read work on EDT or under a lock it needs.
+7. Keep wrong-case/unknown native keys out of actual field usages; a typo diagnostic may separately link to the intended setting. Do not use relaxed `getPropertiesCommonKeyMap` matching for native suffixes.
+8. Only then consider a `Used in configuration` gutter/Related Symbol entry on the same reverse-search result. Reuse the existing builder, icon and config renderer, not the bound-member data retriever. Avoid project-wide searches per visible constant; use indexed on-demand search or a correctly invalidated batched occurrence model. If an always-present icon merely starts a search, word it as a search action rather than proof of usage.
+9. Test both source-attached and decompiled targets, first reverse search without prior forward navigation, multiple modules/library versions, properties and nested/flat/bracket YAML, exact-case negatives and empty results. Report source-only conclusions separately from verified UI behavior.
+
+Quick Documentation can explain the native key and map prefix cheaply, but must not claim current config usage without searching. State the product delta explicitly: existing usage UI gains native-setting references first; an optional gutter adds persistent discoverability, not a second bespoke search popup.
+
 ## Output format
 
 Report at the end:
