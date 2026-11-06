@@ -26,13 +26,24 @@ class PropertiesKeyMapValueReference(
     rangeInElement: TextRange?,
     private val baseMapRef: Boolean = false,
     private val enumMapKeyRef: Boolean = false,
-) : PsiReferenceBase.Poly<PsiElement>(element, rangeInElement, true) {
+    private val mapKeyRef: Boolean = false,
+) : PsiReferenceBase.Poly<PsiElement>(element, rangeInElement, true), MapKeyReference {
+
+    override val isMapKeyReference: Boolean = mapKeyRef
 
     override fun multiResolve(incompleteCode: Boolean): Array<ResolveResult> {
         return handleMapProperty(element.project)
     }
 
     private fun handleMapProperty(project: Project): Array<ResolveResult> {
+        if (mapKeyRef) {
+            if (PropertyUtil.isScalarMap(property)) {
+                val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyArray()
+                val targets = ConfigurationMapKeyTargets.resolveTargets(module, property, propertyKey)
+                if (targets.isNotEmpty()) return targets
+            }
+            return baseMapResolve(project)
+        }
         if (baseMapRef) {
             return baseMapResolve(project)
         }

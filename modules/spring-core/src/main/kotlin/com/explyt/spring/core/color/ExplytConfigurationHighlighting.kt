@@ -25,6 +25,11 @@ object ExplytConfigurationHighlighting {
         DefaultLanguageHighlighterColors.KEYWORD
     )
 
+    val MAP_KEY_HIGHLIGHTER_KEY: TextAttributesKey = TextAttributesKey.createTextAttributesKey(
+        "EXPLYT_MAP_KEY_HIGHLIGHTER",
+        TextAttributes(null, null, null, null, Font.ITALIC)
+    )
+
     init {
         val beanTextAttributes =
             TextAttributes(Color(0x63be78), null, Color(0x63be78), EffectType.LINE_UNDERSCORE, Font.ITALIC)

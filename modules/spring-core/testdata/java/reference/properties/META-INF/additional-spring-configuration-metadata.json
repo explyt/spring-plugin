@@ -3,6 +3,10 @@
     {
       "name": "main.code-mime-type-additional",
       "type": "java.lang.String"
+    },
+    {
+      "name": "app.values",
+      "type": "java.util.Map<src.WeekEnum,java.lang.String>"
     }
   ],
   "hints": [

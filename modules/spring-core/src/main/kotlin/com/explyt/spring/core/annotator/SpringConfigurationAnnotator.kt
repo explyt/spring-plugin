@@ -8,6 +8,7 @@ package com.explyt.spring.core.annotator
 import com.explyt.spring.core.color.ExplytConfigurationHighlighting
 import com.explyt.spring.core.language.profiles.ProfilePsiReference
 import com.explyt.spring.core.properties.references.ExplytPropertyReference
+import com.explyt.spring.core.properties.references.MapKeyReference
 import com.explyt.spring.core.properties.references.ValueHintReference
 import com.explyt.spring.core.properties.references.ValueHintReference.ResultType
 import com.intellij.lang.annotation.AnnotationHolder
@@ -32,8 +33,14 @@ abstract class SpringConfigurationAnnotator : Annotator {
         element.references.forEach { reference ->
             val textRange = reference.rangeInElement.shiftRight(offset)
             if (isValidTextRange(textRange, annotatedOffsets)) {
-                val enforcedTextAttribute = getEnforcedTextAttributeForReferenceKey(reference)
-                if (enforcedTextAttribute != null) {
+                if (reference is MapKeyReference && reference.isMapKeyReference) {
+                    holder.newSilentAnnotation(HighlightSeverity.INFORMATION)
+                        .range(textRange)
+                        .textAttributes(ExplytConfigurationHighlighting.MAP_KEY_HIGHLIGHTER_KEY)
+                        .create()
+                } else {
+                    val enforcedTextAttribute = getEnforcedTextAttributeForReferenceKey(reference)
+                    if (enforcedTextAttribute == null) return@forEach
                     holder.newSilentAnnotation(HighlightSeverity.INFORMATION)
                         .range(textRange)
                         .enforcedTextAttributes(enforcedTextAttribute.toTextAttributes())

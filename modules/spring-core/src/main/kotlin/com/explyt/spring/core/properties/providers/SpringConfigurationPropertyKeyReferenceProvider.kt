@@ -52,6 +52,8 @@ import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.uast.toUElement
 import org.jetbrains.yaml.YAMLLanguage
+import org.jetbrains.yaml.psi.YAMLKeyValue
+import org.jetbrains.yaml.psi.YAMLMapping
 
 class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
 
@@ -114,7 +116,7 @@ class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
         foundProperty: ConfigurationProperty
     ): Array<PsiReference> {
         return when (element.language) {
-            YAMLLanguage.INSTANCE -> getMapValueReferencesForYaml(module, element, propertyKey, foundProperty.name)
+            YAMLLanguage.INSTANCE -> getMapValueReferencesForYaml(module, element, propertyKey, foundProperty)
             PropertiesLanguage.INSTANCE -> getMapValueReferencesForProperties(element, propertyKey, foundProperty)
             else -> emptyArray()
         }
@@ -124,24 +126,38 @@ class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
         module: Module,
         element: PsiElement,
         propertyKey: String,
-        propertyName: String
+        property: ConfigurationProperty
     ): Array<PsiReference> {
+        val propertyName = property.name
+        val keyValue = element as? YAMLKeyValue ?: return emptyArray()
+        val keyRange = keyValue.key?.textRange?.shiftLeft(element.textRange.startOffset) ?: return emptyArray()
+        if (PropertyUtil.isScalarMap(property) && propertyKey != property.name && keyValue.value !is YAMLMapping) {
+            return arrayOf(YamlKeyMapValueReference(element, module, propertyKey, keyRange, mapKeyRef = true))
+        }
         val references = mutableListOf<PsiReference>()
 
         val propertyKeyPath = PropertyUtil.keySegments(propertyKey.substringAfter("$propertyName."))
-        val elementText = element.text
+        val keyText = keyValue.key?.text ?: return emptyArray()
 
         var currentOffset = 0
         propertyKeyPath.forEach { key ->
-            val keyIndex = elementText.indexOf(key, currentOffset)
+            val keyIndex = keyText.indexOf(key, currentOffset)
             if (keyIndex != -1) {
-                val startOffset = keyIndex
+                val startOffset = keyRange.startOffset + keyIndex
                 val endOffset = startOffset + key.length
 
                 val textRange = TextRange(startOffset, endOffset)
-                references.add(YamlKeyMapValueReference(element, module, propertyKey, textRange))
+                references.add(
+                    YamlKeyMapValueReference(
+                        element,
+                        module,
+                        propertyKey,
+                        textRange,
+                        mapKeyRef = PropertyUtil.isScalarMap(property) && propertyKey != property.name
+                    )
+                )
 
-                currentOffset = endOffset
+                currentOffset = keyIndex + key.length
             }
         }
         return references.toTypedArray()
@@ -173,7 +189,8 @@ class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
                     PropertiesKeyMapValueReference(
                         element, propertyKey, foundProperty,
                         TextRange.from(mapKeyOffset, keyValuePair.first.length),
-                        baseMapRef = true
+                        mapKeyRef = PropertyUtil.isScalarMap(foundProperty),
+                        baseMapRef = !PropertyUtil.isScalarMap(foundProperty)
                     )
                 )
             }

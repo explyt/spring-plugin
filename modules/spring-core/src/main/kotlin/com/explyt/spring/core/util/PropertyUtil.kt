@@ -997,8 +997,25 @@ object PropertyUtil {
         if (!propertyKey.startsWith(foundProperty.name)) return Pair("", "")
         val remainder = propertyKey.substring(foundProperty.name.length)
         if (remainder.isEmpty() || (remainder[0] != '.' && remainder[0] != '[')) return Pair("", "")
+        if (isScalarMap(foundProperty)) {
+            return Pair(remainder.removePrefix("."), "")
+        }
         val segments = keySegments(remainder.removePrefix("."))
         return Pair(segments.first(), segments.drop(1).joinToString("."))
+    }
+
+    fun isScalarMap(property: ConfigurationProperty): Boolean {
+        if (property.propertyType != PropertyType.MAP) return false
+        val valueType = getValueClassNameInMap(property.type)?.trim() ?: return false
+        return valueType.startsWith("java.lang.") &&
+                valueType.substringAfter("java.lang.").isNotEmpty() &&
+                !valueType.substringAfter("java.lang.").contains('.') &&
+                valueType != "java.lang.Object"
+    }
+
+    fun getMapKeyForLookup(propertyKey: String, foundProperty: ConfigurationProperty): String {
+        val mapKey = getKeyValuePair(propertyKey, foundProperty).first
+        return mapKey.removeSurrounding("[", "]")
     }
 
     private val BUILT_IN_VALUE_TYPE_PACKAGES = setOf(
