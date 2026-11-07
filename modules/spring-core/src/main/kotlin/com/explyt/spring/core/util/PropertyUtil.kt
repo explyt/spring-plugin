@@ -691,7 +691,9 @@ object PropertyUtil {
                 propertyWrapper.sourceType,
                 propertyWrapper.description,
                 propertyWrapper.default,
-                propertyWrapper.deprecation
+                propertyWrapper.deprecation,
+                hasEnumMapValue = ConfigurationPropertiesLoader.getPropertyType(psiType) == PropertyType.MAP &&
+                        isEnumMapValue((psiType as? PsiClassType)?.parameters?.getOrNull(1))
             )
         }
     }
@@ -1006,11 +1008,18 @@ object PropertyUtil {
 
     fun isScalarMap(property: ConfigurationProperty): Boolean {
         if (property.propertyType != PropertyType.MAP) return false
+        if (property.hasEnumMapValue) return true
         val valueType = getValueClassNameInMap(property.type)?.trim() ?: return false
         return valueType.startsWith("java.lang.") &&
                 valueType.substringAfter("java.lang.").isNotEmpty() &&
                 !valueType.substringAfter("java.lang.").contains('.') &&
                 valueType != "java.lang.Object"
+    }
+
+    fun isEnumMapValue(valueType: PsiType?): Boolean {
+        if (valueType is PsiWildcardType) return isEnumMapValue(valueType.bound)
+        val classType = valueType as? PsiClassType ?: return false
+        return classType.parameters.isEmpty() && classType.resolve()?.isEnum == true
     }
 
     fun getMapKeyForLookup(propertyKey: String, foundProperty: ConfigurationProperty): String {

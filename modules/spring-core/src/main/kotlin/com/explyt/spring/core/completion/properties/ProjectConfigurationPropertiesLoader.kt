@@ -10,6 +10,7 @@ import com.explyt.spring.core.SpringProperties.ADDITIONAL_CONFIGURATION_METADATA
 import com.explyt.spring.core.SpringProperties.HINTS
 import com.explyt.spring.core.SpringProperties.PROPERTIES
 import com.explyt.spring.core.completion.properties.utils.ProjectConfigurationPropertiesUtil
+import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.core.util.PropertyUtil
 import com.explyt.spring.core.util.RenameUtil
 import com.explyt.util.ExplytPsiUtil.returnPsiClass
@@ -97,7 +98,8 @@ class ProjectConfigurationPropertiesLoader(project: Project) :
     ): Map<String, ConfigurationProperty> {
         return CachedValuesManager.getManager(annotatedElement.project).getCachedValue(annotatedElement) {
             CachedValueProvider.Result(
-                loadPropertiesFromConfigurationFile(annotatedElement), annotatedElement
+                loadPropertiesFromConfigurationFile(annotatedElement),
+                ModificationTrackerManager.getInstance(annotatedElement.project).getUastModelAndLibraryTracker()
             )
         }
     }
@@ -128,7 +130,7 @@ class ProjectConfigurationPropertiesLoader(project: Project) :
     private fun loadPropertiesFromMetadata(module: Module): HashMap<String, ConfigurationProperty> {
         val result = hashMapOf<String, ConfigurationProperty>()
         findMetadataFiles(module).forEach {
-            collectConfigurationProperties(module.project, it.text, it.virtualFile.path, result)
+            collectConfigurationProperties(module, it.text, it.virtualFile.path, result)
         }
         return result
     }
