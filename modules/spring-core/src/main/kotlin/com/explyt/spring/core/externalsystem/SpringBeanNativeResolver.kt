@@ -38,6 +38,7 @@ import com.intellij.execution.configurations.ModuleBasedConfigurationOptions
 import com.intellij.execution.configurations.RunConfiguration
 import com.intellij.execution.executors.DefaultRunExecutor
 import com.intellij.execution.process.ProcessHandler
+import com.intellij.execution.process.ProcessOutputType
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.runners.ExecutionEnvironmentBuilder
 import com.intellij.execution.ui.RunContentDescriptor
@@ -523,7 +524,7 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         val fileIndex = ProjectRootManager.getInstance(settings.project).fileIndex
         val psiClassLocation = NativeBootUtils.getPsiClassLocation(settings.project, bean.className)
         if (psiClassLocation == null) {
-            listener.onTaskOutput(id, "[WARNING] ${bean.className} not found", true)
+            listener.onTaskOutput(id, "[WARNING] ${bean.className} not found", ProcessOutputType.STDOUT)
             return null
         }
 
