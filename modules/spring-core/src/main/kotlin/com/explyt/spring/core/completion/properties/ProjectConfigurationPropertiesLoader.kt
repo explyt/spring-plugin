@@ -99,7 +99,8 @@ class ProjectConfigurationPropertiesLoader(project: Project) :
         return CachedValuesManager.getManager(annotatedElement.project).getCachedValue(annotatedElement) {
             CachedValueProvider.Result(
                 loadPropertiesFromConfigurationFile(annotatedElement),
-                ModificationTrackerManager.getInstance(annotatedElement.project).getUastModelAndLibraryTracker()
+                ModificationTrackerManager.getInstance(annotatedElement.project).getUastModelAndLibraryTracker(),
+                annotatedElement
             )
         }
     }
