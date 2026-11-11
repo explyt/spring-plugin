@@ -1,0 +1,54 @@
+# Copyright (c) 2026 Explyt Ltd
+# SPDX-License-Identifier: Apache-2.0
+
+name: review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+concurrency:
+  group: review-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  OHMYBUG_CLI_URL: https://raw.githubusercontent.com/OhMyX-AI/ohmybug-cli/e798687bb20cfaf0e6418eaee4aa81ecce41ec43/ohmybug.mjs
+
+jobs:
+  ohmybug:
+    name: bug hunt
+    if: >-
+      !github.event.pull_request.draft &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Download the CLI
+        run: curl -fsSL "$OHMYBUG_CLI_URL" -o "$RUNNER_TEMP/ohmybug.mjs"
+      - name: Review the pull request
+        env:
+          OHMYBUG_API_KEY: ${{ secrets.OHMYBUG_API_KEY }}
+          OHMYBUG_STORY: never
+          OHMYBUG_TIMEOUT_S: 1800
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -o pipefail
+          {
+            echo '## OhMyBug review'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          status=0
+          node "$RUNNER_TEMP/ohmybug.mjs" --base "origin/$BASE_REF" 2>&1 | tee -a "$GITHUB_STEP_SUMMARY" || status=$?
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          exit $status
