@@ -47,15 +47,21 @@ jobs:
           set -o pipefail
           findings="$RUNNER_TEMP/findings.txt"
           notes="$RUNNER_TEMP/notes.txt"
+          annotations="$RUNNER_TEMP/annotations.txt"
+          verbatim="$(uuidgen)"
           status=0
+          echo "::stop-commands::$verbatim"
           node "$RUNNER_TEMP/ohmybug.mjs" --base "origin/$BASE_REF" 2> "$notes" | tee "$findings" || status=$?
           cat "$notes" >&2
+          echo "::$verbatim::"
+          touch "$annotations"
           {
             echo '## OhMyBug review'
             echo
             awk -v server="$GITHUB_SERVER_URL" -v repo="$GITHUB_REPOSITORY" -v sha="$HEAD_SHA" \
-              -f .github/scripts/review-summary.awk "$findings"
+              -v annotations="$annotations" -f .github/scripts/review-summary.awk "$findings"
             echo
             grep -E '^ohmybug: (silent bill|billing|story|could not review|the review)' "$notes" | sed 's/^ohmybug: /- /' || true
           } >> "$GITHUB_STEP_SUMMARY"
+          cat "$annotations"
           exit $status
