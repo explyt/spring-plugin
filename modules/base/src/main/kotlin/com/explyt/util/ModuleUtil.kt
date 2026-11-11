@@ -22,6 +22,11 @@ import org.jetbrains.kotlin.idea.base.util.projectScope
 
 object ModuleUtil {
 
+    fun findByPsiElement(psiElement: PsiElement): Module? {
+        return ModuleUtilCore.findModuleForPsiElement(psiElement)
+            ?: psiElement.containingFile?.originalFile?.let { ModuleUtilCore.findModuleForPsiElement(it) }
+    }
+
     fun getSourceRootFile(psiElement: PsiElement): VirtualFile? {
         val vf = psiElement.containingFile.virtualFile ?: return null
         val module = ModuleUtilCore.findModuleForPsiElement(psiElement) ?: return null
