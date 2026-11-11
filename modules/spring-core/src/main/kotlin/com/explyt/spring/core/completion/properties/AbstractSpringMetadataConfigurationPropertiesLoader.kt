@@ -11,6 +11,7 @@ import com.explyt.spring.core.SpringProperties.LOGGING_LEVEL
 import com.explyt.spring.core.SpringProperties.NAME
 import com.explyt.spring.core.SpringProperties.VALUE
 import com.explyt.spring.core.SpringProperties.VALUES
+import com.explyt.spring.core.util.PropertyUtil
 import com.fasterxml.jackson.annotation.JsonCreator
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.core.JsonFactory
@@ -23,9 +24,11 @@ import com.intellij.json.psi.JsonObject
 import com.intellij.json.psi.JsonStringLiteral
 import com.intellij.openapi.diagnostic.ControlFlowException
 import com.intellij.openapi.diagnostic.logger
+import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiManager
+import com.intellij.psi.PsiType
 
 abstract class AbstractSpringMetadataConfigurationPropertiesLoader(project: Project) : ConfigurationPropertiesLoader {
 
@@ -107,7 +110,7 @@ abstract class AbstractSpringMetadataConfigurationPropertiesLoader(project: Proj
     }
 
     protected fun collectConfigurationProperties(
-        project: Project,
+        module: Module,
         metaDataFileText: String,
         metaDataFilePath: String,
         configurationProperties: MutableMap<String, ConfigurationProperty>
@@ -120,7 +123,7 @@ abstract class AbstractSpringMetadataConfigurationPropertiesLoader(project: Proj
             val propertyName = it.name ?: continue
 
             val existProperty = configurationProperties[propertyName]
-            val psiClass = getPsiClass(project, it.type)
+            val psiClass = getPsiClass(module.project, it.type)
             if (existProperty == null) {
                 configurationProperties[propertyName] = ConfigurationProperty(
                     name = propertyName,
@@ -129,7 +132,8 @@ abstract class AbstractSpringMetadataConfigurationPropertiesLoader(project: Proj
                     sourceType = it.sourceType,
                     description = it.description,
                     defaultValue = it.defaultValue,
-                    deprecation = deprecationInfo(it.deprecation)
+                    deprecation = deprecationInfo(it.deprecation),
+                    hasEnumMapValue = hasEnumMapValue(module, it.type)
                 )
             } else {
                 if (existProperty.type.isNullOrEmpty()) {
@@ -150,8 +154,23 @@ abstract class AbstractSpringMetadataConfigurationPropertiesLoader(project: Proj
                 if (existProperty.deprecation == null) {
                     existProperty.deprecation = deprecationInfo(it.deprecation)
                 }
+                configurationProperties[propertyName] = existProperty.copy(
+                    hasEnumMapValue = hasEnumMapValue(module, existProperty.type)
+                )
             }
         }
+    }
+
+    private fun hasEnumMapValue(module: Module, type: String?): Boolean {
+        val valueType = PropertyUtil.getValueClassNameInMap(type)?.trim() ?: return false
+        if (valueType.any { it == '<' || it == '>' || it == ',' }) return false
+        return PropertyUtil.isEnumMapValue(
+            PsiType.getTypeByName(
+                valueType.replace('$', '.'),
+                module.project,
+                module.getModuleWithDependenciesAndLibrariesScope(false)
+            )
+        )
     }
 
     private fun deprecationInfo(deprecation: SpringConfigurationMetadataDeprecation?): DeprecationInfo? {
