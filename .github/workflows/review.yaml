@@ -42,13 +42,20 @@ jobs:
           OHMYBUG_STORY: never
           OHMYBUG_TIMEOUT_S: 1800
           BASE_REF: ${{ github.base_ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -o pipefail
+          findings="$RUNNER_TEMP/findings.txt"
+          notes="$RUNNER_TEMP/notes.txt"
+          status=0
+          node "$RUNNER_TEMP/ohmybug.mjs" --base "origin/$BASE_REF" 2> "$notes" | tee "$findings" || status=$?
+          cat "$notes" >&2
           {
             echo '## OhMyBug review'
-            echo '```'
+            echo
+            awk -v server="$GITHUB_SERVER_URL" -v repo="$GITHUB_REPOSITORY" -v sha="$HEAD_SHA" \
+              -f .github/scripts/review-summary.awk "$findings"
+            echo
+            grep -E '^ohmybug: (silent bill|billing|story|could not review|the review)' "$notes" | sed 's/^ohmybug: /- /' || true
           } >> "$GITHUB_STEP_SUMMARY"
-          status=0
-          node "$RUNNER_TEMP/ohmybug.mjs" --base "origin/$BASE_REF" 2>&1 | tee -a "$GITHUB_STEP_SUMMARY" || status=$?
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
           exit $status
