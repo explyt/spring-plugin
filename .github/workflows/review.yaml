@@ -5,7 +5,11 @@ name: review
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [opened, reopened, ready_for_review, labeled]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/**'
 
 concurrency:
   group: review-${{ github.ref }}
@@ -15,16 +19,17 @@ permissions:
   contents: read
 
 env:
-  OHMYBUG_CLI_URL: https://raw.githubusercontent.com/OhMyX-AI/ohmybug-cli/e798687bb20cfaf0e6418eaee4aa81ecce41ec43/ohmybug.mjs
+  OHMYBUG_CLI_URL: https://raw.githubusercontent.com/OhMyX-AI/ohmybug-cli/226fabfc82121a481d8bb3fdeec6a5667ab0fad4/ohmybug.mjs
 
 jobs:
   ohmybug:
     name: bug hunt
     if: >-
       !github.event.pull_request.draft &&
-      github.event.pull_request.head.repo.full_name == github.repository
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      (github.event.action != 'labeled' || github.event.label.name == 'bug-hunt')
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 120
     steps:
       - name: Checkout sources
         uses: actions/checkout@v6
@@ -42,26 +47,15 @@ jobs:
           OHMYBUG_STORY: never
           OHMYBUG_TIMEOUT_S: 1800
           BASE_REF: ${{ github.base_ref }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          set -o pipefail
-          findings="$RUNNER_TEMP/findings.txt"
-          notes="$RUNNER_TEMP/notes.txt"
-          annotations="$RUNNER_TEMP/annotations.txt"
+          result="$RUNNER_TEMP/result.json"
           verbatim="$(uuidgen)"
           status=0
           echo "::stop-commands::$verbatim"
-          node "$RUNNER_TEMP/ohmybug.mjs" --base "origin/$BASE_REF" 2> "$notes" | tee "$findings" || status=$?
-          cat "$notes" >&2
+          node "$RUNNER_TEMP/ohmybug.mjs" --base "origin/$BASE_REF" --format json --step-summary > "$result" || status=$?
+          jq -r '.findings[]? | "\(.severity // "unrated" | tostring | ascii_upcase)  \(.file // ""):\(.line // "")  \(.title // "")\n    \(.body // "")\n"' "$result" \
+            || echo "the review result could not be read as JSON"
           echo "::$verbatim::"
-          touch "$annotations"
-          {
-            echo '## OhMyBug review'
-            echo
-            awk -v server="$GITHUB_SERVER_URL" -v repo="$GITHUB_REPOSITORY" -v sha="$HEAD_SHA" \
-              -v annotations="$annotations" -f .github/scripts/review-summary.awk "$findings"
-            echo
-            grep -E '^ohmybug: (silent bill|billing|story|could not review|the review)' "$notes" | sed 's/^ohmybug: /- /' || true
-          } >> "$GITHUB_STEP_SUMMARY"
-          cat "$annotations"
+          jq -r -f .github/scripts/review-annotations.jq "$result" \
+            || echo "::warning title=Review annotations::The review result could not be turned into annotations"
           exit $status
