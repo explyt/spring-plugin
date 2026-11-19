@@ -5,7 +5,11 @@ name: review
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [opened, reopened, ready_for_review, labeled]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/**'
 
 concurrency:
   group: review-${{ github.ref }}
@@ -22,7 +26,8 @@ jobs:
     name: bug hunt
     if: >-
       !github.event.pull_request.draft &&
-      github.event.pull_request.head.repo.full_name == github.repository
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      (github.event.action != 'labeled' || github.event.label.name == 'bug-hunt')
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
