@@ -35,6 +35,7 @@ import com.intellij.codeInsight.navigation.fileStatusAttributes
 import com.intellij.codeInsight.navigation.impl.PsiTargetPresentationRenderer
 import com.intellij.openapi.editor.markup.GutterIconRenderer
 import com.intellij.openapi.module.Module
+import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.util.Iconable
 import com.intellij.openapi.util.NotNullLazyValue
 import com.intellij.openapi.vfs.newvfs.VfsPresentationUtil
@@ -296,14 +297,15 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
         if (uCallExpression.valueArgumentCount != 1) return Collections.emptyList()
         val eventPsiType = uCallExpression.valueArguments[0].getExpressionType() ?: return Collections.emptyList()
 
-        return listenerMethods(module).asSequence()
+        val projectListeners = if (ModuleUtilCore.findModuleForPsiElement(psiElement) == null) {
+            getAllModulesListenerMethodsCached(module)
+        } else {
+            getProjectListenerMethodsCached(module)
+        }
+        return (projectListeners + getLibraryListenerMethodsCached(module)).asSequence()
             .filter { isEqualsTypeOrClass(it, eventPsiType) }
             .map { it.element.navigationElement }
             .toList()
-    }
-
-    private fun listenerMethods(module: Module): Collection<MethodArgumentClasses> {
-        return getProjectListenerMethodsCached(module) + getLibraryListenerMethodsCached(module)
     }
 
     private fun getProjectListenerMethodsCached(module: Module): Collection<MethodArgumentClasses> {
@@ -311,6 +313,15 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
             val searchScope = module.moduleWithDependenciesScope.union(module.moduleWithDependentsScope)
             CachedValueProvider.Result.create(
                 getListenerMethods(module, searchScope),
+                ModificationTrackerManager.getInstance(module.project).getUastModelAndLibraryTracker()
+            )
+        }
+    }
+
+    private fun getAllModulesListenerMethodsCached(module: Module): Collection<MethodArgumentClasses> {
+        return CachedValuesManager.getManager(module.project).getCachedValue(module) {
+            CachedValueProvider.Result.create(
+                getListenerMethods(module, GlobalSearchScope.projectScope(module.project)),
                 ModificationTrackerManager.getInstance(module.project).getUastModelAndLibraryTracker()
             )
         }
