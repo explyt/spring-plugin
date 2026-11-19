@@ -10,6 +10,8 @@ import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.SpringCoreClasses.APPLICATION_LISTENER
 import com.explyt.spring.core.SpringCoreClasses.EVENT_LISTENER
 import com.explyt.spring.core.SpringCoreClasses.EVENT_PUBLISHER
+import com.explyt.spring.core.SpringCoreClasses.GENERIC_APPLICATION_LISTENER
+import com.explyt.spring.core.SpringCoreClasses.SMART_APPLICATION_LISTENER
 import com.explyt.spring.core.SpringIcons
 import com.explyt.spring.core.SpringProperties.ON_APPLICATION_EVENT
 import com.explyt.spring.core.SpringProperties.PUBLISH_EVENT_METHOD
@@ -317,10 +319,17 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
     private fun getLibraryListenerMethodsCached(module: Module): Collection<MethodArgumentClasses> {
         return CachedValuesManager.getManager(module.project).getCachedValue(module) {
             CachedValueProvider.Result.create(
-                getListenerMethods(module, ModuleUtil.getOnlyLibrarySearchScope(module)),
+                getListenerMethods(module, ModuleUtil.getOnlyLibrarySearchScope(module))
+                    .filterNot { it.element.isEventTypeDecidedAtRuntime() },
                 ModificationTrackerManager.getInstance(module.project).getLibraryTracker()
             )
         }
+    }
+
+    private fun PsiMethod.isEventTypeDecidedAtRuntime(): Boolean {
+        val listenerClass = containingClass ?: return false
+        return InheritanceUtil.isInheritor(listenerClass, SMART_APPLICATION_LISTENER)
+                || InheritanceUtil.isInheritor(listenerClass, GENERIC_APPLICATION_LISTENER)
     }
 
     private fun getListenerMethods(module: Module, scope: GlobalSearchScope): List<MethodArgumentClasses> {

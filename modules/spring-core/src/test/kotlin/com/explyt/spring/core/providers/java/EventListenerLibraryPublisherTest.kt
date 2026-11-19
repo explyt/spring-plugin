@@ -32,7 +32,7 @@ class EventListenerLibraryPublisherTest : ExplytJavaLightTestCase() {
         assertPublishEventCallIsInsideLibrary(libraryFile)
 
         val targets = eventListenerGutterTargets(libraryFile)
-        assertTrue(targets.contains("onReady(CustomEvent)"))
+        assertEquals(listOf("onReady(CustomEvent)"), targets)
     }
 
     /**
@@ -61,7 +61,7 @@ class EventListenerLibraryPublisherTest : ExplytJavaLightTestCase() {
         assertPublishEventCallIsInsideLibrary(libraryFile)
 
         val targets = eventListenerGutterTargets(libraryFile)
-        assertTrue(targets.contains("onApplicationEvent(CustomEvent)"))
+        assertEquals(listOf("onApplicationEvent(CustomEvent)"), targets)
     }
 
     private fun addEventToProject() {

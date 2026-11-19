@@ -38,6 +38,8 @@ object SpringCoreClasses {
     const val PROFILE = "org.springframework.context.annotation.Profile"
     const val EVENT_LISTENER = "org.springframework.context.event.EventListener"
     const val APPLICATION_LISTENER = "org.springframework.context.ApplicationListener"
+    const val SMART_APPLICATION_LISTENER = "org.springframework.context.event.SmartApplicationListener"
+    const val GENERIC_APPLICATION_LISTENER = "org.springframework.context.event.GenericApplicationListener"
     const val EVENT_PUBLISHER = "org.springframework.context.ApplicationEventPublisher"
     const val APPLICATION_EVENT = "org.springframework.context.ApplicationEvent"
     const val APPLICATION_CONTEXT = "org.springframework.context.ApplicationContext"
