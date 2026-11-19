@@ -83,6 +83,41 @@ class EventPublisherLibrarySourceTest : ExplytKotlinLightTestCase() {
         assertEquals(listOf(LIBRARY_CALL), targets)
     }
 
+    fun testProjectAndLibraryPublishCallsAreBothTargets() {
+        attachVendorLibraryWithSources()
+        myFixture.configureByText(
+            "ProjectPublisher.kt",
+            """
+            package com.example
+
+            import com.vendor.events.VendorEvent
+            import org.springframework.context.ApplicationEventPublisher
+
+            class ProjectPublisher(private val events: ApplicationEventPublisher) {
+                fun fire() {
+                    events.publishEvent(VendorEvent(this))
+                }
+            }
+            """.trimIndent()
+        )
+
+        val targets = publisherTargets(PARAMETER_LISTENER)
+
+        assertSameElements(targets, LIBRARY_CALL, "publishEvent(VendorEvent(this))")
+    }
+
+    fun testCompiledOnlyLibraryOffersNoPublisherTarget() {
+        val library = TestCompiledLibrary.attach(
+            myFixture.module, testRootDisposable, "vendor-events", mapOf(VENDOR_EVENT, VENDOR_PUBLISHER)
+        )
+        val classFile = library.jarRoot.findFileByRelativePath("com/vendor/events/VendorPublisher.class")
+            ?: throw AssertionError("the compiled library must contain the publisher class")
+        assertTrue("the publisher must be a library class", ProjectFileIndex.getInstance(project).isInLibraryClasses(classFile))
+        assertFalse("the publisher must have no sources", ProjectFileIndex.getInstance(project).isInLibrarySource(classFile))
+
+        assertEmpty(publisherTargets(PARAMETER_LISTENER))
+    }
+
     private fun attachVendorLibraryWithSources() {
         val publisherSource = TestCompiledLibrary.attach(
             myFixture.module, testRootDisposable, "vendor-events", mapOf(VENDOR_EVENT, VENDOR_PUBLISHER)
@@ -103,6 +138,20 @@ class EventPublisherLibrarySourceTest : ExplytKotlinLightTestCase() {
     private companion object {
         const val PUBLISHER_PATH = "com/vendor/events/VendorPublisher.java"
         const val LIBRARY_CALL = "publisher.publishEvent(new VendorEvent(this))"
+
+        const val PARAMETER_LISTENER = """
+            package com.example
+
+            import com.vendor.events.VendorEvent
+            import org.springframework.context.event.EventListener
+            import org.springframework.stereotype.Component
+
+            @Component
+            class VendorListener {
+                @EventListener
+                fun onVendor(event: VendorEvent) {}
+            }
+            """
 
         val VENDOR_EVENT = "com/vendor/events/VendorEvent.java" to """
             package com.vendor.events;

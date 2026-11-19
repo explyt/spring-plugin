@@ -18,12 +18,9 @@ import com.intellij.testFramework.IndexingTestUtil
 import org.intellij.lang.annotations.Language
 
 /**
- * The listener gutter on a `publishEvent` call searches listeners across the whole project and the publisher
- * module's libraries, not only through the publisher module's dependency closure. Each test puts the publisher and
- * the listeners into two different IDEA modules.
- *
- * Events are plain objects (Spring wraps them in `PayloadApplicationEvent`): an `ApplicationEvent` subclass would
- * also match the framework's own `ApplicationListener<ApplicationEvent>` implementations found in spring-context.
+ * Event gutters search the Spring contexts the module can run in: every module that depends on it, with everything
+ * those modules depend on, plus the module's libraries. Each test puts the publisher and the listeners into different
+ * IDEA modules. Events are plain objects, which Spring wraps in `PayloadApplicationEvent`.
  */
 class EventListenerCrossModuleTest : ExplytMultiModuleTestCase() {
 
@@ -78,7 +75,40 @@ class EventListenerCrossModuleTest : ExplytMultiModuleTestCase() {
         val app = addDependentModule("app")
         addFileToModule(app, "com/example/app/ShippedListener.java", SHIPPED_APPLICATION_LISTENER)
 
-        assertContainsElements(eventListenerGutterTargets(publisher), "onApplicationEvent(ShippedEvent)")
+        assertSameElements(eventListenerGutterTargets(publisher), "onApplicationEvent(ShippedEvent)")
+    }
+
+    fun testListenerInSiblingModuleOfTheSameApplicationIsFound() {
+        val api = addDependencyModule("api")
+        addFileToModule(api, "com/example/events/OrderEvent.java", ORDER_EVENT)
+        val publisher = addFileToModule(module, "com/example/events/OrderPublisher.java", ORDER_PUBLISHER)
+        val listeners = addStandaloneModule("listeners")
+        ModuleRootModificationUtil.addDependency(listeners, api)
+        val listener = addFileToModule(listeners, "com/example/app/OrderListeners.java", ORDER_LISTENERS)
+        val app = addStandaloneModule("app")
+        ModuleRootModificationUtil.addDependency(app, module)
+        ModuleRootModificationUtil.addDependency(app, listeners)
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
+
+        assertFalse(
+            "the listener module must be neither a dependency nor a dependent of the publisher module",
+            module.moduleWithDependenciesScope.union(module.moduleWithDependentsScope).contains(listener.virtualFile)
+        )
+
+        assertSameElements(eventListenerGutterTargets(publisher), "onOrder(OrderEvent)")
+        assertSameElements(eventPublisherGutterTargets(listener), "publisher.publishEvent(new OrderEvent(id))")
+    }
+
+    fun testListenerInModuleOfAnotherApplicationIsNotFound() {
+        val api = addDependencyModule("api")
+        addFileToModule(api, "com/example/events/OrderEvent.java", ORDER_EVENT)
+        val publisher = addFileToModule(module, "com/example/events/OrderPublisher.java", ORDER_PUBLISHER)
+        val other = addStandaloneModule("other")
+        ModuleRootModificationUtil.addDependency(other, api)
+        addFileToModule(other, "com/example/app/OrderListeners.java", ORDER_LISTENERS)
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
+
+        assertEmpty(eventListenerGutterTargets(publisher))
     }
 
     /**
@@ -122,7 +152,7 @@ class EventListenerCrossModuleTest : ExplytMultiModuleTestCase() {
         myFixture.doHighlighting()
 
         val gutters = myFixture.findAllGutters().filter { it.icon == SpringIcons.EventPublisher }
-        assertEquals("the publishEvent call must carry exactly one event listener gutter", 1, gutters.size)
+        assertEquals("the listener method must carry exactly one event publisher gutter", 1, gutters.size)
 
         return SpringGutterTestUtil.getGutterTargetsStrings(gutters.single())
     }

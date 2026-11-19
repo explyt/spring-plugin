@@ -22,7 +22,7 @@ import org.jetbrains.kotlin.idea.base.util.projectScope
 
 object ModuleUtil {
 
-    fun findByPsiElement(psiElement: PsiElement): Module? {
+    fun findModuleOrLibraryOwner(psiElement: PsiElement): Module? {
         return ModuleUtilCore.findModuleForPsiElement(psiElement)
             ?: psiElement.containingFile?.originalFile?.let { ModuleUtilCore.findModuleForPsiElement(it) }
     }

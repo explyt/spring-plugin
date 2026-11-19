@@ -10,6 +10,7 @@
 - fix: Keys of a `Map<String, String>` property such as `spring.jpa.properties.hibernate.show_sql` are read as one key, as Spring Boot binds them: they navigate to the Hibernate setting they name and are highlighted as map keys, which relaxed binding does not apply to (#855)
 - fix: Attaching an Explyt Spring project from the file chooser no longer fails with "Read access is allowed from inside read-action only" (#844)
 - feat: Report an empty `@Profile` array, which fails Spring startup with "Must specify at least one profile expression" (#845)
+- fix: Event publisher and listener gutters search every module of the Spring application the code can run in, so a listener in a sibling module of the same application is found, and they also reach `publishEvent` calls and listeners in attached library sources (#872)
 
 ### Spring Data
 - fix: An anonymous implementation of a Spring Data repository no longer breaks repository bean discovery in its module, and implementation classes are no longer listed as repository beans (#834)

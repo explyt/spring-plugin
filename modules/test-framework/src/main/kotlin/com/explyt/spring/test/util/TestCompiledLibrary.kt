@@ -41,12 +41,13 @@ import kotlin.io.path.walk
 import kotlin.io.path.writeText
 
 /**
- * A library that ships **compiled classes only**, the way a company starter arrives from a Maven repository.
+ * A library built from real compiled classes, the way a company starter arrives from a Maven repository.
  *
  * Java sources are compiled with the running JDK's `javac` against the libraries [Module] already has, packed into a
  * jar in a directory outside every content root, and attached to the module as a classes root. The classes are then
- * outside `ProjectScope`, resolve through stubs and have no attached sources - the shape that
- * [TestLibrarySourceRoot] cannot express, because its root is a sources root too.
+ * outside `ProjectScope` and resolve through stubs - the shape that [TestLibrarySourceRoot] cannot express, because
+ * its root is a sources root too. [attachSources] adds the compiled sources afterwards, like a downloaded
+ * `-sources.jar`.
  */
 class TestCompiledLibrary private constructor(
     val jarRoot: VirtualFile,
