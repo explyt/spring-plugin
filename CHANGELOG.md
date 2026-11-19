@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Spring Core
+- Inspection: an environment-variable placeholder that only repeats the property's relaxed-binding name is shown as unused and can be replaced with its default value, also by Code Cleanup (#395)
 - fix: Kotlin Spring beans that the all-open compiler plugin opens (`kotlin("plugin.spring")`, also applied through a version-catalog alias) are no longer reported as final, and the "must be overridable" message reads correctly (#846)
 - fix: Typing in a Java `static final` field while the IDE indexes no longer throws `IndexNotReadyException` (#833)
 - fix: Keys of a `Map<String, String>` property such as `spring.jpa.properties.hibernate.show_sql` are read as one key, as Spring Boot binds them: they navigate to the Hibernate setting they name and are highlighted as map keys, which relaxed binding does not apply to (#855)
