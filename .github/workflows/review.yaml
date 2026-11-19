@@ -48,7 +48,9 @@ jobs:
           status=0
           echo "::stop-commands::$verbatim"
           node "$RUNNER_TEMP/ohmybug.mjs" --base "origin/$BASE_REF" --format json --step-summary > "$result" || status=$?
-          jq -r '.findings[]? | "\(.severity | ascii_upcase)  \(.file // ""):\(.line // "")  \(.title // "")\n    \(.body // "")\n"' "$result" || true
+          jq -r '.findings[]? | "\(.severity // "unrated" | tostring | ascii_upcase)  \(.file // ""):\(.line // "")  \(.title // "")\n    \(.body // "")\n"' "$result" \
+            || echo "the review result could not be read as JSON"
           echo "::$verbatim::"
-          jq -r -f .github/scripts/review-annotations.jq "$result" || true
+          jq -r -f .github/scripts/review-annotations.jq "$result" \
+            || echo "::warning title=Review annotations::The review result could not be turned into annotations"
           exit $status
