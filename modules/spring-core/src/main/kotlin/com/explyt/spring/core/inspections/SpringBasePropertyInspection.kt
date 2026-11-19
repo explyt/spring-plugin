@@ -202,18 +202,27 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
             return problems
         }
         for (property in deprecationProperties) {
-            val psiElement = fileProperties.firstOrNull { it.key == property.name }?.psiElement ?: continue
+            val fileProperty = fileProperties.firstOrNull { it.key == property.name } ?: continue
+            val psiElement = fileProperty.psiElement ?: continue
             val psiKey = psiElement.propertyKeyPsiElement() ?: continue
-            val level = property.deprecation?.level ?: continue
-            val replacement = property.deprecation?.replacement ?: " "
-            val reason = property.deprecation?.reason
-                ?: if (replacement.isNotEmpty()) "replacement to \"$replacement\""
-                else "reason unknown"
+            val deprecation = property.deprecation ?: continue
+            val level = deprecation.level ?: continue
+            val replacement = deprecation.replacement?.takeUnless { it.isBlank() }
+            val reason = deprecation.reason ?: if (replacement != null) {
+                SpringCoreBundle.message("explyt.spring.inspection.properties.key.deprecated.replacement", replacement)
+            } else {
+                SpringCoreBundle.message("explyt.spring.inspection.properties.key.deprecated.reason.unknown")
+            }
+            val fixes = if (replacement != null) {
+                arrayOf(ReplacementKeyQuickFix(replacement, psiElement))
+            } else {
+                getRemoveKeyQuickFixes(fileProperty).toTypedArray()
+            }
             problems += manager.createProblemDescriptor(
                 psiKey,
                 SpringCoreBundle.message("explyt.spring.inspection.properties.key.deprecated", reason),
                 isOnTheFly,
-                arrayOf(ReplacementKeyQuickFix(replacement, psiElement)),
+                fixes,
                 if (level == DeprecationInfoLevel.ERROR) GENERIC_ERROR else ProblemHighlightType.LIKE_DEPRECATED
             )
         }

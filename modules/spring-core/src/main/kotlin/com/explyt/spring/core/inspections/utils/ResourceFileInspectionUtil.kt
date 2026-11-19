@@ -208,4 +208,6 @@ private class CreateFilePathAvailable(
 ) : CreateFilePathFix(psiElement, newFileLocation, fileTextSupplier) {
 
     override fun isAvailable(project: Project, file: PsiFile, startElement: PsiElement, endElement: PsiElement) = true
+
+    override fun availableInBatchMode() = false
 }

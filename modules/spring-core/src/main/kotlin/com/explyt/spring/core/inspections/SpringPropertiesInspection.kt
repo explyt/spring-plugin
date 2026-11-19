@@ -36,7 +36,7 @@ class SpringPropertiesInspection : SpringBasePropertyInspection() {
     override fun getRemoveKeyQuickFixes(property: DefinedConfigurationProperty): List<LocalQuickFix> {
         return (property.psiElement as? Property)
             ?.let { PropertiesQuickFixFactory.getInstance().createRemovePropertyLocalFix(it) }
-            ?.let { listOf(it) } ?: emptyList()
+            ?.let { listOf(InteractiveOnlyQuickFix(it)) }.orEmpty()
     }
 
     /**
@@ -70,4 +70,8 @@ class SpringPropertiesInspection : SpringBasePropertyInspection() {
         }
     }
 
+}
+
+private class InteractiveOnlyQuickFix(delegate: LocalQuickFix) : LocalQuickFix by delegate {
+    override fun availableInBatchMode() = false
 }

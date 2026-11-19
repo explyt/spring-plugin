@@ -49,7 +49,8 @@ my:
     foo:
       max-connections: 7                        # Deprecated: This method is no longer acceptable, use 'my.server.max.connections'
 </code></pre>
-<p>You can apply the 'Use replacement key' quick-fix, if has a replacement key.</p>
+<p>Code Cleanup normalizes keys to Spring's canonical form but does not replace deprecated YAML keys.
+    If there is no replacement, you can remove the deprecated key manually using the quick fix.</p>
 
 
 <p><b>Example:</b></p>
