@@ -182,6 +182,26 @@ class SpringPropertyFilesCodeCleanupTest : ExplytInspectionJavaTestCase() {
         assertPreservedEntries(true, entries)
     }
 
+    fun testCleanupPreservesYamlKeyInMappingWithMergeKey() = assertYamlMergePreserved(
+        """
+        defaults: &defaults {name: merged}
+        spring:
+          application:
+            <<: *defaults
+            Name: explicit
+        """.trimIndent()
+    )
+
+    fun testCleanupPreservesYamlKeyUnderAncestorMappingWithMergeKey() = assertYamlMergePreserved(
+        """
+        defaults: &defaults {application: {name: merged}}
+        spring:
+          <<: *defaults
+          application:
+            Name: explicit
+        """.trimIndent()
+    )
+
     fun testCleanupDoesNotRenamePropertiesKeyAlsoDeclaredInProfileYaml() {
         val key = "explyt.cleanup.sharedKey"
         val entry = "$key=base"
@@ -322,6 +342,16 @@ class SpringPropertyFilesCodeCleanupTest : ExplytInspectionJavaTestCase() {
             }
             """.trimIndent()
         )
+    }
+
+    private fun assertYamlMergePreserved(entries: String) {
+        configure(true, entries)
+        val anchor = PsiTreeUtil.findChildrenOfType(myFixture.file, YAMLAnchor::class.java).single()
+        val alias = PsiTreeUtil.findChildrenOfType(myFixture.file, YAMLAlias::class.java).single()
+        assertEquals("The merge alias must resolve to the defaults anchor", anchor, alias.reference?.resolve())
+        cleanup()
+        assertPositiveCleanup(true)
+        assertPreservedEntries(true, entries)
     }
 
     private fun assertPreservedEntries(yaml: Boolean, entries: String) {
