@@ -14,6 +14,7 @@ import com.explyt.spring.test.ExplytInspectionJavaTestCase
 import com.explyt.spring.test.TestLibrary
 import com.intellij.analysis.AnalysisScope
 import com.intellij.codeInspection.InspectionManager
+import com.intellij.codeInspection.InspectionsBundle
 import com.intellij.codeInspection.LocalInspectionEP
 import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor
@@ -21,9 +22,14 @@ import com.intellij.codeInspection.ex.GlobalInspectionContextImpl
 import com.intellij.codeInspection.ex.InspectionProfileImpl
 import com.intellij.codeInspection.ex.LocalInspectionToolWrapper
 import com.intellij.lang.annotation.HighlightSeverity
+import com.intellij.lang.properties.PropertiesQuickFixFactory
+import com.intellij.lang.properties.psi.PropertiesFile
+import com.intellij.lang.properties.psi.Property
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.vfs.VfsUtilCore
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiDocumentManager
+import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.yaml.psi.YAMLAlias
 import org.jetbrains.yaml.psi.YAMLAnchor
@@ -96,6 +102,86 @@ class SpringPropertyFilesCodeCleanupTest : ExplytInspectionJavaTestCase() {
         assertCanonicalWarning()
         cleanup()
         myFixture.checkResult(canonicalText(false))
+    }
+
+    fun testFixAllCanonicalizesBothPropertiesKeys() {
+        myFixture.configureByText(
+            "application.properties",
+            "explyt.cleanup.some<caret>Key=first\nexplyt.cleanup.stableKey=second"
+        )
+        launchCanonicalFixAll("SpringPropertiesInspection")
+        myFixture.checkResult("explyt.cleanup.some-key=first\nexplyt.cleanup.stable-key=second")
+    }
+
+    fun testFixAllCanonicalizesBothYamlKeys() {
+        myFixture.configureByText("application.yml", "explyt.cleanup:\n  some<caret>Key: first\n  stableKey: second")
+        launchCanonicalFixAll("SpringYamlInspection")
+        myFixture.checkResult("explyt.cleanup:\n  some-key: first\n  stable-key: second")
+    }
+
+    fun testDuplicatePropertiesRemovalPreviewsAndRemovesOnlyTheSelectedEntry() {
+        val remaining = "explyt.cleanup.duplicateKey=2"
+        assertPropertiesRemoval(
+            "explyt.cleanup.duplicate-<caret>key=1\n$remaining",
+            "explyt.cleanup.duplicate-key",
+            remaining
+        )
+    }
+
+    fun testDeprecatedPropertiesRemovalPreviewsAndRemovesOnlyTheSelectedEntry() {
+        val remaining = "explyt.cleanup.stable-key=untouched"
+        assertPropertiesRemoval(
+            "explyt.cleanup.retired-<caret>key=1\n$remaining",
+            "explyt.cleanup.retired-key",
+            remaining
+        )
+    }
+
+    fun testDeprecatedYamlRemovalIsNotLabelledAsRemovingADuplicate() {
+        val remaining = "explyt.cleanup.stable-key: untouched"
+        myFixture.configureByText("application.yml", "explyt.cleanup.retired-<caret>key: 1\n$remaining")
+        assertEquals(1, problemsContaining("Deprecated:").size)
+        val action = myFixture.availableIntentions.single { it.text.startsWith("Remove ", ignoreCase = true) }
+        assertFalse(
+            "Deprecated key removal is labelled '${action.familyName}'",
+            action.familyName.contains("duplicat", ignoreCase = true)
+        )
+        myFixture.launchAction(action)
+        myFixture.checkResult(remaining)
+    }
+
+    fun testCleanupPreservesPropertiesKeyReferencedFromJavaValue() {
+        val usageText = """
+            import org.springframework.beans.factory.annotation.Value;
+
+            class JavaConsumer {
+                @Value("${'$'}{explyt.cleanup.someKey}") String value;
+            }
+        """.trimIndent()
+        val usage = myFixture.addFileToProject("JavaConsumer.java", usageText)
+        myFixture.configureByText(
+            "application.properties",
+            "explyt.cleanup.someKey=referenced\nexplyt.cleanup.stableKey=control"
+        )
+        assertCrossFileUsage(usage.virtualFile)
+        cleanup("stableKey")
+        myFixture.checkResult("explyt.cleanup.someKey=referenced\nexplyt.cleanup.stable-key=control")
+        assertEquals(usageText, usage.text)
+    }
+
+    fun testCleanupPreservesYamlKeyReferencedFromKotlinConditionalOnProperty() {
+        val usageText = """
+            import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+
+            @ConditionalOnProperty("explyt.cleanup.someKey")
+            class KotlinConsumer
+        """.trimIndent()
+        val usage = myFixture.addFileToProject("KotlinConsumer.kt", usageText)
+        myFixture.configureByText("application.yml", "explyt.cleanup:\n  someKey: referenced\n  stableKey: control")
+        assertCrossFileUsage(usage.virtualFile)
+        cleanup("stableKey")
+        myFixture.checkResult("explyt.cleanup:\n  someKey: referenced\n  stable-key: control")
+        assertEquals(usageText, usage.text)
     }
 
     fun testCleanupKeepsDeprecatedPropertiesKeyWithKnownReplacement() {
@@ -388,18 +474,53 @@ class SpringPropertyFilesCodeCleanupTest : ExplytInspectionJavaTestCase() {
 
     private fun canonicalText(yaml: Boolean) = initialText(yaml).replace("someKey", "some-key")
 
-    private fun assertCanonicalWarning() {
+    private fun assertPropertiesRemoval(before: String, key: String, expected: String) {
+        val file = myFixture.configureByText("application.properties", before) as PropertiesFile
+        val property = file.findPropertyByKey(key) as Property
+        val unwrapped = PropertiesQuickFixFactory.getInstance().createRemovePropertyLocalFix(property)
+        val action = myFixture.findSingleIntention(unwrapped.familyName)
+        assertEquals("Remove property must preview deleting only $key", expected, myFixture.getIntentionPreviewText(action))
+        assertEquals(
+            "Remove property must preserve the platform fix's write-action policy",
+            unwrapped.startInWriteAction(), action.startInWriteAction()
+        )
+        myFixture.checkResult(before.replace("<caret>", ""))
+        myFixture.launchAction(action)
+        myFixture.checkResult(expected)
+    }
+
+    private fun launchCanonicalFixAll(shortName: String) {
+        assertCanonicalWarning()
+        val familyName = InspectionsBundle.message("fix.all.inspection.problems.in.file", registeredWrapper(shortName).displayName)
+        val intentions = myFixture.availableIntentions
+        val action = intentions.singleOrNull { it.familyName == familyName }
+        assertNotNull("Alt+Enter must offer $familyName; available: ${intentions.map { it.familyName }}", action)
+        myFixture.launchAction(action!!)
+    }
+
+    private fun assertCrossFileUsage(usageFile: VirtualFile) {
+        assertCanonicalWarning()
+        val definitions = DefinedConfigurationPropertiesSearch.getInstance(project)
+            .findProperties(module, "explyt.cleanup.someKey")
+        val definition = definitions.mapNotNull { it.psiElement }.single { it.containingFile == myFixture.file }
+        assertTrue(
+            "The annotation in ${usageFile.name} must reference the key in ${myFixture.file.name}",
+            ReferencesSearch.search(definition).any { it.element.containingFile.virtualFile == usageFile }
+        )
+    }
+
+    private fun assertCanonicalWarning(key: String = "someKey") {
         val message = SpringCoreBundle.message("explyt.spring.inspection.properties.value.should.be.kebab")
         val text = myFixture.file.text
         val highlights = myFixture.doHighlighting().filter {
-            it.description == message && text.substring(it.startOffset, it.endOffset) == "someKey"
+            it.description == message && text.substring(it.startOffset, it.endOffset) == key
         }
-        assertEquals("Expected a canonical-form warning on the positive control", 1, highlights.size)
+        assertEquals("Expected a canonical-form warning on $key", 1, highlights.size)
         assertEquals(HighlightSeverity.WEAK_WARNING, highlights.single().severity)
     }
 
-    private fun cleanup() {
-        assertCanonicalWarning()
+    private fun cleanup(controlKey: String = "someKey") {
+        assertCanonicalWarning(controlKey)
         val profile = InspectionProfileImpl("Spring property file cleanup")
         profile.disableAllTools(project)
         val wrapper = registeredWrapper(inspection().javaClass.simpleName)
