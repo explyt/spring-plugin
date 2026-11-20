@@ -107,8 +107,23 @@ abstract class RedundantEnvironmentPlaceholderInspectionTestCase : ExplytInspect
     }
 
     fun testSpelDefaultHasNoFix() {
-        configure("explyt.server.host" to placeholder("EXPLYT_SERVER_HOST", "#{null}"))
-        assertNoFix(assertHighlighted("\${EXPLYT_SERVER_HOST:", "}"))
+        configure("explyt.value" to placeholder("EXPLYT_VALUE", "#{null}"))
+        assertNoFix(assertHighlighted("\${EXPLYT_VALUE:", "}"))
+    }
+
+    fun testBootstrapKeysAreNotReported() {
+        configure(
+            "spring.config.import" to placeholder("SPRING_CONFIG_IMPORT", "classpath:x.properties"),
+            "spring.config.activate.on-profile" to placeholder("SPRING_CONFIG_ACTIVATE_ONPROFILE", "dev"),
+            "spring.profiles.active" to placeholder("SPRING_PROFILES_ACTIVE", "dev"),
+            "spring.profiles.include" to placeholder("SPRING_PROFILES_INCLUDE", "dev"),
+            "spring.profiles.group.explyt" to placeholder("SPRING_PROFILES_GROUP_EXPLYT", "dev"),
+            "spring.config.name" to placeholder("SPRING_CONFIG_NAME", "explyt"),
+            "spring.config.location" to placeholder("SPRING_CONFIG_LOCATION", "classpath:/explyt/"),
+            "spring.config.additional-location" to placeholder("SPRING_CONFIG_ADDITIONALLOCATION", "classpath:/explyt/"),
+            "explyt.value" to placeholder("EXPLYT_VALUE", "localhost"),
+        )
+        assertHighlighted("\${EXPLYT_VALUE:", "}")
     }
 
     fun testProfileConfigurationIsInspectedAndFixed() {
@@ -118,6 +133,11 @@ abstract class RedundantEnvironmentPlaceholderInspectionTestCase : ExplytInspect
     fun testRegistrationAllowsCodeCleanupAndCleanupAppliesFix() {
         configure("explyt.server.host" to placeholder("EXPLYT_SERVER_HOST", "0.0.0.0"))
         assertHighlighted("\${EXPLYT_SERVER_HOST:", "}")
+        runCodeCleanup()
+        myFixture.checkResult(configuration("explyt.server.host" to "0.0.0.0"))
+    }
+
+    protected fun runCodeCleanup() {
         val profile = InspectionProjectProfileManager.getInstance(project).currentProfile
         val wrapper = profile.getInspectionTool(SHORT_NAME, project)
         assertNotNull("registered inspection is in the active profile", wrapper)
@@ -129,7 +149,6 @@ abstract class RedundantEnvironmentPlaceholderInspectionTestCase : ExplytInspect
             PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
             assertTrue("Code Cleanup completed", finished.get())
             PsiDocumentManager.getInstance(project).commitAllDocuments()
-            myFixture.checkResult(configuration("explyt.server.host" to "0.0.0.0"))
         } finally {
             context.cleanup()
         }
@@ -151,11 +170,11 @@ abstract class RedundantEnvironmentPlaceholderInspectionTestCase : ExplytInspect
         assertHighlighted("\${EXPLYT_CONTROL_HOST:", "}")
     }
 
-    private fun configure(vararg entries: Pair<String, String>) {
+    protected fun configure(vararg entries: Pair<String, String>) {
         myFixture.configureByText(fileName, configuration(*entries))
     }
 
-    private fun assertHighlighted(vararg expected: String): List<ProblemDescriptor> {
+    protected fun assertHighlighted(vararg expected: String): List<ProblemDescriptor> {
         val file = myFixture.file
         val problems = InspectionEngine.inspectEx(
             listOf(LocalInspectionToolWrapper(tool)), file, file.textRange, file.textRange,
@@ -174,7 +193,28 @@ abstract class RedundantEnvironmentPlaceholderInspectionTestCase : ExplytInspect
         assertEquals("unsafe placeholders have no editor fixes", emptyList<Any>(), myFixture.getAllQuickFixes())
     }
 
-    private fun placeholder(variable: String, default: String): String = "\${$variable:$default}"
+    protected fun assertDefaultsAreHighlightedWithoutFixes(vararg defaults: String) {
+        val cases = defaults.mapIndexed { index, default ->
+            val variable = "EXPLYT_VALUE$index"
+            val placeholder = placeholder(variable, default)
+            val value = if (fileName.endsWith(".yml") && (default.startsWith(' ') || ": " in default)) {
+                "'$placeholder'"
+            } else {
+                placeholder
+            }
+            Triple(variable, default, "explyt.value$index" to value)
+        }
+        configure(*cases.map { it.third }.toTypedArray())
+        val ranges = cases.flatMap { (variable) -> listOf("\${$variable:", "}") }
+        val problems = assertHighlighted(*ranges.toTypedArray())
+        val fixableDefaults = cases.zip(problems.chunked(2)).mapNotNull { (case, descriptors) ->
+            case.second.takeIf { descriptors.any { !it.fixes.isNullOrEmpty() } }
+        }
+        assertEquals("value-changing defaults must not offer fixes", emptyList<String>(), fixableDefaults)
+        assertNoFix(problems)
+    }
+
+    protected fun placeholder(variable: String, default: String): String = "\${$variable:$default}"
 
     private companion object {
         const val SHORT_NAME = "SpringRedundantEnvironmentPlaceholderInspection"
@@ -183,6 +223,31 @@ abstract class RedundantEnvironmentPlaceholderInspectionTestCase : ExplytInspect
 
 class SpringRedundantEnvironmentPlaceholderYamlInspectionTest : RedundantEnvironmentPlaceholderInspectionTestCase() {
     override val fileName = "application.yml"
+
+    fun testQuotedYamlDefaultsAreHighlightedWithoutFixes() {
+        assertDefaultsAreHighlightedWithoutFixes("'a b'", "\"x\"")
+    }
+
+    fun testYamlDefaultsThatReparseDifferentlyAreHighlightedWithoutFixes() {
+        assertDefaultsAreHighlightedWithoutFixes(
+            "~", "null", "true", "yes", "on", "1e3", "0x10", "- a", "a: b", "# c",
+            " leading", "trailing ", "[a]", "{a}", "*a", "&a", "!x", "|", ">", "%", "@", "`",
+        )
+    }
+
+    fun testCodeCleanupStillReplacesSafeYamlDefaults() {
+        val defaults = listOf("0.0.0.0", "8080", "localhost", "/tmp/x")
+        configure(*defaults.mapIndexed { index, default ->
+            "explyt.value$index" to placeholder("EXPLYT_VALUE$index", default)
+        }.toTypedArray())
+        assertHighlighted(*defaults.indices.flatMap { listOf("\${EXPLYT_VALUE$it:", "}") }.toTypedArray())
+
+        runCodeCleanup()
+
+        myFixture.checkResult(configuration(*defaults.mapIndexed { index, default ->
+            "explyt.value$index" to default
+        }.toTypedArray()))
+    }
 
     override fun configuration(vararg entries: Pair<String, String>): String =
         render(entries.map { (key, value) -> key.split('.') to value }, 0)
@@ -200,6 +265,28 @@ class SpringRedundantEnvironmentPlaceholderYamlInspectionTest : RedundantEnviron
 
 class SpringRedundantEnvironmentPlaceholderPropertiesInspectionTest : RedundantEnvironmentPlaceholderInspectionTestCase() {
     override val fileName = "application.properties"
+
+    fun testPropertiesDefaultsWithBackslashesAreHighlightedWithoutFixes() {
+        assertDefaultsAreHighlightedWithoutFixes("x\\", "x\\\\", "x\\ty", "x\\:y")
+    }
+
+    fun testCodeCleanupPreservesEscapedPropertyAndFollowingLine() {
+        val escaped = placeholder("EXPLYT_VALUE", "x\\\\")
+        configure(
+            "explyt.value" to escaped,
+            "explyt.other" to "keep",
+            "explyt.control" to placeholder("EXPLYT_CONTROL", "localhost"),
+        )
+        assertHighlighted("\${EXPLYT_VALUE:", "}", "\${EXPLYT_CONTROL:", "}")
+
+        runCodeCleanup()
+
+        assertEquals(
+            "Code Cleanup must keep the escaped placeholder and the following property unchanged",
+            "explyt.value=$escaped\nexplyt.other=keep\nexplyt.control=localhost",
+            myFixture.editor.document.text,
+        )
+    }
 
     override fun configuration(vararg entries: Pair<String, String>): String =
         entries.joinToString("\n") { (key, value) -> "$key=$value" }
