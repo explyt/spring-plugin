@@ -270,7 +270,10 @@ class SpringRedundantEnvironmentPlaceholderYamlInspectionTest : RedundantEnviron
     }
 
     fun testYamlDefaultsOutsideAllowListStayGreyWithoutFixes() {
-        val defaults = listOf("-:", "-x", "a:b", "classpath:x.yml", "a b", "a#b", "@x", "ü", "a,b", "a=b", "a%b")
+        val defaults = listOf(
+            "-:", "-x", "a:b", "classpath:x.yml", "a b", "a#b", "@x", "ü", "a,b", "a=b", "a%b",
+            "+x", "+1", "+1.5", "+.inf", "+.Inf", "+.INF",
+        )
         assertYamlDefaultFixes(defaults, emptyList())
     }
 
@@ -280,7 +283,7 @@ class SpringRedundantEnvironmentPlaceholderYamlInspectionTest : RedundantEnviron
     }
 
     fun testAllowListedYamlDefaultsKeepTheirFixes() {
-        val defaults = listOf("0.0.0.0", "localhost", "8080", "1.5", "/tmp/x", "user@host", "a-b", "a_b", "+x", "v1.2.3")
+        val defaults = listOf("0.0.0.0", "localhost", "8080", "1.5", "/tmp/x", "user@host", "a-b", "a_b", "a+b", "v1.2.3")
         assertYamlDefaultFixes(defaults, defaults)
     }
 
@@ -294,6 +297,20 @@ class SpringRedundantEnvironmentPlaceholderYamlInspectionTest : RedundantEnviron
         assertEquals(
             "Code Cleanup must keep the dash-colon placeholder while fixing the control",
             "$unsafeLine\nexplyt.control: localhost",
+            myFixture.editor.document.text,
+        )
+    }
+
+    fun testCodeCleanupPreservesLeadingPlusYamlDefault() {
+        val unsafeLine = "explyt.value: \${EXPLYT_VALUE:+1}"
+        myFixture.configureByText(fileName, "$unsafeLine\nexplyt.control: \${EXPLYT_CONTROL:a+b}")
+        assertHighlighted("\${EXPLYT_VALUE:", "}", "\${EXPLYT_CONTROL:", "}")
+
+        runCodeCleanup()
+
+        assertEquals(
+            "Code Cleanup must keep the leading-plus placeholder while fixing the control",
+            "$unsafeLine\nexplyt.control: a+b",
             myFixture.editor.document.text,
         )
     }
