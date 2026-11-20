@@ -8,9 +8,10 @@ For ordinary configuration keys, Spring Boot can read that environment variable 
 <code>spring.profiles.active</code>, <code>spring.profiles.include</code> and <code>spring.profiles.group</code> (including its entries).</p>
 <p>The quick fix replaces the placeholder with a simple literal default and is available in Code Cleanup.
 No fix is offered without a default, with a nested placeholder or SpEL expression such as <code>#{null}</code>,
-with backslashes or a leading <code>=</code> or <code>:</code> in a <code>.properties</code> default,
-or when the edited YAML entry does not parse as intended. The YAML check is conservative: it leaves quoted defaults,
-lone indicators such as <code>-</code>, and special scalars such as <code>yes</code> or <code>0x10</code> unchanged.</p>
+or with backslashes or a leading <code>=</code> or <code>:</code> in a <code>.properties</code> default.</p>
+<p>In YAML, a nonempty default must contain only ASCII letters, digits, or <code>._/@+-</code> and cannot start with <code>-</code>
+or <code>@</code>. Defaults with spaces, quotes, colons or hash signs are left unchanged, as are YAML boolean and null spellings
+(in any case, including <code>~</code>) and special numeric forms such as <code>0x10</code>.</p>
 <p>Limitations:</p>
 <ul>
 <li>Unquoted decimal YAML defaults remain eligible for the fix. An <code>Object</code> or <code>Map&lt;String, Object&gt;</code>

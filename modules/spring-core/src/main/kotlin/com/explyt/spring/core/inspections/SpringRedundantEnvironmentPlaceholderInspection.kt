@@ -58,7 +58,7 @@ class SpringRedundantEnvironmentPlaceholderInspection : SpringBaseLocalInspectio
             val placeholder = ConfigurationPlaceholder.parse(valueRange.substring(element.text))
                 ?: return@flatMap emptyList()
             if (placeholder.name != PropertyUtil.toSystemEnvironmentForm(key)) return@flatMap emptyList()
-            val fixes = if (placeholder.replacementDefault(element, valueRange) != null) {
+            val fixes = if (placeholder.replacementDefault(file) != null) {
                 arrayOf<LocalQuickFix>(ReplaceEnvironmentPlaceholderWithDefaultQuickFix())
             } else emptyArray()
             placeholder.redundantRanges.mapIndexed { index, range ->

@@ -22,7 +22,7 @@ class ReplaceEnvironmentPlaceholderWithDefaultQuickFix : LocalQuickFix {
         val valueRange = ElementManipulators.getValueTextRange(element)
         val placeholder = ConfigurationPlaceholder.parse(valueRange.substring(element.text)) ?: return
         val file = element.containingFile
-        val default = placeholder.replacementDefault(element, valueRange) ?: return
+        val default = placeholder.replacementDefault(file) ?: return
         val documentManager = PsiDocumentManager.getInstance(project)
         val document = documentManager.getDocument(file) ?: return
         val range = placeholder.range.shiftRight(element.textRange.startOffset + valueRange.startOffset)
