@@ -58,7 +58,7 @@ class SpringRedundantEnvironmentPlaceholderInspection : SpringBaseLocalInspectio
             val placeholder = ConfigurationPlaceholder.parse(valueRange.substring(element.text))
                 ?: return@flatMap emptyList()
             if (placeholder.name != PropertyUtil.toSystemEnvironmentForm(key)) return@flatMap emptyList()
-            val fixes = if (placeholder.replacementDefault(file) != null) {
+            val fixes = if (placeholder.replacementDefault(element, valueRange) != null) {
                 arrayOf<LocalQuickFix>(ReplaceEnvironmentPlaceholderWithDefaultQuickFix())
             } else emptyArray()
             placeholder.redundantRanges.mapIndexed { index, range ->
@@ -78,6 +78,7 @@ class SpringRedundantEnvironmentPlaceholderInspection : SpringBaseLocalInspectio
         val BOOTSTRAP_KEYS = setOf(
             "spring.config.import",
             "spring.config.activate.on-profile",
+            "spring.config.activate.on-cloud-platform",
             "spring.config.location",
             "spring.config.additional-location",
             "spring.config.name",
