@@ -45,7 +45,7 @@ class SpringDebuggerRunConfigurationExtension : RunConfigurationExtension() {
     ) {
         if (runnerSettings !is GenericDebuggerRunnerSettings) return
 
-        val module = getModule(configuration)?.takeIf { isSpringModule(it) } ?: return
+        val module = runReadAction { getModule(configuration)?.takeIf { isSpringModule(it) } } ?: return
         if (javaParameters.vmParametersList.parametersString.contains(EXPLYT_AGENT_JAR)) return
 
         val javaAgentPath = NativeBootUtils.getAgentPath()
@@ -127,12 +127,14 @@ private val logger = logger<RunConfigurationExtension>()
 
 private fun setEnvExplytAgentVariables(configuration: ExternalSystemRunConfiguration, javaAgentPath: String) {
     try {
-        val envMap = HashMap(configuration.settings.env)
-        envMap[JAVA_TOOL_OPTIONS] = "-javaagent:\"$javaAgentPath\""
-        configuration.settings.env = envMap
+        configuration.updateEnv { it[JAVA_TOOL_OPTIONS] = "-javaagent:\"$javaAgentPath\"" }
     } catch (e: Exception) {
         logger.warn("error on set env", e)
     }
+}
+
+private fun ExternalSystemRunConfiguration.updateEnv(change: (MutableMap<String, String>) -> Unit) {
+    settings.env = HashMap(settings.env).also(change)
 }
 
 private fun <T : RunConfigurationBase<*>?> setExplytAgentVMParams(
@@ -150,7 +152,7 @@ private fun scheduleCleanupExternalSystemEnvData(configuration: ExternalSystemRu
     AppExecutorUtil.getAppScheduledExecutorService().schedule(
         {
             ApplicationManager.getApplication().invokeLater {
-                configuration.settings.env.remove(JAVA_TOOL_OPTIONS)
+                configuration.updateEnv { it.remove(JAVA_TOOL_OPTIONS) }
             }
         }, 5, TimeUnit.SECONDS
     )
