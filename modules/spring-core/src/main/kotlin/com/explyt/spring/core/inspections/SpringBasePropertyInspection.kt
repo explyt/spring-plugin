@@ -23,15 +23,17 @@ import com.explyt.spring.core.util.PropertyUtil.propertyKey
 import com.explyt.spring.core.util.PropertyUtil.propertyKeyPsiElement
 import com.explyt.spring.core.util.PropertyUtil.propertyValue
 import com.explyt.spring.core.util.PropertyUtil.propertyValuePsiElement
-import com.explyt.spring.core.util.RenameUtil
+import com.explyt.spring.core.util.PropertyUtil.toCommonPropertyForm
 import com.explyt.spring.core.util.SpringCoreUtil
 import com.explyt.util.CacheKeyStore
 import com.intellij.codeInspection.*
 import com.intellij.codeInspection.ProblemHighlightType.GENERIC_ERROR
 import com.intellij.lang.properties.PropertiesBundle
 import com.intellij.lang.properties.PropertiesFileType
+import com.intellij.lang.properties.psi.PropertiesFile
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiClass
@@ -41,9 +43,14 @@ import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
+import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.uast.UastModificationTracker
 import com.intellij.util.Processor
 import com.intellij.xml.util.documentation.MimeTypeDictionary
+import org.jetbrains.yaml.YAMLUtil
+import org.jetbrains.yaml.psi.YAMLAlias
+import org.jetbrains.yaml.psi.YAMLFile
+import org.jetbrains.yaml.psi.YAMLKeyValue
 import java.nio.charset.Charset
 import java.text.DateFormat
 
@@ -88,23 +95,24 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
             return mutableListOf()
         }
         val problems = mutableListOf<ProblemDescriptor>()
-        problems += getProblemKey(manager, file, isOnTheFly, fileProperties)
+        problems += getProblemKey(module, manager, file, isOnTheFly, fileProperties, configurationProperties)
         problems += getProblemPropertyDeprecated(manager, isOnTheFly, configurationProperties, fileProperties)
         return problems
     }
 
     private fun getProblemKey(
+        module: Module,
         manager: InspectionManager,
         file: PsiFile,
         isOnTheFly: Boolean,
         fileProperties: List<DefinedConfigurationProperty>,
+        properties: List<ConfigurationProperty>,
     ): List<ProblemDescriptor> {
         val problems = mutableListOf<ProblemDescriptor>()
-        val module = ModuleUtilCore.findModuleForPsiElement(file) ?: return emptyList()
-
-        val properties = SpringConfigurationPropertiesSearch.getInstance(module.project)
-            .getAllProperties(module)
-
+        val batchCanonicalization = if (isOnTheFly) null else BatchCanonicalization(module, file, properties)
+        val placeholders by lazy(LazyThreadSafetyMode.NONE) {
+            DefinedConfigurationPropertiesSearch.getInstance(module.project).getAllPlaceholders(module)
+        }
         val reportedCanonicalFormRanges = mutableSetOf<Pair<PsiElement?, TextRange?>>()
         for (fileProperty in fileProperties) {
             val elementFileProperty = fileProperty.psiElement ?: continue
@@ -128,16 +136,12 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
             if (nonCanonical != null && !PropertyUtil.isKebabCaseInMapKey(key, properties)) {
                 // Every leaf under one non-canonical ancestor resolves to that ancestor's element, so without this
                 // guard a mapping with N children stacked N identical problems on the ancestor's line.
-                val batchSafe = !isOnTheFly && foundProperties.isNotEmpty() &&
-                        canCanonicalizeInBatch(key, elementFileProperty, file, properties, fileProperties)
+                val batchSafe = batchCanonicalization?.canRename(key, elementFileProperty) == true
                 val descriptor = keyShouldBeKebabProblemDescriptor(manager, psiKey, isOnTheFly, key, nonCanonical, batchSafe)
                 if (reportedCanonicalFormRanges.add(descriptor.psiElement to descriptor.textRangeInElement)) {
                     problems += descriptor
                 }
             }
-
-            val placeholders = DefinedConfigurationPropertiesSearch.getInstance(module.project)
-                .getAllPlaceholders(module)
 
             if (foundProperties.isEmpty()
                 && getMapKeys(fileProperty, properties).isEmpty()
@@ -179,25 +183,62 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         return problems
     }
 
-    private fun canCanonicalizeInBatch(
-        key: String,
-        element: PsiElement,
-        file: PsiFile,
+    private class BatchCanonicalization(
+        module: Module,
+        private val file: PsiFile,
         properties: List<ConfigurationProperty>,
-        fileProperties: List<DefinedConfigurationProperty>
-    ): Boolean {
-        if ('[' in key) return false
-        val commonKey = PropertyUtil.toCommonPropertyForm(key)
-        if (isMapEntry(commonKey, SpringProperties.LOGGING_LEVEL) || isMapEntry(commonKey, "logging.group")) return false
-        if (properties.any { it.isMap() && isMapEntry(commonKey, PropertyUtil.toCommonPropertyForm(it.name)) }) return false
-        if (fileProperties.any { it.psiElement != element && PropertyUtil.toCommonPropertyForm(it.key) == commonKey }) return false
-        return YamlKeyToKebabQuickFix.hasNoStructuralConflict(element) &&
-                RenameUtil.findSamePropertyElements(element, key).none { it.containingFile != file } &&
-                ReferencesSearch.search(element).forEach(Processor { it.element.containingFile == file })
-    }
+    ) {
+        private val knownKeys by lazy(LazyThreadSafetyMode.NONE) {
+            properties.mapTo(hashSetOf()) { toCommonPropertyForm(it.name) }
+        }
 
-    private fun isMapEntry(commonKey: String, owner: String): Boolean =
-        commonKey != owner && PropertyUtil.isOwnedBy(commonKey, owner)
+        private val mapOwners by lazy(LazyThreadSafetyMode.NONE) {
+            properties.asSequence().filter { it.isMap() }.map { toCommonPropertyForm(it.name) }
+                .toCollection(hashSetOf(SpringProperties.LOGGING_LEVEL, "logging.group"))
+        }
+
+        private val localEntries by lazy(LazyThreadSafetyMode.NONE) {
+            val entries = when (file) {
+                is PropertiesFile -> file.properties.mapNotNull { property ->
+                    property.unescapedKey?.let { it to property.psiElement }
+                }
+                is YAMLFile -> PsiTreeUtil.findChildrenOfType(file, YAMLKeyValue::class.java)
+                    .map { YAMLUtil.getConfigFullName(it) to it }
+                else -> emptyList()
+            }
+            entries.groupBy({ toCommonPropertyForm(it.first) }, { it.second })
+        }
+
+        private val aliasedValues by lazy(LazyThreadSafetyMode.NONE) {
+            if (file !is YAMLFile) emptySet() else {
+                PsiTreeUtil.findChildrenOfType(file, YAMLAlias::class.java)
+                    .mapNotNullTo(hashSetOf()) { it.reference?.resolve()?.markedValue }
+            }
+        }
+
+        private val externalKeys by lazy(LazyThreadSafetyMode.NONE) {
+            DefinedConfigurationPropertiesSearch.getInstance(module.project).getAllProperties(module)
+                .asSequence()
+                .filter { property -> property.psiElement?.let { it.containingFile != file } == true }
+                .mapTo(hashSetOf()) { it.key }
+        }
+
+        fun canRename(key: String, element: PsiElement): Boolean {
+            ProgressManager.checkCanceled()
+            if ('[' in key) return false
+            val commonKey = toCommonPropertyForm(key)
+            if (commonKey !in knownKeys) return false
+            if (mapOwners.any { it != commonKey && PropertyUtil.isOwnedBy(commonKey, it) }) return false
+            val entries = localEntries[commonKey].orEmpty()
+            if (entries.singleOrNull() != element) return false
+            if (element is YAMLKeyValue && aliasedValues.any {
+                    it == element.value || PsiTreeUtil.isAncestor(it, element, false)
+                }) return false
+            return YamlKeyToKebabQuickFix.hasNoStructuralConflict(element) &&
+                    key !in externalKeys &&
+                    ReferencesSearch.search(element).forEach(Processor { it.element.containingFile == file })
+        }
+    }
 
     /**
      * @param psiKey the key element of the property being inspected — the leaf, which may be a descendant of the
