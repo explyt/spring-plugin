@@ -24,6 +24,12 @@ import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.psi.PsiDocumentManager
+import com.intellij.psi.util.PsiTreeUtil
+import org.jetbrains.yaml.psi.YAMLAlias
+import org.jetbrains.yaml.psi.YAMLAnchor
+import org.jetbrains.yaml.psi.YAMLFile
+import java.io.StringReader
+import java.util.Properties
 
 class SpringPropertyFilesCodeCleanupTest : ExplytInspectionJavaTestCase() {
     override val libraries: Array<TestLibrary> = arrayOf(
@@ -127,6 +133,54 @@ class SpringPropertyFilesCodeCleanupTest : ExplytInspectionJavaTestCase() {
     fun testCleanupPreservesCollidingPropertiesKeys() = assertCollisionPreserved(false)
 
     fun testCleanupPreservesCollidingYamlKeys() = assertCollisionPreserved(true)
+
+    fun testCleanupPreservesPropertiesBooleanAlias() = assertBooleanAliasPreserved(false)
+
+    fun testCleanupPreservesYamlBooleanAlias() = assertBooleanAliasPreserved(true)
+
+    fun testCleanupPreservesYamlKeyCollidingWithBlockScalarInAnotherDocument() {
+        val entries = """
+            spring.application.Name: first
+            ---
+            spring.application.name: >-
+              second
+        """.trimIndent()
+        configure(true, entries)
+        assertEquals("Expected two YAML documents in one file", 2, (myFixture.file as YAMLFile).documents.size)
+        cleanup()
+        assertPositiveCleanup(true)
+        assertPreservedEntries(true, entries)
+    }
+
+    fun testCleanupPreservesPropertiesKeyCollidingWithUnicodeEscapedKey() {
+        addServerProperties()
+        val entries = """
+            explyt.server.maxSize=first
+            explyt.server.max\u002dsize=second
+        """.trimIndent()
+        val properties = Properties().apply { load(StringReader(entries)) }
+        assertEquals(setOf("explyt.server.maxSize", "explyt.server.max-size"), properties.stringPropertyNames())
+        configure(false, entries)
+        cleanup()
+        assertPositiveCleanup(false)
+        assertPreservedEntries(false, entries)
+    }
+
+    fun testCleanupPreservesYamlMappingAliasedAsLoggingGroup() {
+        val entries = """
+            spring.application: &settings
+              Name: first
+            logging:
+              group: *settings
+        """.trimIndent()
+        configure(true, entries)
+        val anchor = PsiTreeUtil.findChildrenOfType(myFixture.file, YAMLAnchor::class.java).single()
+        val alias = PsiTreeUtil.findChildrenOfType(myFixture.file, YAMLAlias::class.java).single()
+        assertEquals("The logging group alias must resolve to the settings anchor", anchor, alias.reference?.resolve())
+        cleanup()
+        assertPositiveCleanup(true)
+        assertPreservedEntries(true, entries)
+    }
 
     fun testCleanupDoesNotRenamePropertiesKeyAlsoDeclaredInProfileYaml() {
         val key = "explyt.cleanup.sharedKey"
@@ -238,7 +292,26 @@ class SpringPropertyFilesCodeCleanupTest : ExplytInspectionJavaTestCase() {
         assertPreservedEntries(yaml, entry)
     }
 
+    private fun assertBooleanAliasPreserved(yaml: Boolean) {
+        val entry = if (yaml) "spring.main.is-lazy_Initialization: true" else "spring.main.is-lazy_Initialization=true"
+        configure(yaml, entry)
+        cleanup()
+        assertPositiveCleanup(yaml)
+        assertPreservedEntries(yaml, entry)
+    }
+
     private fun assertCollisionPreserved(yaml: Boolean) {
+        addServerProperties()
+        val entries = if (yaml) "explyt.server:\n  maxSize: 10\n  max-size: 20"
+        else "explyt.server.maxSize=10\nexplyt.server.max-size=20"
+        configure(yaml, entries)
+        assertEquals("Both aliases must be reported as duplicates", 2, problemsContaining("Duplicate").size)
+        cleanup()
+        assertPositiveCleanup(yaml)
+        assertPreservedEntries(yaml, entries)
+    }
+
+    private fun addServerProperties() {
         myFixture.addClass(
             """
             @org.springframework.boot.context.properties.ConfigurationProperties(prefix = "explyt.server")
@@ -249,13 +322,6 @@ class SpringPropertyFilesCodeCleanupTest : ExplytInspectionJavaTestCase() {
             }
             """.trimIndent()
         )
-        val entries = if (yaml) "explyt.server:\n  maxSize: 10\n  max-size: 20"
-        else "explyt.server.maxSize=10\nexplyt.server.max-size=20"
-        configure(yaml, entries)
-        assertEquals("Both aliases must be reported as duplicates", 2, problemsContaining("Duplicate").size)
-        cleanup()
-        assertPositiveCleanup(yaml)
-        assertPreservedEntries(yaml, entries)
     }
 
     private fun assertPreservedEntries(yaml: Boolean, entries: String) {
