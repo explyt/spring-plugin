@@ -15,11 +15,13 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
+import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.search.LocalSearchScope
 import com.intellij.psi.search.searches.ReferencesSearch
 
-class ReplacementKeyQuickFix(val key: String, element: PsiElement, private val batchSafe: Boolean = true) :
+class ReplacementKeyQuickFix(val key: String, element: PsiElement, private val batchSafe: Boolean? = null) :
     LocalQuickFixAndIntentionActionOnPsiElement(element) {
-    override fun availableInBatchMode() = batchSafe
+    override fun availableInBatchMode() = batchSafe != false
 
     override fun getFamilyName(): String =
         SpringCoreBundle.message("explyt.spring.inspection.properties.quick.fix.replacement", key)
@@ -49,7 +51,9 @@ class ReplacementKeyQuickFix(val key: String, element: PsiElement, private val b
         val containingFile = startElement.context?.containingFile
 
         // Collect the usages before the key is renamed: afterwards `${oldKey}` references no longer resolve to it.
-        val usages = ReferencesSearch.search(startElement).findAll().toList()
+        val localOnly = batchSafe == true && editor == null
+        val scope = if (localOnly) LocalSearchScope(startElement.containingFile) else GlobalSearchScope.allScope(project)
+        val usages = ReferencesSearch.search(startElement, scope).findAll().toList()
 
         WriteCommandAction.runWriteCommandAction(project, "Replace Key", null, {
             if (!startElement.isValid) return@runWriteCommandAction
@@ -57,7 +61,7 @@ class ReplacementKeyQuickFix(val key: String, element: PsiElement, private val b
             startElement.setName(key)
 
             QuickFixUsageRenamer.renameKeyInUsages(project, usages, key)
-            RenameUtil.renameSameProperty(project, startElement, oldKey, key)
+            if (!localOnly) RenameUtil.renameSameProperty(project, startElement, oldKey, key)
         }, containingFile)
     }
 }

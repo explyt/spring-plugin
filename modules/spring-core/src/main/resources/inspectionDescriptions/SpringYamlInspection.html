@@ -51,9 +51,9 @@ my:
 </code></pre>
 <p>Code Cleanup can normalize a key when its relaxed spelling matches a name from metadata or
     <code>@ConfigurationProperties</code>. It skips indexed and map entries, keys with the same relaxed name across
-    the file's YAML documents, and keys whose value or enclosing mapping is referenced by an alias. It also skips
-    renames that would affect sibling keys or edit another file. Deprecated-key replacements, removals, and file
-    creation are not part of cleanup.</p>
+    the file's YAML documents, keys whose value or enclosing mapping is referenced by an alias, and keys inside
+    mappings that contain a merge key (<code>&lt;&lt;</code>). It also skips renames that would affect sibling keys
+    or edit another file. Deprecated-key replacements, removals, and file creation are not part of cleanup.</p>
 
 
 <p><b>Example:</b></p>

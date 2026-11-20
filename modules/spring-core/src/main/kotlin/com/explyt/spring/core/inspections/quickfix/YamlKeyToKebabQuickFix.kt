@@ -19,15 +19,17 @@ import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
+import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.search.LocalSearchScope
 import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.yaml.YAMLUtil
 import org.jetbrains.yaml.psi.YAMLKeyValue
 import org.jetbrains.yaml.psi.impl.YAMLKeyValueImpl
 
-class YamlKeyToKebabQuickFix(element: PsiElement, private val batchSafe: Boolean = true) :
+class YamlKeyToKebabQuickFix(element: PsiElement, private val batchSafe: Boolean? = null) :
     LocalQuickFixAndIntentionActionOnPsiElement(element) {
-    override fun availableInBatchMode() = batchSafe
+    override fun availableInBatchMode() = batchSafe != false
 
     override fun getFamilyName(): String =
         SpringCoreBundle.message("explyt.spring.inspection.properties.key.yaml.fix.case")
@@ -54,13 +56,15 @@ class YamlKeyToKebabQuickFix(element: PsiElement, private val batchSafe: Boolean
         val fullName = YAMLUtil.getConfigFullName(startElement)
         val newFullName = toKebabCase(fullName)
         // Collected before the key is renamed: afterwards a `${...}` placeholder no longer resolves to it.
-        val usages = ReferencesSearch.search(startElement).findAll().toList()
+        val localOnly = batchSafe == true && editor == null
+        val scope = if (localOnly) LocalSearchScope(startElement.containingFile) else GlobalSearchScope.allScope(project)
+        val usages = ReferencesSearch.search(startElement, scope).findAll().toList()
 
         WriteCommandAction.runWriteCommandAction(project, "Replace Key", null, {
             if (!renameKeySegments(project, startElement)) return@runWriteCommandAction
 
             QuickFixUsageRenamer.renameKeyInUsages(project, usages, newFullName)
-            RenameUtil.renameSameProperty(project, startElement, fullName, newFullName)
+            if (!localOnly) RenameUtil.renameSameProperty(project, startElement, fullName, newFullName)
         }, containingFile)
     }
 
@@ -95,11 +99,13 @@ class YamlKeyToKebabQuickFix(element: PsiElement, private val batchSafe: Boolean
         internal fun hasNoStructuralConflict(element: PsiElement): Boolean {
             if (element !is YAMLKeyValueImpl) return true
             return keyPath(element).all { entry ->
+                val mapping = entry.parentMapping
+                if (mapping?.getKeyValueByKey("<<") != null) return@all false
                 val keyText = entry.key?.text ?: return@all true
                 val canonical = toKebabCase(keyText)
                 if (keyText == canonical) return@all true
                 keyText == entry.keyText &&
-                        entry.parentMapping?.keyValues.orEmpty().none { it != entry && toKebabCase(it.keyText) == canonical } &&
+                        mapping?.keyValues.orEmpty().none { it != entry && toKebabCase(it.keyText) == canonical } &&
                         PsiTreeUtil.findChildrenOfType(entry, YAMLKeyValue::class.java).all {
                             PsiTreeUtil.isAncestor(it, element, false)
                         }

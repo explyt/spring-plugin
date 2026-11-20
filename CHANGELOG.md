@@ -5,7 +5,7 @@
 ## [Unreleased]
 
 ### Spring Core
-- fix: Code Cleanup can normalize Spring configuration keys that match a metadata or `@ConfigurationProperties` name by relaxed spelling. It skips indexed and map entries, duplicate relaxed names in the same file, YAML keys affected by aliases, and renames that would edit other files. Deprecated-key replacements, removals, and file creation are not part of cleanup.
+- fix: Code Cleanup can normalize Spring configuration keys that match a metadata or `@ConfigurationProperties` name by relaxed spelling. It skips indexed and map entries, duplicate relaxed names in the same file, YAML keys affected by aliases or enclosed by a mapping with a merge key (`<<`), and renames that would edit other files. Deprecated-key replacements, removals, and file creation are not part of cleanup.
 - fix: Kotlin Spring beans that the all-open compiler plugin opens (`kotlin("plugin.spring")`, also applied through a version-catalog alias) are no longer reported as final, and the "must be overridable" message reads correctly (#846)
 - fix: Typing in a Java `static final` field while the IDE indexes no longer throws `IndexNotReadyException` (#833)
 - fix: Keys of a `Map<String, String>` property such as `spring.jpa.properties.hibernate.show_sql` are read as one key, as Spring Boot binds them: they navigate to the Hibernate setting they name and are highlighted as map keys, which relaxed binding does not apply to (#855)
