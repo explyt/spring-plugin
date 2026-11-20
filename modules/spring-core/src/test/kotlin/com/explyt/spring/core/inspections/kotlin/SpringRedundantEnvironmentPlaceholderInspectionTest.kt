@@ -269,6 +269,50 @@ class SpringRedundantEnvironmentPlaceholderYamlInspectionTest : RedundantEnviron
         myFixture.checkResult("explyt.port: 8080\nexplyt.host: localhost")
     }
 
+    fun testYamlDefaultsOutsideAllowListStayGreyWithoutFixes() {
+        val defaults = listOf("-:", "-x", "a:b", "classpath:x.yml", "a b", "a#b", "@x", "ü", "a,b", "a=b", "a%b")
+        assertYamlDefaultFixes(defaults, emptyList())
+    }
+
+    fun testYamlBooleanAndNullDefaultsStayGreyWithoutFixesRegardlessOfCase() {
+        val defaults = listOf("TrUe", "FALSE", "YES", "No", "oN", "Off", "NuLl", "~")
+        assertYamlDefaultFixes(defaults, emptyList())
+    }
+
+    fun testAllowListedYamlDefaultsKeepTheirFixes() {
+        val defaults = listOf("0.0.0.0", "localhost", "8080", "1.5", "/tmp/x", "user@host", "a-b", "a_b", "+x", "v1.2.3")
+        assertYamlDefaultFixes(defaults, defaults)
+    }
+
+    fun testCodeCleanupPreservesDashColonYamlDefault() {
+        val unsafeLine = "explyt.value: \${EXPLYT_VALUE:-:}"
+        myFixture.configureByText(fileName, "$unsafeLine\nexplyt.control: \${EXPLYT_CONTROL:localhost}")
+        assertHighlighted("\${EXPLYT_VALUE:", "}", "\${EXPLYT_CONTROL:", "}")
+
+        runCodeCleanup()
+
+        assertEquals(
+            "Code Cleanup must keep the dash-colon placeholder while fixing the control",
+            "$unsafeLine\nexplyt.control: localhost",
+            myFixture.editor.document.text,
+        )
+    }
+
+    private fun assertYamlDefaultFixes(defaults: List<String>, expectedFixable: List<String>) {
+        val entries = defaults.mapIndexed { index, default ->
+            val value = placeholder("EXPLYT_VALUE$index", default)
+            "explyt.value$index" to if ('#' in default) "'$value'" else value
+        }
+        configure(*entries.toTypedArray(), "explyt.control" to placeholder("EXPLYT_CONTROL", "control"))
+        val ranges = defaults.indices.flatMap { listOf("\${EXPLYT_VALUE$it:", "}") }
+        val problems = assertHighlighted(*ranges.toTypedArray(), "\${EXPLYT_CONTROL:", "}")
+        assertEquals("same-file control has a fix", 1, problems.takeLast(2).sumOf { it.fixes.orEmpty().size })
+        val fixable = defaults.zip(problems.dropLast(2).chunked(2)).mapNotNull { (default, descriptors) ->
+            default.takeIf { descriptors.any { !it.fixes.isNullOrEmpty() } }
+        }
+        assertEquals("YAML defaults that offer a fix", expectedFixable, fixable)
+    }
+
     fun testCodeCleanupStillReplacesSafeYamlDefaults() {
         val defaults = listOf("0.0.0.0", "8080", "localhost", "/tmp/x")
         configure(*defaults.mapIndexed { index, default ->
