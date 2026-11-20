@@ -5,7 +5,7 @@
 ## [Unreleased]
 
 ### Spring Core
-- Inspection: redundant environment-variable placeholders are shown as unused for ordinary Spring Boot configuration keys. Simple literal defaults can replace the placeholder, including in Code Cleanup; defaults such as `#{null}` have no quick fix (#395)
+- feat: A placeholder such as `${EXPLYT_SERVER_HOST:0.0.0.0}` whose variable is the relaxed-binding name of its own key is shown as unused in `application.properties` and `application.yml`; a plain default can replace it, also in Code Cleanup. Bootstrap keys such as `spring.config.import` are not reported, and defaults that could change the value keep the placeholder (#395)
 - fix: Kotlin Spring beans that the all-open compiler plugin opens (`kotlin("plugin.spring")`, also applied through a version-catalog alias) are no longer reported as final, and the "must be overridable" message reads correctly (#846)
 - fix: Typing in a Java `static final` field while the IDE indexes no longer throws `IndexNotReadyException` (#833)
 - fix: Keys of a `Map<String, String>` property such as `spring.jpa.properties.hibernate.show_sql` are read as one key, as Spring Boot binds them: they navigate to the Hibernate setting they name and are highlighted as map keys, which relaxed binding does not apply to (#855)
