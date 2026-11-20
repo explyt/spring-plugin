@@ -22,9 +22,13 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.yaml.YAMLUtil
+import org.jetbrains.yaml.psi.YAMLKeyValue
 import org.jetbrains.yaml.psi.impl.YAMLKeyValueImpl
 
-class YamlKeyToKebabQuickFix(element: PsiElement) : LocalQuickFixAndIntentionActionOnPsiElement(element) {
+class YamlKeyToKebabQuickFix(element: PsiElement, private val batchSafe: Boolean = true) :
+    LocalQuickFixAndIntentionActionOnPsiElement(element) {
+    override fun availableInBatchMode() = batchSafe
+
     override fun getFamilyName(): String =
         SpringCoreBundle.message("explyt.spring.inspection.properties.key.yaml.fix.case")
 
@@ -72,7 +76,7 @@ class YamlKeyToKebabQuickFix(element: PsiElement) : LocalQuickFixAndIntentionAct
         val document = documentManager.getDocument(startElement.containingFile) ?: return false
 
         // The enclosing key, not the grandparent: under a list the next key sits beyond a sequence item and sequence.
-        val renames = generateSequence(startElement) { PsiTreeUtil.getParentOfType(it, YAMLKeyValueImpl::class.java) }
+        val renames = keyPath(startElement)
             .mapNotNull { it.key }
             .map { it.textRange to toKebabCase(it.text) }
             .filter { (range, newKey) -> document.getText(range) != newKey }
@@ -85,5 +89,24 @@ class YamlKeyToKebabQuickFix(element: PsiElement) : LocalQuickFixAndIntentionAct
         }
         documentManager.commitDocument(document)
         return true
+    }
+
+    companion object {
+        internal fun hasNoStructuralConflict(element: PsiElement): Boolean {
+            if (element !is YAMLKeyValueImpl) return true
+            return keyPath(element).all { entry ->
+                val keyText = entry.key?.text ?: return@all true
+                val canonical = toKebabCase(keyText)
+                if (keyText == canonical) return@all true
+                keyText == entry.keyText &&
+                        entry.parentMapping?.keyValues.orEmpty().none { it != entry && toKebabCase(it.keyText) == canonical } &&
+                        PsiTreeUtil.findChildrenOfType(entry, YAMLKeyValue::class.java).all {
+                            PsiTreeUtil.isAncestor(it, element, false)
+                        }
+            }
+        }
+
+        private fun keyPath(element: YAMLKeyValueImpl): Sequence<YAMLKeyValueImpl> =
+            generateSequence(element) { PsiTreeUtil.getParentOfType(it, YAMLKeyValueImpl::class.java) }
     }
 }

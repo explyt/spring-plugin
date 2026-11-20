@@ -44,16 +44,10 @@ object RenameUtil {
         newKey: String,
         renameBaseElement: Boolean = false
     ) {
-        val module = ModuleUtilCore.findModuleForPsiElement(baseElement) ?: return
-
-        val properties = DefinedConfigurationPropertiesSearch.getInstance(project)
-            .findProperties(module, oldKey)
-
         val oldKeyParts = oldKey.split(".")
         val newKeyParts = newKey.split(".")
 
-        properties
-            .mapNotNull { it.psiElement }
+        findSamePropertyElements(baseElement, oldKey)
             .filter { it.containingFile != baseElement.containingFile || renameBaseElement }
             .forEach { elementToRename ->
                 when (elementToRename) {
@@ -67,6 +61,13 @@ object RenameUtil {
                     is IProperty -> renameIProperty(project, elementToRename, newKey)
                 }
             }
+    }
+
+    internal fun findSamePropertyElements(baseElement: PsiElement, key: String): List<PsiElement> {
+        val module = ModuleUtilCore.findModuleForPsiElement(baseElement) ?: return emptyList()
+        return DefinedConfigurationPropertiesSearch.getInstance(baseElement.project)
+            .findProperties(module, key)
+            .mapNotNull { it.psiElement }
     }
 
     private fun renameYamlKeyValue(project: Project, elementToRename: YAMLKeyValue, newKeyParts: List<String>) {

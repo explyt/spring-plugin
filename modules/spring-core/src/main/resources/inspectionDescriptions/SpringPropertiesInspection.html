@@ -40,8 +40,9 @@ server.tomcat.accesslog.locale=enUS           # Unknown encoding: 'enUS'
 <pre><code lang="properties">
 my.main.foo.max-connections=7                 # Deprecated: This method is no longer acceptable, use 'my.server.max.connections'
 </code></pre>
-<p>Code Cleanup normalizes keys to Spring's canonical form and can replace deprecated keys that have a known
-    replacement. If there is no replacement, you can remove the deprecated property manually using the quick fix.</p>
+<p>Code Cleanup renames keys to Spring's canonical form only when they are declared in metadata or bound by
+    <code>@ConfigurationProperties</code>, outside map entries, without collisions or edits to other files.
+    Deprecated key replacements, removals, and file creation stay manual.</p>
 
 
 <p><b>Example:</b></p>

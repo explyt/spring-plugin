@@ -17,8 +17,10 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.search.searches.ReferencesSearch
 
-class ReplacementKeyQuickFix(val key: String, element: PsiElement) :
+class ReplacementKeyQuickFix(val key: String, element: PsiElement, private val batchSafe: Boolean = true) :
     LocalQuickFixAndIntentionActionOnPsiElement(element) {
+    override fun availableInBatchMode() = batchSafe
+
     override fun getFamilyName(): String =
         SpringCoreBundle.message("explyt.spring.inspection.properties.quick.fix.replacement", key)
 

@@ -14,6 +14,7 @@ import com.explyt.spring.core.SpringProperties.POSTFIX_KEYS
 import com.explyt.spring.core.SpringProperties.POSTFIX_VALUES
 import com.explyt.spring.core.completion.properties.*
 import com.explyt.spring.core.inspections.quickfix.ReplacementKeyQuickFix
+import com.explyt.spring.core.inspections.quickfix.YamlKeyToKebabQuickFix
 import com.explyt.spring.core.inspections.utils.ResourceFileInspectionUtil
 import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.core.service.SpringSearchUtils
@@ -22,6 +23,7 @@ import com.explyt.spring.core.util.PropertyUtil.propertyKey
 import com.explyt.spring.core.util.PropertyUtil.propertyKeyPsiElement
 import com.explyt.spring.core.util.PropertyUtil.propertyValue
 import com.explyt.spring.core.util.PropertyUtil.propertyValuePsiElement
+import com.explyt.spring.core.util.RenameUtil
 import com.explyt.spring.core.util.SpringCoreUtil
 import com.explyt.util.CacheKeyStore
 import com.intellij.codeInspection.*
@@ -36,9 +38,11 @@ import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.uast.UastModificationTracker
+import com.intellij.util.Processor
 import com.intellij.xml.util.documentation.MimeTypeDictionary
 import java.nio.charset.Charset
 import java.text.DateFormat
@@ -119,17 +123,19 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
             }
 
             val key = fileProperty.key
+            val foundProperties = properties.filter { PropertyUtil.isSameProperty(it.name, key, it.type) }
             val nonCanonical = PropertyUtil.firstNonCanonicalSegment(key)
             if (nonCanonical != null && !PropertyUtil.isKebabCaseInMapKey(key, properties)) {
                 // Every leaf under one non-canonical ancestor resolves to that ancestor's element, so without this
                 // guard a mapping with N children stacked N identical problems on the ancestor's line.
-                val descriptor = keyShouldBeKebabProblemDescriptor(manager, psiKey, isOnTheFly, key, nonCanonical)
+                val batchSafe = !isOnTheFly && foundProperties.isNotEmpty() &&
+                        canCanonicalizeInBatch(key, elementFileProperty, file, properties, fileProperties)
+                val descriptor = keyShouldBeKebabProblemDescriptor(manager, psiKey, isOnTheFly, key, nonCanonical, batchSafe)
                 if (reportedCanonicalFormRanges.add(descriptor.psiElement to descriptor.textRangeInElement)) {
                     problems += descriptor
                 }
             }
 
-            val foundProperties = properties.filter { PropertyUtil.isSameProperty(it.name, key, it.type) }
             val placeholders = DefinedConfigurationPropertiesSearch.getInstance(module.project)
                 .getAllPlaceholders(module)
 
@@ -173,6 +179,26 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         return problems
     }
 
+    private fun canCanonicalizeInBatch(
+        key: String,
+        element: PsiElement,
+        file: PsiFile,
+        properties: List<ConfigurationProperty>,
+        fileProperties: List<DefinedConfigurationProperty>
+    ): Boolean {
+        if ('[' in key) return false
+        val commonKey = PropertyUtil.toCommonPropertyForm(key)
+        if (isMapEntry(commonKey, SpringProperties.LOGGING_LEVEL) || isMapEntry(commonKey, "logging.group")) return false
+        if (properties.any { it.isMap() && isMapEntry(commonKey, PropertyUtil.toCommonPropertyForm(it.name)) }) return false
+        if (fileProperties.any { it.psiElement != element && PropertyUtil.toCommonPropertyForm(it.key) == commonKey }) return false
+        return YamlKeyToKebabQuickFix.hasNoStructuralConflict(element) &&
+                RenameUtil.findSamePropertyElements(element, key).none { it.containingFile != file } &&
+                ReferencesSearch.search(element).forEach(Processor { it.element.containingFile == file })
+    }
+
+    private fun isMapEntry(commonKey: String, owner: String): Boolean =
+        commonKey != owner && PropertyUtil.isOwnedBy(commonKey, owner)
+
     /**
      * @param psiKey the key element of the property being inspected — the leaf, which may be a descendant of the
      *   element that owns [nonCanonical]
@@ -185,7 +211,8 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         psiKey: PsiElement,
         isOnTheFly: Boolean,
         key: String,
-        nonCanonical: PropertyUtil.Segment
+        nonCanonical: PropertyUtil.Segment,
+        batchSafe: Boolean
     ): ProblemDescriptor
 
     private fun getProblemPropertyDeprecated(
@@ -214,7 +241,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
                 SpringCoreBundle.message("explyt.spring.inspection.properties.key.deprecated.reason.unknown")
             }
             val fixes = if (replacement != null) {
-                arrayOf(ReplacementKeyQuickFix(replacement, psiElement))
+                arrayOf(ReplacementKeyQuickFix(replacement, psiElement, batchSafe = false))
             } else {
                 getRemoveKeyQuickFixes(fileProperty).toTypedArray()
             }
@@ -524,7 +551,8 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
                 value,
                 psiValue,
                 manager,
-                isOnTheFly
+                isOnTheFly,
+                batchSafe = false
             )
         }
         return problems

@@ -48,7 +48,8 @@ class SpringPropertiesInspection : SpringBasePropertyInspection() {
         psiKey: PsiElement,
         isOnTheFly: Boolean,
         key: String,
-        nonCanonical: PropertyUtil.Segment
+        nonCanonical: PropertyUtil.Segment,
+        batchSafe: Boolean
     ): ProblemDescriptor = manager.createProblemDescriptor(
         psiKey,
         segmentRangeIn(psiKey, nonCanonical),
@@ -57,7 +58,7 @@ class SpringPropertiesInspection : SpringBasePropertyInspection() {
         // deviation, not a defect. Reporting it as a warning put it next to "Cannot resolve key property".
         ProblemHighlightType.WEAK_WARNING,
         isOnTheFly,
-        ReplacementKeyQuickFix(toKebabCase(key), psiKey.parent)
+        ReplacementKeyQuickFix(toKebabCase(key), psiKey.parent, batchSafe)
     )
 
     private fun segmentRangeIn(psiKey: PsiElement, nonCanonical: PropertyUtil.Segment): TextRange {
