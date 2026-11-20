@@ -52,6 +52,7 @@ import org.jetbrains.uast.*
 import org.jetbrains.yaml.YAMLUtil
 import org.jetbrains.yaml.psi.YAMLKeyValue
 import java.util.concurrent.ConcurrentHashMap
+import java.util.regex.Pattern
 import javax.swing.Icon
 
 object SpringWebUtil {
@@ -684,7 +685,19 @@ object SpringWebUtil {
         if (result.endsWith("/") && result.length > 1) {
             result = result.substring(0, result.length - 1)
         }
-        return result.split('?').first()
+        return result.substring(0, templateDelimiter(result, '?'))
+    }
+
+    private fun templateDelimiter(text: String, delimiter: Char, start: Int = 0): Int {
+        var index = start
+        while (index < text.length) {
+            when (text[index]) {
+                delimiter -> return index
+                '{' -> index = closingBraceIndex(text, index)
+            }
+            index++
+        }
+        return text.length
     }
 
     fun isSamePathTemplate(path: String, otherPath: String): Boolean {
@@ -700,33 +713,31 @@ object SpringWebUtil {
             .filter { isPathTemplateVariable(it) }
             .map { it.substring(1, it.length - 1).removePrefix("*").substringBefore(':') }
 
-    private fun pathTemplateSegments(path: String): List<String> {
-        val segments = mutableListOf<String>()
-        val segment = StringBuilder()
-        var depth = 0
-        for (char in simplifyUrl(path)) {
-            if (char == '/' && depth == 0) {
-                segments += segment.toString()
-                segment.clear()
-                continue
-            }
-            if (char == '{') depth++
-            if (char == '}' && depth > 0) depth--
-            segment.append(char)
+    private fun pathTemplateSegments(path: String): List<String> = buildList {
+        val url = simplifyUrl(path)
+        var start = 0
+        while (start <= url.length) {
+            val end = templateDelimiter(url, '/', start)
+            add(url.substring(start, end))
+            start = end + 1
         }
-        segments += segment.toString()
-        return segments
     }
 
-    private fun isPathTemplateVariable(segment: String): Boolean {
-        if (segment.length < 3 || !segment.startsWith('{') || !segment.endsWith('}')) return false
+    private fun isPathTemplateVariable(segment: String): Boolean =
+        segment.length >= 3 && segment.startsWith('{') && closingBraceIndex(segment, 0) == segment.lastIndex
+
+    private fun closingBraceIndex(text: String, openIndex: Int): Int {
         var depth = 0
-        for ((index, char) in segment.withIndex()) {
-            if (char == '{') depth++
-            if (char == '}') depth--
-            if (depth < 0 || depth == 0 && index != segment.lastIndex) return false
+        var index = openIndex
+        while (index < text.length) {
+            when (text[index]) {
+                '\\' -> index++
+                '{' -> depth++
+                '}' -> if (--depth == 0) return index
+            }
+            index++
         }
-        return depth == 0
+        return openIndex
     }
 
     fun getHttpMethodIndex(psiMethod: PsiMethod) =
@@ -745,13 +756,62 @@ object SpringWebUtil {
 
     private fun getRegexByUri(path: String): Regex {
         return endpointRegExByUri.computeIfAbsent(path) {
-            val regex = path
-                .replace(TRAILING_CAPTURE_REST, ANY_SEGMENTS)
-                .replace(INNER_DOUBLE_WILDCARD, ANY_SEGMENTS)
-                .replace(TEMPLATE_PARAM_REGEX, "[^/?]+")
-                .replace(MULTIPLE_ASTERISKS, "*")
+            val regex = pathTemplateTokens(path).joinToString("") { token ->
+                when (token) {
+                    is PathTemplateToken.Literal -> Pattern.quote(token.text)
+                    PathTemplateToken.Variable -> "[^/?]+"
+                    PathTemplateToken.Wildcard -> "[^/]*"
+                    PathTemplateToken.DoubleWildcard, PathTemplateToken.CaptureRest -> "(?:/.*)?"
+                }
+            }
             Regex("^$regex(\\?.*)?\$")
         }
+    }
+
+    private sealed interface PathTemplateToken {
+        data class Literal(val text: String) : PathTemplateToken
+        data object Variable : PathTemplateToken
+        data object Wildcard : PathTemplateToken
+        data object DoubleWildcard : PathTemplateToken
+        data object CaptureRest : PathTemplateToken
+    }
+
+    private fun pathTemplateTokens(path: String): List<PathTemplateToken> = buildList {
+        var literalStart = 0
+        var index = 0
+
+        fun emit(token: PathTemplateToken, start: Int, end: Int) {
+            if (literalStart < start) add(PathTemplateToken.Literal(path.substring(literalStart, start)))
+            add(token)
+            literalStart = end
+            index = end
+        }
+
+        while (index < path.length) {
+            val afterSlash = index > 0 && path[index - 1] == '/'
+            when (path[index]) {
+                '{' -> {
+                    val close = closingBraceIndex(path, index)
+                    when {
+                        afterSlash && close == path.lastIndex && close > index + 2 && path[index + 1] == '*' ->
+                            emit(PathTemplateToken.CaptureRest, index - 1, close + 1)
+                        close > index + 1 -> emit(PathTemplateToken.Variable, index, close + 1)
+                        else -> index++
+                    }
+                }
+                '*' -> {
+                    var end = index + 1
+                    while (end < path.length && path[end] == '*') end++
+                    if (afterSlash && end == index + 2 && (end == path.length || path[end] == '/')) {
+                        emit(PathTemplateToken.DoubleWildcard, index - 1, end)
+                    } else {
+                        emit(PathTemplateToken.Wildcard, index, end)
+                    }
+                }
+                else -> index++
+            }
+        }
+        if (literalStart < path.length) add(PathTemplateToken.Literal(path.substring(literalStart)))
     }
 
     fun getUrlTemplateIndex(psiMethod: PsiMethod) =
@@ -802,11 +862,7 @@ object SpringWebUtil {
     private val URL_TEMPLATE_NAMES = setOf(URL_TEMPLATE, URI_TEMPLATE)
 
     private val endpointRegExByUri = ConcurrentHashMap<String, Regex>()
-    private val TEMPLATE_PARAM_REGEX = Regex("\\{[^}]+}")
-    private val MULTIPLE_ASTERISKS = Regex("\\*{2,}")
-    private val TRAILING_CAPTURE_REST = Regex("""/(?:\{\*[^}]+}|\*\*)$""")
-    private val INNER_DOUBLE_WILDCARD = Regex("""/\*\*(?=/)""")
-    private const val ANY_SEGMENTS = "(?:/.*)?"
+
 
     const val OPENAPI_BOOLEAN = "type: boolean"
     const val OPENAPI_STRING = "type: string"
