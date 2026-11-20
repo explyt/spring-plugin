@@ -6,6 +6,7 @@
 package com.explyt.spring.core.providers
 
 import com.explyt.base.LibraryClassCache
+import com.explyt.plugin.PluginIds
 import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.SpringCoreClasses.APPLICATION_LISTENER
 import com.explyt.spring.core.SpringCoreClasses.EVENT_LISTENER
@@ -29,6 +30,7 @@ import com.explyt.util.ExplytPsiUtil.isPublic
 import com.explyt.util.ExplytPsiUtil.isStatic
 import com.explyt.util.ExplytPsiUtil.resolvedPsiClass
 import com.explyt.util.ModuleUtil
+import com.intellij.codeInsight.daemon.LineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
 import com.intellij.codeInsight.navigation.NavigationGutterIconBuilder
@@ -41,6 +43,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootModificationTracker
 import com.intellij.openapi.util.Iconable
 import com.intellij.openapi.util.NotNullLazyValue
+import com.intellij.openapi.util.registry.Registry
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.newvfs.VfsPresentationUtil
 import com.intellij.platform.backend.presentation.TargetPresentation
@@ -59,6 +62,14 @@ import java.util.*
 
 class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
+    override fun collectSlowLineMarkers(
+        elements: MutableList<out PsiElement>,
+        result: MutableCollection<in LineMarkerInfo<*>>
+    ) {
+        if (isLeftToJetBrainsSpring()) return
+        super.collectSlowLineMarkers(elements, result)
+    }
+
     override fun collectNavigationMarkers(
         element: PsiElement,
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
@@ -69,6 +80,7 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
             if (isMethodModifierForEvent(psiMethod) &&
                 (isEventListenerMethod(psiMethod, uParent) || isApplicationEventMethod(psiMethod))
             ) {
+                if (isLeftToJetBrainsSpring()) return
                 val builder = NavigationGutterIconBuilder.create(
                     SpringIcons.EventPublisher,
                     SpringCoreBundle.message("explyt.spring.gutter.group.event.publisher")
@@ -90,8 +102,8 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
             ) {
                 val sourcePsi = uCallExpression.sourcePsi
                 val sourceElement = uCallExpression.methodIdentifier.sourcePsiElement
-                if (sourceElement != null && sourcePsi != null
-                ) {
+                if (sourceElement != null && sourcePsi != null) {
+                    if (isLeftToJetBrainsSpring()) return
                     val builder = NavigationGutterIconBuilder.create(
                         SpringIcons.EventListener,
                         SpringCoreBundle.message("explyt.spring.gutter.group.event.listener")
@@ -107,6 +119,9 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
             }
         }
     }
+
+    private fun isLeftToJetBrainsSpring(): Boolean =
+        PluginIds.SPRING_JB.isEnabledWithUltimate() && !Registry.`is`(SHOW_WITH_JETBRAINS_SPRING_KEY, false)
 
     /**
      * Only the declared parameter type is read here: the marker is created on a highlighting hot path, while the
@@ -346,5 +361,9 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
             fun of(method: PsiMethod, annotationClasses: Set<PsiClass>) =
                 EventType(method.parameterList.parameters.singleOrNull()?.type, annotationClasses)
         }
+    }
+
+    private companion object {
+        const val SHOW_WITH_JETBRAINS_SPRING_KEY = "explyt.spring.gutter.events.withJetBrainsSpring"
     }
 }

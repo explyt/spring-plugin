@@ -12,6 +12,7 @@
 - feat: Report an empty `@Profile` array, which fails Spring startup with "Must specify at least one profile expression" (#845)
 - fix: Event publisher and listener gutters search every module of the Spring application the code can run in and the libraries of those modules, so a listener in a sibling module of the same application is found; they reach `publishEvent` calls in attached library sources and listeners declared in libraries (#872)
 - fix: The event publisher gutter on a listener lists only real `publishEvent` calls and no longer points at the event class when Spring or a library publishes the event from code without attached sources; for example, an `ApplicationReadyEvent` listener without spring-boot sources shows no target (#872)
+- feat: The registry key `explyt.spring.gutter.events.withJetBrainsSpring` shows the Explyt event publisher and listener gutters next to those of the JetBrains Spring plugin in IntelliJ IDEA Ultimate, which otherwise hides them (#872)
 
 ### Spring Data
 - fix: An anonymous implementation of a Spring Data repository no longer breaks repository bean discovery in its module, and implementation classes are no longer listed as repository beans (#834)
