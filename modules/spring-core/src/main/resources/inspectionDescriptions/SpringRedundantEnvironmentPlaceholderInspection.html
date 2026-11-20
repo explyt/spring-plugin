@@ -9,8 +9,8 @@ For ordinary configuration keys, Spring Boot can read that environment variable 
 <p>The quick fix replaces the placeholder with a simple literal default and is available in Code Cleanup.
 No fix is offered without a default, with a nested placeholder or SpEL expression such as <code>#{null}</code>,
 or with backslashes or a leading <code>=</code> or <code>:</code> in a <code>.properties</code> default.</p>
-<p>In YAML, a nonempty default must contain only ASCII letters, digits, or <code>._/@+-</code> and cannot start with <code>-</code>
-or <code>@</code>. Defaults with spaces, quotes, colons or hash signs are left unchanged, as are YAML boolean and null spellings
+<p>In YAML, a nonempty default must contain only ASCII letters, digits, or <code>._/@+-</code> and cannot start with
+<code>-</code>, <code>+</code>, or <code>@</code>. Defaults with spaces, quotes, colons or hash signs are left unchanged, as are YAML boolean and null spellings
 (in any case, including <code>~</code>) and special numeric forms such as <code>0x10</code>.</p>
 <p>Limitations:</p>
 <ul>

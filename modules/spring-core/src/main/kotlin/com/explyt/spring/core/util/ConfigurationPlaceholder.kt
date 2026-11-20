@@ -32,12 +32,11 @@ data class ConfigurationPlaceholder(
     }
 
     private fun isAllowedYamlDefault(value: String): Boolean {
-        if (!YAML_PLAIN_TEXT.matches(value) || value.startsWith('-') || value.startsWith('@')) return false
-        if (value.lowercase() in YAML_IMPLICIT_WORDS) return false
-        val unsigned = value.removePrefix("+")
-        if (unsigned.removePrefix(".").firstOrNull()?.isDigit() != true) return true
-        return YAML_DECIMAL_INTEGER.matches(unsigned) ||
-            YAML_DECIMAL_FRACTION.matches(unsigned) && unsigned.toDoubleOrNull()?.toString() == unsigned ||
+        if (value.startsWith('-') || value.startsWith('+') || value.startsWith('@')) return false
+        if (!YAML_PLAIN_TEXT.matches(value) || value.lowercase() in YAML_IMPLICIT_WORDS) return false
+        if (value.removePrefix(".").firstOrNull()?.isDigit() != true) return true
+        return YAML_DECIMAL_INTEGER.matches(value) ||
+            YAML_DECIMAL_FRACTION.matches(value) && value.toDoubleOrNull()?.toString() == value ||
             YAML_DOTTED_STRING.matches(value)
     }
 
