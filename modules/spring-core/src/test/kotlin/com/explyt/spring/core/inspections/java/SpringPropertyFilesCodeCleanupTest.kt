@@ -6,6 +6,7 @@
 package com.explyt.spring.core.inspections.java
 
 import com.explyt.spring.core.SpringCoreBundle
+import com.explyt.spring.core.completion.properties.DefinedConfigurationPropertiesSearch
 import com.explyt.spring.core.inspections.SpringBasePropertyInspection
 import com.explyt.spring.core.inspections.SpringPropertiesInspection
 import com.explyt.spring.core.inspections.SpringYamlInspection
@@ -41,6 +42,9 @@ class SpringPropertyFilesCodeCleanupTest : ExplytInspectionJavaTestCase() {
             public class CleanupProperties {
                 private String someKey;
                 private String stableKey;
+                private String sharedKey;
+                public String getSharedKey() { return sharedKey; }
+                public void setSharedKey(String value) { sharedKey = value; }
                 public String getSomeKey() { return someKey; }
                 public void setSomeKey(String value) { someKey = value; }
                 public String getStableKey() { return stableKey; }
@@ -88,13 +92,62 @@ class SpringPropertyFilesCodeCleanupTest : ExplytInspectionJavaTestCase() {
         myFixture.checkResult(canonicalText(false))
     }
 
-    fun testCleanupReplacesDeprecatedPropertiesKeyWithKnownReplacement() {
-        configure(false, "explyt.cleanup.old-key=preserved")
+    fun testCleanupKeepsDeprecatedPropertiesKeyWithKnownReplacement() {
+        val entry = "explyt.cleanup.old-key=preserved"
+        configure(false, entry)
         assertEquals(1, problemsContaining("Deprecated:").size)
         cleanup()
-        assertTrue("Deprecated key was not replaced", myFixture.file.text.contains("explyt.cleanup.new-key=preserved"))
-        assertFalse(myFixture.file.text.contains("explyt.cleanup.old-key="))
         assertPositiveCleanup(false)
+        assertPreservedEntries(false, entry)
+    }
+
+    fun testDeprecatedPropertiesReplacementIsInteractiveOnly() {
+        configure(false, "explyt.cleanup.<caret>old-key=preserved")
+        val replacementName = SpringCoreBundle.message(
+            "explyt.spring.inspection.properties.quick.fix.replacement", "explyt.cleanup.new-key"
+        )
+        assertEquals(replacementName, myFixture.findSingleIntention(replacementName).text)
+        val descriptors = problemsContaining("Deprecated:")
+        assertEquals(1, descriptors.size)
+        assertNotBatchSafe(descriptors.single(), "Deprecated key replacement")
+    }
+
+    fun testCleanupPreservesPropertiesBracketedMapEntry() = assertMapEntryPreserved(false)
+
+    fun testCleanupPreservesYamlBracketedMapEntry() = assertMapEntryPreserved(true)
+
+    fun testCleanupPreservesPropertiesLoggingLevelMapEntry() = assertLoggingEntryPreserved(false)
+
+    fun testCleanupPreservesYamlLoggingLevelMapEntry() = assertLoggingEntryPreserved(true)
+
+    fun testCleanupPreservesUnknownPropertiesKey() = assertUnknownKeyPreserved(false)
+
+    fun testCleanupPreservesUnknownYamlKey() = assertUnknownKeyPreserved(true)
+
+    fun testCleanupPreservesCollidingPropertiesKeys() = assertCollisionPreserved(false)
+
+    fun testCleanupPreservesCollidingYamlKeys() = assertCollisionPreserved(true)
+
+    fun testCleanupDoesNotRenamePropertiesKeyAlsoDeclaredInProfileYaml() {
+        val key = "explyt.cleanup.sharedKey"
+        val entry = "$key=base"
+        val profileText = """
+            explyt:
+              cleanup:
+                sharedKey: dev
+            """.trimIndent()
+        val profileFile = myFixture.addFileToProject("application-dev.yml", profileText)
+        configure(false, entry)
+        val definitions = DefinedConfigurationPropertiesSearch.getInstance(project).findProperties(module, key)
+        assertEquals(
+            "Both definitions must be discoverable by the rename search",
+            setOf(myFixture.file.virtualFile, profileFile.virtualFile),
+            definitions.mapNotNull { it.psiElement?.containingFile?.virtualFile }.toSet()
+        )
+        cleanup()
+        assertPositiveCleanup(false)
+        assertEquals("Code Cleanup edited application-dev.yml", profileText, profileFile.text)
+        assertPreservedEntries(false, entry)
     }
 
     fun testCleanupDoesNotCreateMissingPropertiesResource() = assertMissingResourceIsKeptMissing(false)
@@ -148,6 +201,67 @@ class SpringPropertyFilesCodeCleanupTest : ExplytInspectionJavaTestCase() {
         descriptors.forEach { assertNotBatchSafe(it, "Duplicate deletion") }
     }
 
+    private fun assertMapEntryPreserved(yaml: Boolean) {
+        myFixture.addClass(
+            """
+            @org.springframework.boot.context.properties.ConfigurationProperties(prefix = "explyt.binding")
+            public class MapProperties {
+                private java.util.Map<String, String> properties;
+                public java.util.Map<String, String> getProperties() { return properties; }
+                public void setProperties(java.util.Map<String, String> value) { properties = value; }
+            }
+            """.trimIndent()
+        )
+        val entry = if (yaml) "explyt.binding:\n  Properties[show_sql]: true"
+        else "explyt.binding.Properties[show_sql]=true"
+        configure(yaml, entry)
+        cleanup()
+        assertPositiveCleanup(yaml)
+        assertPreservedEntries(yaml, entry)
+    }
+
+    private fun assertLoggingEntryPreserved(yaml: Boolean) {
+        val entry = if (yaml) "Logging.level.com.Example: DEBUG" else "Logging.level.com.Example=DEBUG"
+        configure(yaml, entry)
+        cleanup()
+        assertPositiveCleanup(yaml)
+        assertPreservedEntries(yaml, entry)
+    }
+
+    private fun assertUnknownKeyPreserved(yaml: Boolean) {
+        val entry = if (yaml) "explyt.featureFlag: true" else "explyt.featureFlag=true"
+        configure(yaml, entry)
+        val unresolved = problemsContaining("Cannot resolve key property")
+        assertTrue("The fixture key must be unresolved", unresolved.any { "explyt.featureFlag" in it.descriptionTemplate })
+        cleanup()
+        assertPositiveCleanup(yaml)
+        assertPreservedEntries(yaml, entry)
+    }
+
+    private fun assertCollisionPreserved(yaml: Boolean) {
+        myFixture.addClass(
+            """
+            @org.springframework.boot.context.properties.ConfigurationProperties(prefix = "explyt.server")
+            public class ServerProperties {
+                private int maxSize;
+                public int getMaxSize() { return maxSize; }
+                public void setMaxSize(int value) { maxSize = value; }
+            }
+            """.trimIndent()
+        )
+        val entries = if (yaml) "explyt.server:\n  maxSize: 10\n  max-size: 20"
+        else "explyt.server.maxSize=10\nexplyt.server.max-size=20"
+        configure(yaml, entries)
+        assertEquals("Both aliases must be reported as duplicates", 2, problemsContaining("Duplicate").size)
+        cleanup()
+        assertPositiveCleanup(yaml)
+        assertPreservedEntries(yaml, entries)
+    }
+
+    private fun assertPreservedEntries(yaml: Boolean, entries: String) {
+        assertEquals("Code Cleanup changed protected entries", canonicalText(yaml) + "\n" + entries, myFixture.file.text)
+    }
+
     private fun assertCleanupRegistration(shortName: String) {
         val wrapper = registeredWrapper(shortName)
         assertTrue("$shortName must be a Code Cleanup tool", wrapper.isCleanupTool)
@@ -180,8 +294,11 @@ class SpringPropertyFilesCodeCleanupTest : ExplytInspectionJavaTestCase() {
 
     private fun assertCanonicalWarning() {
         val message = SpringCoreBundle.message("explyt.spring.inspection.properties.value.should.be.kebab")
-        val highlights = myFixture.doHighlighting().filter { it.description == message }
-        assertEquals("Expected a canonical-form warning before cleanup", 1, highlights.size)
+        val text = myFixture.file.text
+        val highlights = myFixture.doHighlighting().filter {
+            it.description == message && text.substring(it.startOffset, it.endOffset) == "someKey"
+        }
+        assertEquals("Expected a canonical-form warning on the positive control", 1, highlights.size)
         assertEquals(HighlightSeverity.WEAK_WARNING, highlights.single().severity)
     }
 
