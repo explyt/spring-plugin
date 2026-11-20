@@ -111,6 +111,13 @@ abstract class RedundantEnvironmentPlaceholderInspectionTestCase : ExplytInspect
         assertNoFix(assertHighlighted("\${EXPLYT_VALUE:", "}"))
     }
 
+    fun testCloudPlatformActivationKeyIsNotReported() {
+        assertNegative(
+            "spring.config.activate.on-cloud-platform",
+            placeholder("SPRING_CONFIG_ACTIVATE_ONCLOUDPLATFORM", "kubernetes"),
+        )
+    }
+
     fun testBootstrapKeysAreNotReported() {
         configure(
             "spring.config.import" to placeholder("SPRING_CONFIG_IMPORT", "classpath:x.properties"),
@@ -235,6 +242,33 @@ class SpringRedundantEnvironmentPlaceholderYamlInspectionTest : RedundantEnviron
         )
     }
 
+    fun testLoneYamlIndicatorsAreHighlightedWithoutFixes() {
+        val defaults = listOf("-", "?", ":")
+        val entries = defaults.mapIndexed { index, default ->
+            "explyt.value$index" to placeholder("EXPLYT_VALUE$index", default)
+        }
+        configure(*entries.toTypedArray(), "explyt.control" to placeholder("EXPLYT_CONTROL", "localhost"))
+        val ranges = defaults.indices.flatMap { listOf("\${EXPLYT_VALUE$it:", "}") }
+        val problems = assertHighlighted(*ranges.toTypedArray(), "\${EXPLYT_CONTROL:", "}")
+        assertEquals("same-file control has a fix", 1, problems.takeLast(2).sumOf { it.fixes.orEmpty().size })
+        val fixable = defaults.zip(problems.dropLast(2).chunked(2)).mapNotNull { (default, descriptors) ->
+            default.takeIf { descriptors.any { !it.fixes.isNullOrEmpty() } }
+        }
+        assertEquals("lone YAML indicators must not offer fixes", emptyList<String>(), fixable)
+    }
+
+    fun testCodeCleanupKeepsTheFixForAnUnquotedDecimalPort() {
+        myFixture.configureByText(
+            fileName,
+            "explyt.port: \${EXPLYT_PORT:8080}\nexplyt.host: \${EXPLYT_HOST:localhost}",
+        )
+        assertHighlighted("\${EXPLYT_PORT:", "}", "\${EXPLYT_HOST:", "}")
+
+        runCodeCleanup()
+
+        myFixture.checkResult("explyt.port: 8080\nexplyt.host: localhost")
+    }
+
     fun testCodeCleanupStillReplacesSafeYamlDefaults() {
         val defaults = listOf("0.0.0.0", "8080", "localhost", "/tmp/x")
         configure(*defaults.mapIndexed { index, default ->
@@ -268,6 +302,35 @@ class SpringRedundantEnvironmentPlaceholderPropertiesInspectionTest : RedundantE
 
     fun testPropertiesDefaultsWithBackslashesAreHighlightedWithoutFixes() {
         assertDefaultsAreHighlightedWithoutFixes("x\\", "x\\\\", "x\\ty", "x\\:y")
+    }
+
+    fun testEqualsDefaultAfterWhitespaceSeparatorIsHighlightedWithoutFix() {
+        assertSeparatorDefaultHasNoFix("explyt.value \${EXPLYT_VALUE:=x}")
+    }
+
+    fun testColonDefaultAfterEqualsSeparatorIsHighlightedWithoutFix() {
+        assertSeparatorDefaultHasNoFix("explyt.value=\${EXPLYT_VALUE::x}")
+    }
+
+    fun testCodeCleanupLeavesPropertiesWithLeadingSeparatorDefaultsUnchanged() {
+        val unsafeLines = "explyt.value \${EXPLYT_VALUE:=x}\nexplyt.other=\${EXPLYT_OTHER::x}"
+        myFixture.configureByText(fileName, "$unsafeLines\nexplyt.control=\${EXPLYT_CONTROL:localhost}")
+        assertHighlighted("\${EXPLYT_VALUE:", "}", "\${EXPLYT_OTHER:", "}", "\${EXPLYT_CONTROL:", "}")
+
+        runCodeCleanup()
+
+        assertEquals(
+            "Code Cleanup must preserve both separator-default lines while fixing the control",
+            "$unsafeLines\nexplyt.control=localhost",
+            myFixture.editor.document.text,
+        )
+    }
+
+    private fun assertSeparatorDefaultHasNoFix(line: String) {
+        myFixture.configureByText(fileName, "$line\nexplyt.control=\${EXPLYT_CONTROL:localhost}")
+        val problems = assertHighlighted("\${EXPLYT_VALUE:", "}", "\${EXPLYT_CONTROL:", "}")
+        assertEquals("same-file control has a fix", 1, problems.takeLast(2).sumOf { it.fixes.orEmpty().size })
+        assertEquals("leading separator default must not offer a fix: $line", 0, problems.take(2).sumOf { it.fixes.orEmpty().size })
     }
 
     fun testCodeCleanupPreservesEscapedPropertyAndFollowingLine() {
