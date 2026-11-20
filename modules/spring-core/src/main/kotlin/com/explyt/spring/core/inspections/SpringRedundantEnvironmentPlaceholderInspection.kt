@@ -7,6 +7,8 @@ package com.explyt.spring.core.inspections
 
 import com.explyt.inspection.SpringBaseLocalInspectionTool
 import com.explyt.spring.core.SpringCoreBundle
+import com.explyt.spring.core.SpringProperties.SPRING_PROFILES_ACTIVE
+import com.explyt.spring.core.SpringProperties.SPRING_PROFILES_GROUP
 import com.explyt.spring.core.completion.properties.PropertiesPropertySource
 import com.explyt.spring.core.completion.properties.YamlPropertySource
 import com.explyt.spring.core.inspections.quickfix.ReplaceEnvironmentPlaceholderWithDefaultQuickFix
@@ -46,12 +48,17 @@ class SpringRedundantEnvironmentPlaceholderInspection : SpringBaseLocalInspectio
         }
         return properties.flatMap { property ->
             ProgressManager.checkCanceled()
+            val key = property.key
+            val bootstrapKey = PropertyUtil.toCommonPropertyForm(key).substringBefore('[')
+            if (bootstrapKey in BOOTSTRAP_KEYS || bootstrapKey.startsWith("$SPRING_PROFILES_GROUP.")) {
+                return@flatMap emptyList()
+            }
             val element = property.psiElement?.propertyValuePsiElement() ?: return@flatMap emptyList()
             val valueRange = ElementManipulators.getValueTextRange(element)
             val placeholder = ConfigurationPlaceholder.parse(valueRange.substring(element.text))
                 ?: return@flatMap emptyList()
-            if (placeholder.name != PropertyUtil.toSystemEnvironmentForm(property.key)) return@flatMap emptyList()
-            val fixes = if (placeholder.literalDefault != null) {
+            if (placeholder.name != PropertyUtil.toSystemEnvironmentForm(key)) return@flatMap emptyList()
+            val fixes = if (placeholder.replacementDefault(file) != null) {
                 arrayOf<LocalQuickFix>(ReplaceEnvironmentPlaceholderWithDefaultQuickFix())
             } else emptyArray()
             placeholder.redundantRanges.mapIndexed { index, range ->
@@ -65,5 +72,18 @@ class SpringRedundantEnvironmentPlaceholderInspection : SpringBaseLocalInspectio
                 ).also { it.setTextAttributes(CodeInsightColors.NOT_USED_ELEMENT_ATTRIBUTES) }
             }
         }.toTypedArray()
+    }
+
+    private companion object {
+        val BOOTSTRAP_KEYS = setOf(
+            "spring.config.import",
+            "spring.config.activate.on-profile",
+            "spring.config.location",
+            "spring.config.additional-location",
+            "spring.config.name",
+            SPRING_PROFILES_ACTIVE,
+            "spring.profiles.include",
+            SPRING_PROFILES_GROUP,
+        ).mapTo(mutableSetOf(), PropertyUtil::toCommonPropertyForm)
     }
 }

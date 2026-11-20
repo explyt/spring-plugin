@@ -1,8 +1,21 @@
 <html>
 <body>
 Reports a single environment-variable placeholder whose name repeats the relaxed-binding environment form of the full property key.
-Spring Boot already reads that environment variable without the placeholder.
-<p>The quick fix replaces the placeholder with its literal default and is available in Code Cleanup.
-Placeholders without a default or with a nested placeholder or SpEL default have no quick fix.</p>
+For ordinary configuration keys, Spring Boot can read that environment variable without the placeholder.
+<p>Bootstrap and profile-selection keys are excluded:
+<code>spring.config.import</code>, <code>spring.config.activate.on-profile</code>,
+<code>spring.config.location</code>, <code>spring.config.additional-location</code>, <code>spring.config.name</code>,
+<code>spring.profiles.active</code>, <code>spring.profiles.include</code> and <code>spring.profiles.group</code> (including its entries).</p>
+<p>The quick fix replaces the placeholder with a simple literal default and is available in Code Cleanup.
+No fix is offered without a default, with a nested placeholder or SpEL expression such as <code>#{null}</code>,
+with backslashes in a <code>.properties</code> default, or when a YAML default is not a simple plain value.
+The YAML check is conservative: quoted defaults and YAML-special scalars such as <code>yes</code> or <code>0x10</code> are left unchanged.</p>
+<p>Limitations:</p>
+<ul>
+<li>A JVM system property with the same name as the environment variable (for example <code>-DEXPLYT_VALUE=override</code>)
+can override the environment variable when resolving an explicit placeholder. Removing the placeholder may bypass that override.</li>
+<li>The inspection checks any YAML or properties file that the plugin recognizes as Spring configuration, including files under
+<code>config/</code> that Spring Boot does not load by default.</li>
+</ul>
 </body>
 </html>
