@@ -16,6 +16,7 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.testFramework.IndexingTestUtil
 import org.intellij.lang.annotations.Language
+import javax.swing.Icon
 
 /**
  * Event gutters search the Spring contexts the module can run in: every module that depends on it, with everything
@@ -37,7 +38,7 @@ class EventListenerCrossModuleTest : ExplytMultiModuleTestCase() {
             GlobalSearchScope.moduleWithDependenciesScope(module).contains(listener.virtualFile)
         )
 
-        assertSameElements(eventListenerGutterTargets(publisher), "onOrder(OrderEvent)")
+        assertSameElements(gutterTargets(publisher, SpringIcons.EventListener), "onOrder(OrderEvent)")
     }
 
     fun testPublisherInDependentModuleIsFound() {
@@ -46,7 +47,7 @@ class EventListenerCrossModuleTest : ExplytMultiModuleTestCase() {
         val app = addDependentModule("app")
         addFileToModule(app, "com/example/events/OrderPublisher.java", ORDER_PUBLISHER)
 
-        assertSameElements(eventPublisherGutterTargets(listener), "publisher.publishEvent(new OrderEvent(id))")
+        assertSameElements(gutterTargets(listener, SpringIcons.EventPublisher), "publisher.publishEvent(new OrderEvent(id))")
     }
 
     fun testListenerInDependencyModuleIsFound() {
@@ -55,7 +56,7 @@ class EventListenerCrossModuleTest : ExplytMultiModuleTestCase() {
         addFileToModule(shared, "com/example/app/OrderListeners.java", ORDER_LISTENERS)
         val publisher = addFileToModule(module, "com/example/events/OrderPublisher.java", ORDER_PUBLISHER)
 
-        assertSameElements(eventListenerGutterTargets(publisher), "onOrder(OrderEvent)")
+        assertSameElements(gutterTargets(publisher, SpringIcons.EventListener), "onOrder(OrderEvent)")
     }
 
     fun testListenerOfAnotherEventInOtherModuleIsNotFound() {
@@ -66,7 +67,7 @@ class EventListenerCrossModuleTest : ExplytMultiModuleTestCase() {
         addFileToModule(app, "com/example/app/OrderListeners.java", ORDER_LISTENERS)
         addFileToModule(app, "com/example/app/PaymentListeners.java", PAYMENT_LISTENERS)
 
-        assertSameElements(eventListenerGutterTargets(publisher), "onOrder(OrderEvent)")
+        assertSameElements(gutterTargets(publisher, SpringIcons.EventListener), "onOrder(OrderEvent)")
     }
 
     fun testApplicationListenerInDependentModuleIsFound() {
@@ -75,7 +76,7 @@ class EventListenerCrossModuleTest : ExplytMultiModuleTestCase() {
         val app = addDependentModule("app")
         addFileToModule(app, "com/example/app/ShippedListener.java", SHIPPED_APPLICATION_LISTENER)
 
-        assertSameElements(eventListenerGutterTargets(publisher), "onApplicationEvent(ShippedEvent)")
+        assertSameElements(gutterTargets(publisher, SpringIcons.EventListener), "onApplicationEvent(ShippedEvent)")
     }
 
     fun testListenerInSiblingModuleOfTheSameApplicationIsFound() {
@@ -95,8 +96,8 @@ class EventListenerCrossModuleTest : ExplytMultiModuleTestCase() {
             module.moduleWithDependenciesScope.union(module.moduleWithDependentsScope).contains(listener.virtualFile)
         )
 
-        assertSameElements(eventListenerGutterTargets(publisher), "onOrder(OrderEvent)")
-        assertSameElements(eventPublisherGutterTargets(listener), "publisher.publishEvent(new OrderEvent(id))")
+        assertSameElements(gutterTargets(publisher, SpringIcons.EventListener), "onOrder(OrderEvent)")
+        assertSameElements(gutterTargets(listener, SpringIcons.EventPublisher), "publisher.publishEvent(new OrderEvent(id))")
     }
 
     fun testListenerInModuleOfAnotherApplicationIsNotFound() {
@@ -108,14 +109,21 @@ class EventListenerCrossModuleTest : ExplytMultiModuleTestCase() {
         addFileToModule(other, "com/example/app/OrderListeners.java", ORDER_LISTENERS)
         IndexingTestUtil.waitUntilIndexesAreReady(project)
 
-        assertEmpty(eventListenerGutterTargets(publisher))
+        assertEmpty(gutterTargets(publisher, SpringIcons.EventListener))
     }
 
-    /**
-     * The library is a real compiled jar - spring-boot, whose `ApplicationListener<ApplicationEnvironmentPreparedEvent>`
-     * implementations (`AnsiOutputApplicationListener`, `FileEncodingApplicationListener`) are found by the library
-     * search. A source-only library root does not work here: its listeners are not found.
-     */
+    fun testPublisherInModuleOfAnotherApplicationIsNotFound() {
+        val api = addDependencyModule("api")
+        addFileToModule(api, "com/example/events/OrderEvent.java", ORDER_EVENT)
+        val listener = addFileToModule(module, "com/example/app/OrderListeners.java", ORDER_LISTENERS)
+        val other = addStandaloneModule("other")
+        ModuleRootModificationUtil.addDependency(other, api)
+        addFileToModule(other, "com/example/events/OrderPublisher.java", ORDER_PUBLISHER)
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
+
+        assertEmpty(gutterTargets(listener, SpringIcons.EventPublisher))
+    }
+
     fun testListenersInModuleLibraryAndDependentModuleAreFound() {
         attachSpringBoot(module)
         val publisher = addFileToModule(module, "com/example/events/BootPublisher.java", BOOT_PUBLISHER)
@@ -123,11 +131,7 @@ class EventListenerCrossModuleTest : ExplytMultiModuleTestCase() {
         attachSpringBoot(app)
         addFileToModule(app, "com/example/app/AppEnvironmentListener.java", APP_ENVIRONMENT_LISTENER)
 
-        assertContainsElements(
-            eventListenerGutterTargets(publisher),
-            "onEnvironmentPrepared(ApplicationEnvironmentPreparedEvent)",
-            "onApplicationEvent(ApplicationEnvironmentPreparedEvent)"
-        )
+        assertEquals(BOOT_ENVIRONMENT_LISTENERS, gutterTargets(publisher, SpringIcons.EventListener).sorted())
     }
 
     private fun attachSpringBoot(target: Module) {
@@ -137,28 +141,27 @@ class EventListenerCrossModuleTest : ExplytMultiModuleTestCase() {
         IndexingTestUtil.waitUntilIndexesAreReady(project)
     }
 
-    private fun eventListenerGutterTargets(publisherFile: PsiFile): List<String> {
-        myFixture.configureFromExistingVirtualFile(publisherFile.virtualFile)
+    private fun gutterTargets(file: PsiFile, icon: Icon): List<String> {
+        myFixture.configureFromExistingVirtualFile(file.virtualFile)
         myFixture.doHighlighting()
 
-        val listenerGutters = myFixture.findAllGutters().filter { it.icon == SpringIcons.EventListener }
-        assertEquals("the publishEvent call must carry exactly one event listener gutter", 1, listenerGutters.size)
-
-        return SpringGutterTestUtil.getGutterTargetsStrings(listenerGutters.single())
-    }
-
-    private fun eventPublisherGutterTargets(publisherFile: PsiFile): List<String> {
-        myFixture.configureFromExistingVirtualFile(publisherFile.virtualFile)
-        myFixture.doHighlighting()
-
-        val gutters = myFixture.findAllGutters().filter { it.icon == SpringIcons.EventPublisher }
-        assertEquals("the listener method must carry exactly one event publisher gutter", 1, gutters.size)
+        val gutters = myFixture.findAllGutters().filter { it.icon == icon }
+        assertEquals("the file must carry exactly one gutter with the expected icon", 1, gutters.size)
 
         return SpringGutterTestUtil.getGutterTargetsStrings(gutters.single())
     }
 
 
     companion object {
+
+        private val BOOT_ENVIRONMENT_LISTENERS = listOf(
+            "onApplicationEvent(ApplicationEnvironmentPreparedEvent)",
+            "onApplicationEvent(ApplicationEnvironmentPreparedEvent)",
+            "onApplicationEvent(ApplicationEnvironmentPreparedEvent)",
+            "onApplicationEvent(ApplicationEvent)",
+            "onApplicationEvent(SpringApplicationEvent)",
+            "onEnvironmentPrepared(ApplicationEnvironmentPreparedEvent)",
+        )
 
         @Language("JAVA")
         private val ORDER_EVENT = """

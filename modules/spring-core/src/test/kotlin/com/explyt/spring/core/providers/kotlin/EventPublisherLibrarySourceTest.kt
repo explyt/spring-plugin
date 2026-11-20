@@ -83,6 +83,37 @@ class EventPublisherLibrarySourceTest : ExplytKotlinLightTestCase() {
         assertEquals(listOf(LIBRARY_CALL), targets)
     }
 
+    fun testListenerOfSuperEventTargetsLibraryCallPublishingSubEvent() {
+        val publisherSource = TestCompiledLibrary.attach(
+            myFixture.module, testRootDisposable, "vendor-events", mapOf(VENDOR_EVENT, VENDOR_SUB_EVENT, VENDOR_SUB_EVENT_PUBLISHER)
+        ).attachSources(myFixture.module, PUBLISHER_PATH)
+        assertTrue(ProjectFileIndex.getInstance(project).isInLibrarySource(publisherSource.virtualFile))
+
+        assertEquals(listOf(LIBRARY_SUB_EVENT_CALL), publisherTargets(PARAMETER_LISTENER))
+    }
+
+    fun testListenerOfUnrelatedEventDoesNotTargetLibraryPublishCall() {
+        attachVendorLibraryWithSources()
+        myFixture.configureByText("OrderEvent.kt", "package com.example\n\nclass OrderEvent")
+
+        val targets = publisherTargets(
+            """
+            package com.example
+
+            import org.springframework.context.event.EventListener
+            import org.springframework.stereotype.Component
+
+            @Component
+            class OrderListener {
+                @EventListener
+                fun onOrder(event: OrderEvent) {}
+            }
+            """
+        )
+
+        assertEmpty(targets)
+    }
+
     fun testProjectAndLibraryPublishCallsAreBothTargets() {
         attachVendorLibraryWithSources()
         myFixture.configureByText(
@@ -138,6 +169,7 @@ class EventPublisherLibrarySourceTest : ExplytKotlinLightTestCase() {
     private companion object {
         const val PUBLISHER_PATH = "com/vendor/events/VendorPublisher.java"
         const val LIBRARY_CALL = "publisher.publishEvent(new VendorEvent(this))"
+        const val LIBRARY_SUB_EVENT_CALL = "publisher.publishEvent(new VendorSubEvent(this))"
 
         const val PARAMETER_LISTENER = """
             package com.example
@@ -160,6 +192,26 @@ class EventPublisherLibrarySourceTest : ExplytKotlinLightTestCase() {
 
             public class VendorEvent extends ApplicationEvent {
                 public VendorEvent(Object source) { super(source); }
+            }
+        """.trimIndent()
+
+        val VENDOR_SUB_EVENT = "com/vendor/events/VendorSubEvent.java" to """
+            package com.vendor.events;
+
+            public class VendorSubEvent extends VendorEvent {
+                public VendorSubEvent(Object source) { super(source); }
+            }
+        """.trimIndent()
+
+        val VENDOR_SUB_EVENT_PUBLISHER = PUBLISHER_PATH to """
+            package com.vendor.events;
+
+            import org.springframework.context.ApplicationEventPublisher;
+
+            public class VendorPublisher {
+                public void ready(ApplicationEventPublisher publisher) {
+                    publisher.publishEvent(new VendorSubEvent(this));
+                }
             }
         """.trimIndent()
 
