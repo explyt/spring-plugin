@@ -57,4 +57,37 @@ class PathTemplateLiteralMatchingTest {
             assertFalse(SpringWebUtil.isEndpointMatches(template, "/p/a/b"))
         }
     }
+
+    @Test
+    fun `an empty variable beside a wildcard matches a non-empty segment`() {
+        assertTrue(SpringWebUtil.isEndpointMatches("/p/{id}-*", "/p/-"))
+    }
+
+    @Test
+    fun `a non-empty variable beside a wildcard still matches`() {
+        assertTrue(SpringWebUtil.isEndpointMatches("/p/{id}-*", "/p/x-"))
+    }
+
+    @Test
+    fun `an empty variable before a literal tail matches`() {
+        assertTrue(SpringWebUtil.isEndpointMatches("/p/{version}-x", "/p/-x"))
+    }
+
+    @Test
+    fun `an empty variable between literals matches while the literals stay required`() {
+        assertTrue(SpringWebUtil.isEndpointMatches("/p/v{version}-x", "/p/v-x"))
+        assertFalse(SpringWebUtil.isEndpointMatches("/p/v{version}-x", "/p/-x"))
+        assertFalse(SpringWebUtil.isEndpointMatches("/p/v{version}-x", "/p/-"))
+    }
+
+    @Test
+    fun `a standalone variable still requires a non-empty segment`() {
+        assertFalse(SpringWebUtil.isEndpointMatches("/p/{id}", "/p/"))
+    }
+
+    @Test
+    fun `a long path against a short template neither overflows nor matches`() {
+        val path = "/a/1/b/2".repeat(50)
+        assertFalse(SpringWebUtil.isEndpointMatches("/a/{x}/b/{y}", path))
+    }
 }
