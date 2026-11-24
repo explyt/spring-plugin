@@ -756,16 +756,31 @@ object SpringWebUtil {
 
     private fun getRegexByUri(path: String): Regex {
         return endpointRegExByUri.computeIfAbsent(path) {
-            val regex = pathTemplateTokens(path).joinToString("") { token ->
+            val tokens = pathTemplateTokens(path)
+            val regex = tokens.mapIndexed { index, token ->
                 when (token) {
                     is PathTemplateToken.Literal -> Pattern.quote(token.text)
-                    PathTemplateToken.Variable -> "[^/?]+"
+                    PathTemplateToken.Variable -> if (tokens.isWholeSegmentVariable(index)) "[^/?]+" else "[^/?]*"
                     PathTemplateToken.Wildcard -> "[^/]*"
                     PathTemplateToken.DoubleWildcard, PathTemplateToken.CaptureRest -> "(?:/.*)?"
                 }
-            }
+            }.joinToString("")
             Regex("^$regex(\\?.*)?\$")
         }
+    }
+
+    private fun List<PathTemplateToken>.isWholeSegmentVariable(index: Int): Boolean {
+        val previous = getOrNull(index - 1)
+        val next = getOrNull(index + 1)
+        val atSegmentStart = previous == null
+                || previous is PathTemplateToken.DoubleWildcard
+                || previous is PathTemplateToken.CaptureRest
+                || previous is PathTemplateToken.Literal && previous.text.endsWith("/")
+        val atSegmentEnd = next == null
+                || next is PathTemplateToken.DoubleWildcard
+                || next is PathTemplateToken.CaptureRest
+                || next is PathTemplateToken.Literal && next.text.startsWith("/")
+        return atSegmentStart && atSegmentEnd
     }
 
     private sealed interface PathTemplateToken {
