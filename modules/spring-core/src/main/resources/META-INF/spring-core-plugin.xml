@@ -330,6 +330,15 @@
                          level="ERROR"
                          implementationClass="com.explyt.spring.core.inspections.SpringDuplicateBeanNameInspection"/>
 
+        <localInspection shortName="SpringRedundantEnvironmentPlaceholderInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.boot"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.environment.placeholder.title"
+                         enabledByDefault="true" level="WEAK WARNING" cleanupTool="true"
+                         implementationClass="com.explyt.spring.core.inspections.SpringRedundantEnvironmentPlaceholderInspection"/>
+
         <localInspection language="Properties"
                          shortName="SpringPropertiesInspection"
                          groupBundle="messages.SpringCoreBundle"

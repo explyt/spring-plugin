@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Spring Core
+- feat: A placeholder such as `${EXPLYT_SERVER_HOST:0.0.0.0}` whose variable is the relaxed-binding name of its own key is shown as unused in `application.properties` and `application.yml`; a plain default can replace it, also in Code Cleanup. Bootstrap keys such as `spring.config.import` are not reported, and defaults that could change the value keep the placeholder (#395)
 - fix: Dotted keys of enum-valued configuration maps remain one scalar map key for navigation, highlighting and completion (#856)
 - fix: Kotlin Spring beans that the all-open compiler plugin opens (`kotlin("plugin.spring")`, also applied through a version-catalog alias) are no longer reported as final, and the "must be overridable" message reads correctly (#846)
 - fix: Typing in a Java `static final` field while the IDE indexes no longer throws `IndexNotReadyException` (#833)
