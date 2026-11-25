@@ -6,14 +6,21 @@
 package com.explyt.spring.test.util
 
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.application.runReadActionBlocking
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.roots.OrderEnumerator
+import com.intellij.openapi.roots.OrderRootType
+import com.intellij.openapi.roots.libraries.Library
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.JarFileSystem
+import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.newvfs.impl.VfsRootAccess
+import com.intellij.psi.PsiFile
+import com.intellij.psi.PsiManager
+import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PsiTestUtil
 import java.io.File
 import java.nio.file.Files
@@ -34,12 +41,13 @@ import kotlin.io.path.walk
 import kotlin.io.path.writeText
 
 /**
- * A library that ships **compiled classes only**, the way a company starter arrives from a Maven repository.
+ * A library built from real compiled classes, the way a company starter arrives from a Maven repository.
  *
  * Java sources are compiled with the running JDK's `javac` against the libraries [Module] already has, packed into a
  * jar in a directory outside every content root, and attached to the module as a classes root. The classes are then
- * outside `ProjectScope`, resolve through stubs and have no attached sources - the shape that
- * [TestLibrarySourceRoot] cannot express, because its root is a sources root too.
+ * outside `ProjectScope` and resolve through stubs - the shape that [TestLibrarySourceRoot] cannot express, because
+ * its root is a sources root too. [attachSources] adds the compiled sources afterwards, like a downloaded
+ * `-sources.jar`.
  */
 class TestCompiledLibrary private constructor(
     val jarRoot: VirtualFile,
@@ -53,7 +61,32 @@ class TestCompiledLibrary private constructor(
         PsiTestUtil.addLibrary(parentDisposable, module, libraryName, directory.toString(), jarName)
     }
 
+    /**
+     * Attaches the sources the jar was compiled from as its sources root, the way a downloaded `-sources.jar` is,
+     * and returns the attached copy of the source at [relativePath].
+     */
+    fun attachSources(module: Module, relativePath: String): PsiFile {
+        val sourceRoot = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(directory.resolve(SOURCES_DIRECTORY))
+            ?: error("No sources root for library '$libraryName'")
+        val library = OrderEnumerator.orderEntries(module).librariesOnly().let { entries ->
+            var found: Library? = null
+            entries.forEachLibrary { if (it.name == libraryName) found = it; found == null }
+            found
+        } ?: error("Library '$libraryName' is not attached to '${module.name}'")
+        WriteAction.runAndWait<RuntimeException> {
+            library.modifiableModel.apply {
+                addRoot(sourceRoot, OrderRootType.SOURCES)
+                commit()
+            }
+        }
+        IndexingTestUtil.waitUntilIndexesAreReady(module.project)
+        val source = sourceRoot.findFileByRelativePath(relativePath) ?: error("No library source '$relativePath'")
+        return runReadActionBlocking { PsiManager.getInstance(module.project).findFile(source) }
+            ?: error("No PSI for library source '$relativePath'")
+    }
+
     companion object {
+        private const val SOURCES_DIRECTORY = "src"
 
         /**
          * Compiles [sources] (relative path to Java text), packs the classes with [resources] (relative path to text)
@@ -92,7 +125,7 @@ class TestCompiledLibrary private constructor(
         }
 
         private fun compile(sources: Map<String, String>, rootPath: Path, classpath: String): Path {
-            val sourceRoot = rootPath.resolve("src")
+            val sourceRoot = rootPath.resolve(SOURCES_DIRECTORY)
             val classes = rootPath.resolve("classes").createDirectories()
             val sourceFiles = sources.map { (relativePath, text) ->
                 sourceRoot.resolve(relativePath).also {

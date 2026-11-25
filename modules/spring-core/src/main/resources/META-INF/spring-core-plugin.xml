@@ -330,6 +330,15 @@
                          level="ERROR"
                          implementationClass="com.explyt.spring.core.inspections.SpringDuplicateBeanNameInspection"/>
 
+        <localInspection shortName="SpringRedundantEnvironmentPlaceholderInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.boot"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.environment.placeholder.title"
+                         enabledByDefault="true" level="WEAK WARNING" cleanupTool="true"
+                         implementationClass="com.explyt.spring.core.inspections.SpringRedundantEnvironmentPlaceholderInspection"/>
+
         <localInspection language="Properties"
                          shortName="SpringPropertiesInspection"
                          groupBundle="messages.SpringCoreBundle"
@@ -886,6 +895,8 @@
                      description="Show all spring log in bean resolve process"/>
         <registryKey key="explyt.spring.native.old" defaultValue="false"
                      description="Support Spring Boot old versions before 2.4"/>
+        <registryKey key="explyt.spring.gutter.events.withJetBrainsSpring" defaultValue="false"
+                     description="Show Explyt event publisher and listener gutters while the JetBrains Spring plugin of IntelliJ IDEA Ultimate shows its own"/>
         <registryKey key="explyt.statistic.debug" defaultValue="false"
                      description="Enable statistic in debug mode"/>
         <registryKey key="explyt.spring.feedback.nudge.debug" defaultValue="false"
