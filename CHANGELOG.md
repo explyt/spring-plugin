@@ -22,6 +22,7 @@
 - fix: An anonymous implementation of a Spring Data repository no longer breaks repository bean discovery in its module, and implementation classes are no longer listed as repository beans (#834)
 
 ### Spring Web
+- fix: Endpoint search and URL references no longer fail on a path variable whose regex contains `?` or braces, such as `{name:.+?}`; the variable's regex itself is not checked (#889)
 - fix: Reformatting or replacing text in an OpenAPI file with the preview open no longer fails; the file is saved once after the change (#835)
 - fix: An `.http` file opened from a jar no longer fails; the run gutter and runner panel are offered only for files on disk (#836)
 - feat: The Endpoints tool window shows the selected endpoint's contract: parameters with their binding source, requiredness and defaults, media types and the response as Jackson writes it, each row navigating to its source (#486)
