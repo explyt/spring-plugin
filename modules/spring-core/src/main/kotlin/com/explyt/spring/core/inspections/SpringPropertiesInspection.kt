@@ -12,6 +12,8 @@ import com.explyt.spring.core.inspections.quickfix.ReplacementKeyQuickFix
 import com.explyt.spring.core.util.PropertyUtil
 import com.explyt.spring.core.util.PropertyUtil.toKebabCase
 import com.intellij.openapi.util.TextRange
+import com.intellij.codeInsight.intention.FileModifier
+import com.intellij.codeInsight.intention.preview.IntentionPreviewInfo
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor
@@ -19,6 +21,7 @@ import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.lang.properties.PropertiesQuickFixFactory
 import com.intellij.lang.properties.psi.PropertiesFile
 import com.intellij.lang.properties.psi.Property
+import com.intellij.openapi.project.Project
 import com.intellij.psi.ElementManipulators
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
@@ -36,7 +39,7 @@ class SpringPropertiesInspection : SpringBasePropertyInspection() {
     override fun getRemoveKeyQuickFixes(property: DefinedConfigurationProperty): List<LocalQuickFix> {
         return (property.psiElement as? Property)
             ?.let { PropertiesQuickFixFactory.getInstance().createRemovePropertyLocalFix(it) }
-            ?.let { listOf(it) } ?: emptyList()
+            ?.let { listOf(InteractiveOnlyQuickFix(it)) }.orEmpty()
     }
 
     /**
@@ -48,7 +51,8 @@ class SpringPropertiesInspection : SpringBasePropertyInspection() {
         psiKey: PsiElement,
         isOnTheFly: Boolean,
         key: String,
-        nonCanonical: PropertyUtil.Segment
+        nonCanonical: PropertyUtil.Segment,
+        batchSafe: Boolean
     ): ProblemDescriptor = manager.createProblemDescriptor(
         psiKey,
         segmentRangeIn(psiKey, nonCanonical),
@@ -57,7 +61,7 @@ class SpringPropertiesInspection : SpringBasePropertyInspection() {
         // deviation, not a defect. Reporting it as a warning put it next to "Cannot resolve key property".
         ProblemHighlightType.WEAK_WARNING,
         isOnTheFly,
-        ReplacementKeyQuickFix(toKebabCase(key), psiKey.parent)
+        ReplacementKeyQuickFix(toKebabCase(key), psiKey.parent, batchSafe)
     )
 
     private fun segmentRangeIn(psiKey: PsiElement, nonCanonical: PropertyUtil.Segment): TextRange {
@@ -70,4 +74,21 @@ class SpringPropertiesInspection : SpringBasePropertyInspection() {
         }
     }
 
+}
+
+private class InteractiveOnlyQuickFix(private val delegate: LocalQuickFix) : LocalQuickFix by delegate {
+    override fun availableInBatchMode() = false
+
+    override fun getName(): String = delegate.name
+
+    override fun startInWriteAction(): Boolean = delegate.startInWriteAction()
+
+    override fun getElementToMakeWritable(currentFile: PsiFile): PsiElement? =
+        delegate.getElementToMakeWritable(currentFile)
+
+    override fun getFileModifierForPreview(target: PsiFile): FileModifier? =
+        delegate.getFileModifierForPreview(target)
+
+    override fun generatePreview(project: Project, previewDescriptor: ProblemDescriptor): IntentionPreviewInfo =
+        delegate.generatePreview(project, previewDescriptor)
 }

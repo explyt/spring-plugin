@@ -84,12 +84,13 @@ object ResourceFileInspectionUtil {
         element: PsiElement,
         manager: InspectionManager,
         isOnTheFly: Boolean,
+        batchSafe: Boolean = true,
     ): List<ProblemDescriptor> {
         if (!text.startsWith(PREFIX_CLASSPATH) && !text.startsWith(PREFIX_CLASSPATH_STAR)) return emptyList()
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyList()
         val rootPaths = getRootPaths(module)
         val textWithoutPrefix = getTextValue(text)
-        return getPsiFileProblemFix(rootPaths, textWithoutPrefix, languageFileType, element, manager, isOnTheFly)
+        return getPsiFileProblemFix(rootPaths, textWithoutPrefix, languageFileType, element, manager, isOnTheFly, batchSafe)
     }
 
     private val VALID_PREFIXES = setOf("/", PREFIX_CLASSPATH, PREFIX_FILE, PREFIX_HTTP)
@@ -143,6 +144,7 @@ object ResourceFileInspectionUtil {
         element: PsiElement,
         manager: InspectionManager,
         isOnTheFly: Boolean,
+        batchSafe: Boolean = true,
     ): List<ProblemDescriptor> {
         val highlightType = if (languageFileType == XmlFileType.INSTANCE)
             ProblemHighlightType.GENERIC_ERROR else ProblemHighlightType.WARNING
@@ -158,7 +160,7 @@ object ResourceFileInspectionUtil {
         val rootPath = getRootPath(rootPaths, fileDirs) ?: return emptyList()
         val directory = TargetDirectory(rootPath, fileDirs)
         val location = NewFileLocation(listOf(directory), fileName)
-        val fix = CreateFilePathAvailable(element, location) { getText(languageFileType, manager.project) }
+        val fix = CreateFilePathAvailable(element, location, batchSafe) { getText(languageFileType, manager.project) }
         return listOf(
             manager.createProblemDescriptor(
                 element,
@@ -204,8 +206,13 @@ object ResourceFileInspectionUtil {
 }
 
 private class CreateFilePathAvailable(
-    psiElement: PsiElement, newFileLocation: NewFileLocation, fileTextSupplier: Supplier<String>
+    psiElement: PsiElement,
+    newFileLocation: NewFileLocation,
+    private val batchSafe: Boolean,
+    fileTextSupplier: Supplier<String>
 ) : CreateFilePathFix(psiElement, newFileLocation, fileTextSupplier) {
 
     override fun isAvailable(project: Project, file: PsiFile, startElement: PsiElement, endElement: PsiElement) = true
+
+    override fun availableInBatchMode() = batchSafe
 }

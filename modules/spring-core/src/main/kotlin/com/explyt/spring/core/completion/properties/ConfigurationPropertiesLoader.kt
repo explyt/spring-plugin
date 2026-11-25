@@ -92,7 +92,8 @@ data class ConfigurationProperty(
     var description: String?,
     var defaultValue: Any?,
     var deprecation: DeprecationInfo?,
-    val inLineYaml: Boolean = false
+    val inLineYaml: Boolean = false,
+    val hasEnumMapValue: Boolean = false
 ) {
     fun isMap() = propertyType == PropertyType.MAP || propertyType == PropertyType.ENUM_MAP
 
