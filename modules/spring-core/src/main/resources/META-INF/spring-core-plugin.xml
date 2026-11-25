@@ -347,6 +347,7 @@
                          bundle="messages.SpringCoreBundle"
                          key="explyt.spring.inspection.properties.key"
                          enabledByDefault="true" level="WARNING"
+                         cleanupTool="true"
                          implementationClass="com.explyt.spring.core.inspections.SpringPropertiesInspection"/>
 
         <localInspection language="yaml"
@@ -357,6 +358,7 @@
                          bundle="messages.SpringCoreBundle"
                          key="explyt.spring.inspection.yaml.key"
                          enabledByDefault="true" level="WARNING"
+                         cleanupTool="true"
                          implementationClass="com.explyt.spring.core.inspections.SpringYamlInspection"/>
 
         <localInspection language=""

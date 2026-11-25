@@ -59,7 +59,8 @@ class SpringYamlInspection : SpringBasePropertyInspection() {
         psiKey: PsiElement,
         isOnTheFly: Boolean,
         key: String,
-        nonCanonical: PropertyUtil.Segment
+        nonCanonical: PropertyUtil.Segment,
+        batchSafe: Boolean
     ): ProblemDescriptor {
         val owner = owningKeyValue(psiKey, nonCanonical) ?: psiKey.parent as? YAMLKeyValue
         val reportOn = owner?.key ?: psiKey
@@ -71,7 +72,7 @@ class SpringYamlInspection : SpringBasePropertyInspection() {
             // deviation, not a defect. Reporting it as a warning put it next to "Cannot resolve key property".
             ProblemHighlightType.WEAK_WARNING,
             isOnTheFly,
-            YamlKeyToKebabQuickFix(psiKey.parent)
+            YamlKeyToKebabQuickFix(psiKey.parent, batchSafe)
         )
     }
 
